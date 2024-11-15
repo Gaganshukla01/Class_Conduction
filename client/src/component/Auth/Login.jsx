@@ -45,22 +45,12 @@ const Login = () => {
               </div>
 
               <div className="login-center-options">
-                <div className="remember-div">
-                  <input type="checkbox" id="remember-checkbox" />
-                  <label htmlFor="remember-checkbox">
-                    Remember for 30 days
-                  </label>
-                </div>
                 <a href="#" className="forgot-pass-link">
                   Forgot password?
                 </a>
               </div>
               <div className="login-center-buttons">
                 <button type="button">Log In</button>
-                <button type="button">
-                  <img src={GoogleSvg} alt="" />
-                  Log In with Google
-                </button>
               </div>
             </form>
           </div>
