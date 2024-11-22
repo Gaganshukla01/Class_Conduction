@@ -1,15 +1,19 @@
-import React, { useEffect, useState } from "react";
-import Image from "../../assets/image.png";
-import Logo from "../../assets/logo.png";
-import GoogleSvg from "../../assets/icons8-google.svg";
-import { FaEye } from "react-icons/fa6";
-import { FaEyeSlash } from "react-icons/fa6";
 import "./login.css";
+import { FaEye } from "react-icons/fa6";
+import Logo from "../../assets/logo.png";
+import Image from "../../assets/image.png";
+import { FaEyeSlash } from "react-icons/fa6";
+import React, { useEffect, useState } from "react";
+import GoogleSvg from "../../assets/icons8-google.svg";
+import Navbar from "../Navbar";
+
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
+    <>
+    <Navbar></Navbar>
     <div className="login-main">
       <div className="login-left">
         <img src={Image} alt="" />
@@ -45,22 +49,12 @@ const Login = () => {
               </div>
 
               <div className="login-center-options">
-                <div className="remember-div">
-                  <input type="checkbox" id="remember-checkbox" />
-                  <label htmlFor="remember-checkbox">
-                    Remember for 30 days
-                  </label>
-                </div>
                 <a href="#" className="forgot-pass-link">
                   Forgot password?
                 </a>
               </div>
               <div className="login-center-buttons">
                 <button type="button">Log In</button>
-                <button type="button">
-                  <img src={GoogleSvg} alt="" />
-                  Log In with Google
-                </button>
               </div>
             </form>
           </div>
@@ -71,6 +65,7 @@ const Login = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
