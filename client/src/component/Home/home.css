@@ -1,0 +1,38 @@
+#main{
+    background-image: url("./images/back.png");
+    width:100vw;
+    height: 90vh;
+    background-position: bottom;
+    background-size: cover;
+    display: flex;
+    justify-content: space-between;
+    
+}
+#left-inner{
+      width: 40rem;
+}
+
+#right-inner{
+    width: 80w;
+}
+img{
+    height: 55rem;
+    margin: 19px;
+}
+#header-head{
+
+    color:aqua;
+ font-size: 3rem;
+ font-weight: 600;
+
+
+}
+#header{
+    font-size: 3rem; 
+    font-weight: 600;
+}
+
+#para{
+    font-size: 2rem; 
+    font-weight: 200;
+}

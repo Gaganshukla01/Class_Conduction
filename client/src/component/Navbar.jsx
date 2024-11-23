@@ -11,10 +11,10 @@ const Navbar=()=>{
         <ul>
             <div id="logo">Classes</div>
             <div id="items">
-               <Link to="/" ><li >Home</li></Link>
-               <Link to="/" ><li>Class</li></Link>
-               <Link to="/" ><li>Content</li></Link>
-               <Link to="/" ><li>Profile</li></Link>
+               <Link to="/"><li >Home</li></Link>
+               <Link to="/class"><li>Class</li></Link>
+               <Link to="/content"><li>Content</li></Link>
+               <Link to="/profile"><li>Profile</li></Link>
                <Link to="/Login"><button id="btn">Login</button></Link>
                 
             </div>

@@ -5,9 +5,9 @@
 }
 
 nav{
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    /* box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); */
     position:sticky;
-    background-color:#f5dbb6;
+    background-color:#fdf0e2;
 }
 
 ul{
@@ -16,6 +16,9 @@ ul{
 }
 #logo{
     padding: 10px;
+    font-weight: 750;
+    color: green;
+    font-size: 15px;
 }
 
 #items{
@@ -25,6 +28,8 @@ ul{
 li{
     list-style: none;
     padding: 10px;
+    font-size: 17px;
+    font-weight: 600;
     
     color: black;
 }
@@ -42,10 +47,12 @@ li:hover{
 #btn{
     background-color: green;
     border-radius: 7px;
-    padding: 6px;
-    margin: 3px;
+    padding: 7px;
+    margin: 13px;
     color: white;
     border: none;
+    width: 6rem;
     font-weight: 700;
-    margin-top: 6px;
+    margin-top: 10px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
