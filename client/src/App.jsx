@@ -1,43 +1,25 @@
-import {useState } from 'react' 
-import Navbar from './component/navbar'
-import Login from './component/Auth/Login'
-import Home from './component/Home/Home';
-import Content from './component/Content/Content';
-import Profile from './component/Profile/Profile';
-import Class_comp from './component/Classes/Class';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import React from 'react'
+import Home from './pages/Home'
+import { Route,Routes } from 'react-router-dom'
+import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
+import EmailVerify from './pages/EmailVerify'
+import { ToastContainer} from 'react-toastify';
+
+
 
 function App() {
-  
-  const router=createBrowserRouter([
-    {
-      path:"/",
-      element:<Home/>
-    },
-    {
-      path:"/login",
-      element:<Login/>
-    },
-    {
-      path:'/class',
-      element:<Class_comp/>
-    },
-    {
-      path:"/profile",
-      element:<Profile/>
-    },
-    {
-      path:"/content",
-
-      element:<Content/>
-    }
-
-  ])
-
   return (
     <>
-    <RouterProvider router={router}></RouterProvider>
-    
+    <ToastContainer/>
+    <Routes>
+        <Route path='/' element={<Home/>}/>
+        <Route path='/login' element={<Login/>}/>
+        <Route path='/resetPassword' element={<ResetPassword/>}/>
+        <Route path='/emailVerify' element={<EmailVerify/>}/>
+    </Routes>
+  
+  
     </>
   )
 }

@@ -1,49 +1,49 @@
-<<<<<<< HEAD
-const express = require("express");
-const cors = require("cors");
-const app = express();
-const port = process.env.PORT || 3000;
-app.use(cors());
-app.use(express.json());
+import express from "express"
+import cookieParser from "cookie-parser"
+import cors from "cors"
+import "dotenv/config"
+import connectDb from "./config/database.js"
+import {authRoute} from "./router/authRouter.js"
+import { userRoutes } from "./router/userRouter.js"
 
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:3000', 
+  'http://localhost:5173', 
+]
 
-
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
-
-
-app.get("/api/data", (req, res) => {
-  res.json({
-    message: "This is some sample data.",
-    success: true,
-  });
-});
-
-app.post("/api/data", (req, res) => {
-  const data = req.body;
-  res.json({
-    message: "Data received successfully!",
-    data: data,
-  });
-});
-
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-=======
-const express=require("express")
 const app=express()
-const port =process.env.PORT||3000
+const port=process.env.PORT||4000
 
-app.get('/',(req,res)=>{
-res.send("Hello i am here")
-})
+app.use(express.json())
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log('Request origin:', origin) 
+    
+    
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      console.log('CORS blocked origin:', origin)
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+};
+app.use(cors(corsOptions))
+app.use(cookieParser())
 
-app.listen(port,()=>{
-    console.log(`Server is running .. on that link  http://localhost:${port}/#`)
-})
->>>>>>> 8bce218c31c5ae82a53d387b7782bd5e13a60512
+connectDb()
+
+app.get("/",(req,res)=>res.send("Api is Working"))
+
+app.use("/api/auth",authRoute)
+app.use("/api/user",userRoutes)
+
+
+app.listen(port, () => console.log(`Server is running on port ${port}`))
