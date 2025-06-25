@@ -15,7 +15,7 @@ function EmailVerify() {
   const {getUserData,backend_url,userData,isLoggedIn,setIsLoggedin}=useContext(AppContent)
   
 
-  const handleInput=(e,index)=>{
+  const handleInput=(e,index)=>{  
 
     if(e.target.value.length >0 && index<inputRefs.current.length-1 ){
       inputRefs.current[index+1].focus()

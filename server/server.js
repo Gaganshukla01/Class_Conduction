@@ -5,6 +5,8 @@ import "dotenv/config"
 import connectDb from "./config/database.js"
 import {authRoute} from "./router/authRouter.js"
 import { userRoutes } from "./router/userRouter.js"
+import { courseRouter } from "./router/courseRouter.js"
+import { studentAddRouter } from "./router/studentAddRouter.js"
 
 
 const allowedOrigins = [
@@ -19,8 +21,6 @@ const port=process.env.PORT||4000
 app.use(express.json())
 const corsOptions = {
   origin: function (origin, callback) {
-    console.log('Request origin:', origin) 
-    
     
     if (!origin) return callback(null, true)
     
@@ -44,6 +44,8 @@ app.get("/",(req,res)=>res.send("Api is Working"))
 
 app.use("/api/auth",authRoute)
 app.use("/api/user",userRoutes)
+app.use("/api/course",courseRouter)
+app.use("/api/student",studentAddRouter)
 
 
 app.listen(port, () => console.log(`Server is running on port ${port}`))
