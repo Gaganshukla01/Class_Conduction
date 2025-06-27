@@ -18,10 +18,10 @@ import { AppContent } from "../context/Context";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-
 export default function AddClassSchedule() {
-  const { getAllUserData, allUserData, backend_url } = useContext(AppContent);
-
+  const { getAllUserData, allUserData, backend_url, allCourse } =
+    useContext(AppContent);
+  console.log(allCourse);
   const [instructors, setInstructors] = useState([]);
   const [students, setStudents] = useState([]);
 
@@ -72,33 +72,6 @@ export default function AddClassSchedule() {
     classLink: "",
     classDuration: "",
   });
-
-const classOptions = [
-  { value: "python", label: "Python Programming", icon: "🐍" },
-  { value: "javascript", label: "JavaScript", icon: "🟨" },
-  { value: "react", label: "React.js", icon: "⚛️" },
-  { value: "nodejs", label: "Node.js", icon: "🟢" },
-  { value: "mern", label: "MERN Stack", icon: "🚀" },
-  { value: "java", label: "Java Programming", icon: "☕" },
-  { value: "cpp", label: "C++ Programming", icon: "⚙️" },
-  { value: "html-css", label: "HTML & CSS", icon: "🌐" },
-  { value: "database", label: "Database Management", icon: "🗄️" },
-  { value: "data-science", label: "Data Science", icon: "📈" },
-  { value: "machine-learning", label: "Machine Learning", icon: "🤖" },
-  { value: "web-development", label: "Web Development", icon: "💻" },
-  { value: "mobile-development", label: "Mobile Development", icon: "📱" },
-  { value: "devops", label: "DevOps", icon: "⚡" },
-  { value: "cybersecurity", label: "Cybersecurity", icon: "🔒" },
-  { value: "ui-ux", label: "UI/UX Design", icon: "🎨" },
-  { value: "flutter", label: "Flutter", icon: "💙" },
-  { value: "angular", label: "Angular", icon: "🔺" },
-  { value: "vue", label: "Vue.js", icon: "💚" },
-  { value: "php", label: "PHP", icon: "🐘" },
-  { value: "laravel", label: "Laravel", icon: "🔥" },
-  { value: "django", label: "Django", icon: "🎯" },
-  { value: "express", label: "Express.js", icon: "🚂" },
-  { value: "mongodb", label: "MongoDB", icon: "🍃" },
-];
 
   const [message, setMessage] = useState("");
   const [instructorDropdownOpen, setInstructorDropdownOpen] = useState(false);
@@ -430,49 +403,51 @@ const classOptions = [
                 selectedContent={
                   formData.className && (
                     <div className="flex items-center gap-3">
-                      <span className="text-xl">
-                        {
-                          classOptions.find(
-                            (opt) => opt.value === formData.className
-                          )?.icon
-                        }
-                      </span>
+                      <span className="text-xl">📚</span>
                       <span className="text-white font-medium">
-                        {
-                          classOptions.find(
-                            (opt) => opt.value === formData.className
-                          )?.label
-                        }
+                        {formData.className}
                       </span>
                     </div>
                   )
                 }
               >
                 <div className="max-h-64 overflow-y-auto">
-                  {classOptions.map((option) => (
-                    <div
-                      key={option.value}
-                      onClick={() => handleClassNameSelect(option.value)}
-                      className={`px-4 py-3 cursor-pointer border-b border-white/5 last:border-b-0 group ${
-                        formData.className === option.value
-                          ? "bg-blue-500/20 hover:bg-blue-500/30"
-                          : "hover:bg-gradient-to-r hover:from-blue-500/20 hover:to-purple-500/20"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{option.icon}</span>
-                        <div className="flex-1">
-                          <div className="text-white font-medium">
-                            {option.label}
+                  {allCourse && allCourse.length > 0 ? (
+                    allCourse.map((course) => (
+                      <div
+                        key={course._id}
+                        onClick={() => handleClassNameSelect(course.nameCourse)}
+                        className={`px-4 py-3 cursor-pointer border-b border-white/5 last:border-b-0 group ${
+                          formData.className === course.nameCourse
+                            ? "bg-blue-500/20 hover:bg-blue-500/30"
+                            : "hover:bg-gradient-to-r hover:from-blue-500/20 hover:to-purple-500/20"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">📚</span>
+                          <div className="flex-1">
+                            <div className="text-white font-medium">
+                              {course.nameCourse}
+                            </div>
+                            <div className="text-gray-400 text-sm">
+                              {course.description ||
+                                course.courseCategory ||
+                                "Course"}
+                            </div>
                           </div>
-                          <div className="text-gray-400 text-sm">Subject</div>
+                          {formData.className === course.nameCourse && (
+                            <Check size={16} className="text-blue-400" />
+                          )}
                         </div>
-                        {formData.className === option.value && (
-                          <Check size={16} className="text-blue-400" />
-                        )}
                       </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-8 text-center text-gray-400">
+                      <FileText size={24} className="mx-auto mb-2 opacity-50" />
+                      <div>No courses available</div>
+                      <div className="text-sm">Please add courses first</div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CustomDropdown>
             </div>

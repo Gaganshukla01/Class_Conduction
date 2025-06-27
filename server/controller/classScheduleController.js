@@ -56,3 +56,37 @@ export const classCreate= async (req, res) => {
         });
     }
 };
+
+export const getAllClasses = async (req, res) => {
+    try {
+    
+        const allClasses = await classSchedule.find({})
+            .populate('instructorId', 'name email') 
+            .sort({ classDate: 1, classTime: 1 }); 
+
+    
+        if (!allClasses || allClasses.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No class schedules found',
+                data: []
+            });
+        }
+
+      
+        res.status(200).json({
+            success: true,
+            message: 'Class schedules retrieved successfully',
+            count: allClasses.length,
+            data: allClasses
+        });
+
+    } catch (error) {
+        console.error('Error retrieving class schedules:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
