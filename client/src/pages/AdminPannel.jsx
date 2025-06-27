@@ -15,14 +15,16 @@ import {
   ExternalLink,
   Mail,
   Phone,
-  UserCheck
+  UserCheck,
+  Check
 } from 'lucide-react';
 
 // Import your existing components here
 // import AddScheduleClass from './AddScheduleClass';
 // import CourseAdd from './CourseAdd';
-import AddScheduleClass from './AddScheduleClass';
-import AddCourse from './CourseAdd';
+import AddScheduleClass from '../components/AddScheduleClass';
+import AddCourse from '../components/CourseAdd';
+import AddClassAttendance from '../components/AddClassAttendance';
 
 // Placeholder components - replace these imports with your actual components
 
@@ -36,6 +38,7 @@ export default function AdminDashboard() {
     { id: 'addCourse', label: 'Add Course', icon: BookOpen },
     { id: 'addStudent', label: 'Add Student', icon: Users },
     { id: 'addClass', label: 'Add Class', icon: Calendar },
+    { id: 'classAttendence', label: 'Class Attendence', icon: Check },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -45,6 +48,8 @@ export default function AdminDashboard() {
         return <AddCourse />;
       case 'addStudent':
         return <AddStudentForm />;
+      case 'classAttendence':
+        return <AddClassAttendance />;
       case 'addClass':
         return <AddScheduleClass />;
       case 'settings':

@@ -1,6 +1,6 @@
 import classSchedule from "../model/classesScheduleDetails.js";
 
-export const studentAdd= async (req, res) => {
+export const classCreate= async (req, res) => {
     try {
         // Extract data from request body
         const {

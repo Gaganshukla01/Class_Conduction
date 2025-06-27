@@ -39,7 +39,7 @@ export default function AddClassSchedule() {
     };
 
     try {
-      await axios.post(`${backend_url}/api/student/add`, payload);
+      await axios.post(`${backend_url}/api/classschedule/add`, payload);
       setMessage('✅ Class created successfully!');
       setFormData({
         className: '',
