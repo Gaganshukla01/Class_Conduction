@@ -29,8 +29,8 @@ function Navbar() {
       axios.defaults.withCredentials = true;
       const { data } = await axios.post(backend_url + "/api/auth/logout");
       
-      if (data.success) { // Fixed: was 'sucess'
-        console.log("Logout successful");
+      if (data.sucess) { 
+        toast.warning("Logout successful");
         setIsLoggedin(false);
         setUserData(false);
         navigate("/");

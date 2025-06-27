@@ -2,7 +2,7 @@ import classSchedule from "../model/classesScheduleDetails.js";
 
 export const classCreate= async (req, res) => {
     try {
-        // Extract data from request body
+
         const {
             className,
             classDescription,
@@ -15,7 +15,6 @@ export const classCreate= async (req, res) => {
             classDuration
         } = req.body;
 
-        // Create new class schedule instance
         const newClassSchedule = new classSchedule({
             className,
             classDescription,
@@ -23,15 +22,15 @@ export const classCreate= async (req, res) => {
             classDate,
             classTime,
             instructorId,
-            studentsEnrolled: studentsEnrolled || [], // Default to empty array if not provided
+            studentsEnrolled: studentsEnrolled || [], 
             classLink,
             classDuration
         });
 
-        // Save to database
+    
         const savedClassSchedule = await newClassSchedule.save();
 
-        // Send success response
+    
         res.status(201).json({
             success: true,
             message: 'Class schedule created successfully',
@@ -39,7 +38,7 @@ export const classCreate= async (req, res) => {
         });
 
     } catch (error) {
-        // Handle validation errors
+        
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({
@@ -49,7 +48,6 @@ export const classCreate= async (req, res) => {
             });
         }
 
-        // Handle other errors
         console.error('Error creating class schedule:', error);
         res.status(500).json({
             success: false,

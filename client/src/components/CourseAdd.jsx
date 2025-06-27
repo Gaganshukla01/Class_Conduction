@@ -1,49 +1,56 @@
-import React, { useState ,useContext} from 'react';
-import { BookOpen, FileText, Image, Video, Tag, DollarSign } from 'lucide-react';
-import axios from 'axios';
-import { AppContent } from '../context/Context';
-import { toast } from 'react-toastify';
+import React, { useState, useContext } from "react";
+import {
+  BookOpen,
+  FileText,
+  Image,
+  Video,
+  Tag,
+  DollarSign,
+} from "lucide-react";
+import axios from "axios";
+import { AppContent } from "../context/Context";
+import { toast } from "react-toastify";
 
 export default function AddCourse() {
-const { backend_url} = useContext(AppContent);
+  const { backend_url } = useContext(AppContent);
   const [formData, setFormData] = useState({
-    nameCourse: '',
-    description: '',
-    courseImage: '',
-    courseVideo: '',
-    courseCategory: '',
-    coursePrice: '',
+    nameCourse: "",
+    description: "",
+    courseImage: "",
+    courseVideo: "",
+    courseCategory: "",
+    coursePrice: "",
   });
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const handleChange = (e) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }));
   };
 
   const handleSubmit = async () => {
     const payload = {
       ...formData,
-      coursePrice: parseFloat(formData.coursePrice) || 0
+      coursePrice: parseFloat(formData.coursePrice) || 0,
     };
 
     try {
-      await axios.post(`${backend_url}/api/course/add`, payload);
-      setMessage('✅ Course created successfully!');
-      setFormData({
-        nameCourse: '',
-        description: '',
-        courseImage: '',
-        courseVideo: '',
-        courseCategory: '',
-        coursePrice: '',
-      });
-      toast.success(' Course created:');
+      const res = await axios.post(`${backend_url}/api/course/add`, payload);
+      if (res) {
+        toast.success("Course Added");
+        setFormData({
+          nameCourse: "",
+          description: "",
+          courseImage: "",
+          courseVideo: "",
+          courseCategory: "",
+          coursePrice: "",
+        });
+      }
     } catch (error) {
-      setMessage('❌ Error creating course');
-      toast.error(' Error:');
+      toast.error(" Error:");
     }
   };
 
@@ -67,17 +74,19 @@ const { backend_url} = useContext(AppContent);
         )}
 
         <div onSubmit={handleSubmit} className="grid gap-6">
-          <Input 
-            label="Course Name" 
-            name="nameCourse" 
-            value={formData.nameCourse} 
-            onChange={handleChange} 
-            Icon={BookOpen} 
+          <Input
+            label="Course Name"
+            name="nameCourse"
+            value={formData.nameCourse}
+            onChange={handleChange}
+            Icon={BookOpen}
             required
           />
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-200 mb-1">Course Description</label>
+            <label className="block text-sm font-medium text-gray-200 mb-1">
+              Course Description
+            </label>
             <div className="flex items-start bg-white/10 rounded-xl px-4 py-3 border border-white/20 focus-within:ring-2 ring-blue-400 transition">
               <FileText size={20} className="text-gray-300 mr-3 mt-1" />
               <textarea
@@ -92,37 +101,37 @@ const { backend_url} = useContext(AppContent);
             </div>
           </div>
 
-          <Input 
-            label="Course Image URL" 
-            name="courseImage" 
-            value={formData.courseImage} 
-            onChange={handleChange} 
-            Icon={Image} 
+          <Input
+            label="Course Image URL"
+            name="courseImage"
+            value={formData.courseImage}
+            onChange={handleChange}
+            Icon={Image}
           />
-          
-          <Input 
-            label="Course Video URL" 
-            name="courseVideo" 
-            value={formData.courseVideo} 
-            onChange={handleChange} 
-            Icon={Video} 
+
+          <Input
+            label="Course Video URL"
+            name="courseVideo"
+            value={formData.courseVideo}
+            onChange={handleChange}
+            Icon={Video}
           />
-          
+
           <div className="grid grid-cols-2 gap-6">
-            <Input 
-              label="Course Category" 
-              name="courseCategory" 
-              value={formData.courseCategory} 
-              onChange={handleChange} 
+            <Input
+              label="Course Category"
+              name="courseCategory"
+              value={formData.courseCategory}
+              onChange={handleChange}
               Icon={Tag}
               required
             />
-            <Input 
-              label="Course Price" 
-              name="coursePrice" 
-              value={formData.coursePrice} 
-              onChange={handleChange} 
-              type="number" 
+            <Input
+              label="Course Price"
+              name="coursePrice"
+              value={formData.coursePrice}
+              onChange={handleChange}
+              type="number"
               Icon={DollarSign}
               step="0.01"
               min="0"
@@ -130,8 +139,8 @@ const { backend_url} = useContext(AppContent);
             />
           </div>
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={handleSubmit}
             className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-xl hover:scale-105"
           >
@@ -143,10 +152,22 @@ const { backend_url} = useContext(AppContent);
   );
 }
 
-function Input({ label, name, value, onChange, type = "text", Icon, required = false, step, min }) {
+function Input({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  Icon,
+  required = false,
+  step,
+  min,
+}) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-200 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-200 mb-1">
+        {label}
+      </label>
       <div className="flex items-center bg-white/10 rounded-xl px-4 py-3 border border-white/20 focus-within:ring-2 ring-blue-400 transition">
         {Icon && <Icon size={20} className="text-gray-300 mr-3" />}
         <input

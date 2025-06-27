@@ -10,6 +10,8 @@ export const  AppContextProvider=(props)=>{
    
     const[isLoggedIn,setIsLoggedin]=useState(false)
     const[userData,setUserData]=useState(false)
+    const[allUserData,setAllUserData]=useState(false)
+    const[allCourse,setAllCourseData]=useState(false)
 
     const getAuthState=async()=>{
             axios.defaults.withCredentials=true
@@ -18,6 +20,8 @@ export const  AppContextProvider=(props)=>{
                 if (data.sucess) {
                     setIsLoggedin(true);
                     getUserData();
+                    getAllUserData();
+                    getAllCourse()
                 }
             } catch (error) {
                 console.log(error.response?.data?.message || "An error occurred");
@@ -41,11 +45,37 @@ export const  AppContextProvider=(props)=>{
     
     },[])
 
+        const getAllUserData=async()=>{
+           axios.defaults.withCredentials=true
+          try {
+            const {data}= await axios.get(`${backend_url}/api/user/getalluser`)
+            data.success?setAllUserData(data):toast.error(data.message)
+        } catch (error) {
+            toast.error(data.message)
+        }
+
+    }
+        const getAllCourse=async()=>{
+           axios.defaults.withCredentials=true
+          try {
+            const res= await axios.get(`${backend_url}/api/course/`)
+            res.data?setAllCourseData(res.data):toast.error(res.message)
+        } catch (error) {
+            toast.error(data.message)
+        }
+
+    }
+
     const value={
         backend_url,
         isLoggedIn,setIsLoggedin,
         userData,setUserData,
-        getUserData
+        getUserData,
+        getAllUserData,
+        allUserData,
+        getAllCourse,
+        allCourse
+
 
     }
 
