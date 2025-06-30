@@ -8,7 +8,6 @@ import EmailVerify from './pages/EmailVerify'
 import AdminDashboard from './pages/AdminPannel'
 import StudentDashboard from './pages/StudentSection'
 import { ToastContainer } from 'react-toastify'
-import Navbar from './components/Navbar'
 
 function App() {
   return (

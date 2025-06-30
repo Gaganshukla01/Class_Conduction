@@ -13,6 +13,9 @@ import {
   Video,
   Tag,
   DollarSign,
+  CheckCircle,
+  TrendingUp ,
+  GraduationCap, 
   Clock,
   User,
   ExternalLink,
@@ -105,46 +108,315 @@ export default function AdminDashboard() {
 
 // Dashboard Home Component
 function DashboardHome() {
+  const { allSchedule, allUserData, allCourse } = useContext(AppContent);
+  const [hoveredStat, setHoveredStat] = useState(null);
+
+  // Extract data arrays from backend response
+  const classes = allSchedule?.data || [];
+  const users = allUserData?.data || [];
+  // Fix: Handle different possible data structures for courses
+  const courses = allCourse?.data || allCourse || [];
+
+  // Calculate statistics from real data
+  const totalCourses = courses.length;
+  
+  // Separate instructors and students
+  const instructors = users.filter(user => user.userType === 'admin');
+  const students = users.filter(user => user.userType === 'student');
+  const totalStudents = students.length;
+  const totalInstructors = instructors.length;
+
+  // Calculate total enrolled students across all classes
+  const totalEnrollments = classes.reduce((total, classItem) => {
+    return total + (classItem.studentsEnrolled?.length || 0);
+  }, 0);
+
+  // Get current date to filter active classes
+  const currentDate = new Date();
+  const activeClasses = classes.filter(classItem => {
+    const classDate = new Date(classItem.classDate);
+    return classDate >= currentDate;
+  }).length;
+
+  // Static payment data (to be replaced with API later)
+  const paymentStats = {
+    totalRevenue: 25750,
+    pendingPayments: 3200,
+    completedPayments: 22550,
+    averageClassFee: 150
+  };
+
+  // Get detailed breakdowns for hover tooltips
+  const getStudentDetails = () => {
+    const verifiedStudents = students.filter(student => student.isAccountVerified).length;
+    const unverifiedStudents = students.length - verifiedStudents;
+    return {
+      total: students.length,
+      verified: verifiedStudents,
+      unverified: unverifiedStudents,
+      enrollments: totalEnrollments
+    };
+  };
+
+  const getInstructorDetails = () => {
+    const verifiedInstructors = instructors.filter(instructor => instructor.isAccountVerified).length;
+    const unverifiedInstructors = instructors.length - verifiedInstructors;
+    return {
+      total: instructors.length,
+      verified: verifiedInstructors,
+      unverified: unverifiedInstructors,
+      activeClasses: activeClasses
+    };
+  };
+
+  const getCourseDetails = () => {
+    // Assuming courses might have categories or status fields
+    return {
+      total: courses.length,
+      activeClasses: classes.length,
+      upcomingClasses: activeClasses,
+      totalEnrollments: totalEnrollments
+    };
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
   const stats = [
     {
+      id: 'courses',
       label: "Total Courses",
-      value: "24",
+      value: totalCourses.toString(),
       icon: BookOpen,
       color: "from-blue-500 to-cyan-500",
+      subtext: `${activeClasses} active`,
+      hasHover: true,
+      details: getCourseDetails()
     },
     {
+      id: 'students',
       label: "Total Students",
-      value: "156",
+      value: totalStudents.toString(),
       icon: Users,
       color: "from-green-500 to-emerald-500",
+      subtext: `${totalEnrollments} enrollments`,
+      hasHover: true,
+      details: getStudentDetails()
     },
     {
-      label: "Active Classes",
-      value: "8",
-      icon: Calendar,
+      id: 'instructors',
+      label: "Instructors",
+      value: totalInstructors.toString(),
+      icon: GraduationCap,
       color: "from-purple-500 to-violet-500",
+      subtext: "Active instructors",
+      hasHover: true,
+      details: getInstructorDetails()
     },
     {
-      label: "Revenue",
-      value: "$12,450",
+      id: 'revenue',
+      label: "Total Revenue",
+      value: formatCurrency(paymentStats.totalRevenue),
       icon: DollarSign,
       color: "from-orange-500 to-red-500",
+      subtext: "This month",
+      hasHover: false
     },
+    {
+      id: 'pending',
+      label: "Pending Payments",
+      value: formatCurrency(paymentStats.pendingPayments),
+      icon: Clock,
+      color: "from-yellow-500 to-amber-500",
+      subtext: "Awaiting payment",
+      hasHover: false
+    },
+    {
+      id: 'completed',
+      label: "Completed Payments",
+      value: formatCurrency(paymentStats.completedPayments),
+      icon: CheckCircle,
+      color: "from-emerald-500 to-teal-500",
+      subtext: "Successfully paid",
+      hasHover: false
+    },
+    {
+      id: 'average',
+      label: "Average Class Fee",
+      value: formatCurrency(paymentStats.averageClassFee),
+      icon: TrendingUp,
+      color: "from-indigo-500 to-blue-500",
+      subtext: "Per class",
+      hasHover: false
+    },
+    {
+      id: 'active',
+      label: "Active Classes",
+      value: activeClasses.toString(),
+      icon: Calendar,
+      color: "from-pink-500 to-rose-500",
+      subtext: "Upcoming classes",
+      hasHover: false
+    }
   ];
 
+  // Get recent classes (next 3 upcoming)
+  const upcomingClasses = classes
+    .filter(classItem => new Date(classItem.classDate) >= currentDate)
+    .sort((a, b) => new Date(a.classDate) - new Date(b.classDate))
+    .slice(0, 3);
+
+  // Get instructor name by ID
+  const getInstructorName = (instructorId) => {
+    const instructor = users.find(user => user._id === instructorId);
+    return instructor ? instructor.name : 'Unknown Instructor';
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Show loading state if data is not available
+  if (!allSchedule || !allUserData || !allCourse) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-xl text-gray-400">Loading dashboard...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Debug: Add console log to check data
+  console.log('Course data:', allCourse);
+  console.log('Courses array:', courses);
+  console.log('Total courses:', totalCourses);
+
+  // Render hover tooltip
+  const renderHoverTooltip = (stat) => {
+    if (!stat.hasHover || hoveredStat !== stat.id) return null;
+
+    let tooltipContent;
+    
+    if (stat.id === 'courses') {
+      tooltipContent = (
+        <div className="space-y-2">
+          <div className="font-semibold text-blue-300 border-b border-blue-400/30 pb-1">
+            Course Overview
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-gray-300">Total Courses:</div>
+              <div className="font-medium text-white">{stat.details.total}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Active Classes:</div>
+              <div className="font-medium text-white">{stat.details.activeClasses}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Upcoming:</div>
+              <div className="font-medium text-white">{stat.details.upcomingClasses}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Total Enrollments:</div>
+              <div className="font-medium text-white">{stat.details.totalEnrollments}</div>
+            </div>
+          </div>
+        </div>
+      );
+    } else if (stat.id === 'students') {
+      tooltipContent = (
+        <div className="space-y-2">
+          <div className="font-semibold text-green-300 border-b border-green-400/30 pb-1">
+            Student Breakdown
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-gray-300">Total Students:</div>
+              <div className="font-medium text-white">{stat.details.total}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Verified:</div>
+              <div className="font-medium text-green-400">{stat.details.verified}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Unverified:</div>
+              <div className="font-medium text-yellow-400">{stat.details.unverified}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Total Enrollments:</div>
+              <div className="font-medium text-white">{stat.details.enrollments}</div>
+            </div>
+          </div>
+        </div>
+      );
+    } else if (stat.id === 'instructors') {
+      tooltipContent = (
+        <div className="space-y-2">
+          <div className="font-semibold text-purple-300 border-b border-purple-400/30 pb-1">
+            Instructor Details
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-gray-300">Total Instructors:</div>
+              <div className="font-medium text-white">{stat.details.total}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Verified:</div>
+              <div className="font-medium text-green-400">{stat.details.verified}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Unverified:</div>
+              <div className="font-medium text-yellow-400">{stat.details.unverified}</div>
+            </div>
+            <div>
+              <div className="text-gray-300">Active Classes:</div>
+              <div className="font-medium text-white">{stat.details.activeClasses}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[9999] bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-xl p-4 shadow-2xl min-w-[280px] animate-in fade-in duration-200">
+        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gray-900 border-l border-t border-gray-700 rotate-45"></div>
+        {tooltipContent}
+      </div>
+    );
+  };
+
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <h2 className="text-4xl font-bold mb-8 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
         Dashboard Overview
       </h2>
 
+      {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <div
               key={index}
-              className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10"
+              className={`relative bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10 transition-all duration-300 ${
+                stat.hasHover 
+                  ? 'hover:bg-white/15 hover:scale-105 hover:shadow-xl cursor-pointer' 
+                  : 'hover:bg-white/15'
+              }`}
+              onMouseEnter={() => stat.hasHover && setHoveredStat(stat.id)}
+              onMouseLeave={() => stat.hasHover && setHoveredStat(null)}
+              style={{ zIndex: hoveredStat === stat.id ? 100 : 'auto' }}
             >
               <div
                 className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.color} flex items-center justify-center mb-4`}
@@ -152,38 +424,135 @@ function DashboardHome() {
                 <Icon size={24} className="text-white" />
               </div>
               <h3 className="text-2xl font-bold mb-1">{stat.value}</h3>
-              <p className="text-gray-300">{stat.label}</p>
+              <p className="text-gray-300 font-medium">{stat.label}</p>
+              {stat.subtext && (
+                <p className="text-sm text-gray-400 mt-1">{stat.subtext}</p>
+              )}
+              {stat.hasHover && (
+                <div className="absolute top-2 right-2 opacity-50">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                </div>
+              )}
+              {renderHoverTooltip(stat)}
             </div>
           );
         })}
       </div>
 
-      <div className="bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/10">
-        <h3 className="text-2xl font-semibold mb-4">Welcome to Admin Panel</h3>
-        <p className="text-gray-300 mb-4">
-          Manage your courses, students, and classes from this centralized
-          dashboard. Use the navigation on the left to access different
-          sections.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white/5 p-4 rounded-xl">
-            <BookOpen className="mb-2 text-blue-400" size={24} />
-            <h4 className="font-semibold mb-1">Course Management</h4>
-            <p className="text-sm text-gray-400">
-              Create and manage course content
-            </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Welcome Section */}
+        <div className="lg:col-span-2 bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/10">
+          <h3 className="text-2xl font-semibold mb-4">Welcome to Admin Panel</h3>
+          <p className="text-gray-300 mb-6">
+            Manage your courses, students, instructors, and payments from this centralized
+            dashboard. Use the navigation to access different sections.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
+              <BookOpen className="mb-2 text-blue-400" size={24} />
+              <h4 className="font-semibold mb-1">Course Management</h4>
+              <p className="text-sm text-gray-400">
+                Create and manage course content
+              </p>
+              <div className="text-xs text-blue-400 mt-2">
+                {totalCourses} courses available
+              </div>
+            </div>
+            
+            <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
+              <Users className="mb-2 text-green-400" size={24} />
+              <h4 className="font-semibold mb-1">Student Management</h4>
+              <p className="text-sm text-gray-400">
+                Add and track student progress
+              </p>
+              <div className="text-xs text-green-400 mt-2">
+                {totalStudents} students registered
+              </div>
+            </div>
+            
+            <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
+              <Calendar className="mb-2 text-purple-400" size={24} />
+              <h4 className="font-semibold mb-1">Class Scheduling</h4>
+              <p className="text-sm text-gray-400">
+                Schedule and manage classes
+              </p>
+              <div className="text-xs text-purple-400 mt-2">
+                {activeClasses} upcoming classes
+              </div>
+            </div>
           </div>
-          <div className="bg-white/5 p-4 rounded-xl">
-            <Users className="mb-2 text-green-400" size={24} />
-            <h4 className="font-semibold mb-1">Student Management</h4>
-            <p className="text-sm text-gray-400">
-              Add and track student progress
-            </p>
+        </div>
+
+        {/* Upcoming Classes */}
+        <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
+          <h3 className="text-xl font-semibold mb-4 flex items-center">
+            <Calendar className="mr-2 text-blue-400" size={20} />
+            Upcoming Classes
+          </h3>
+          
+          <div className="space-y-3">
+            {upcomingClasses.length === 0 ? (
+              <p className="text-gray-400 text-sm">No upcoming classes</p>
+            ) : (
+              upcomingClasses.map((classItem) => (
+                <div
+                  key={classItem._id}
+                  className="bg-white/5 p-3 rounded-lg hover:bg-white/10 transition-all duration-300"
+                >
+                  <div className="font-medium text-sm mb-1">
+                    {classItem.className}
+                  </div>
+                  <div className="text-xs text-gray-400 mb-1">
+                    {getInstructorName(classItem.instructorId)}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-blue-400">
+                      {formatDate(classItem.classDate)}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {classItem.classTime}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {classItem.studentsEnrolled?.length || 0} students enrolled
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-          <div className="bg-white/5 p-4 rounded-xl">
-            <Calendar className="mb-2 text-purple-400" size={24} />
-            <h4 className="font-semibold mb-1">Class Scheduling</h4>
-            <p className="text-sm text-gray-400">Schedule and manage classes</p>
+          
+          {upcomingClasses.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-white/10">
+              <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                View all classes →
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Stats Summary */}
+      <div className="mt-8 bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
+        <h3 className="text-xl font-semibold mb-4">Quick Summary</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div>
+            <div className="text-2xl font-bold text-blue-400">{totalCourses}</div>
+            <div className="text-sm text-gray-400">Total Courses</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-green-400">{totalStudents}</div>
+            <div className="text-sm text-gray-400">Students</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-purple-400">{totalInstructors}</div>
+            <div className="text-sm text-gray-400">Instructors</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-orange-400">
+              {formatCurrency(paymentStats.totalRevenue)}
+            </div>
+            <div className="text-sm text-gray-400">Revenue</div>
           </div>
         </div>
       </div>
@@ -191,6 +560,7 @@ function DashboardHome() {
   );
 }
 
+// Update user type
 function UpdateUserType() {
   const { getAllUserData, getUserData, allUserData, backend_url } =
     useContext(AppContent);
@@ -235,10 +605,13 @@ function UpdateUserType() {
           userId: selectedUser,
           userType: selectedRole,
         };
-        const res = await axios.put(`${backend_url}/api/user/usertypeupdate`, payload);
+        const res = await axios.put(
+          `${backend_url}/api/user/usertypeupdate`,
+          payload
+        );
         if (res.data.success) {
           toast.success(res.data.message);
-          getAllUserData()
+          getAllUserData();
         }
       } catch (err) {
         toast.success(res.message, err);
@@ -316,7 +689,6 @@ function UpdateUserType() {
           <p className="text-gray-400">Manage user permissions with style</p>
         </div>
 
-        
         <div className="space-y-8">
           {/* User Selection Dropdown */}
           <div>
@@ -587,61 +959,135 @@ function Input({ label, name, value, onChange, type = "text", Icon }) {
 
 // Manage Classes Component
 function ManageClasses() {
-  const [classes] = useState([
-    {
-      id: 1,
-      name: "React Fundamentals",
-      instructor: "John Smith",
-      time: "10:00 AM - 12:00 PM",
-      date: "2024-06-28",
-      students: [
-        {
-          id: 1,
-          name: "Alice Johnson",
-          email: "alice@example.com",
-          status: "enrolled",
-        },
-        {
-          id: 2,
-          name: "Bob Wilson",
-          email: "bob@example.com",
-          status: "pending",
-        },
-        {
-          id: 3,
-          name: "Carol Davis",
-          email: "carol@example.com",
-          status: "enrolled",
-        },
-      ],
-    },
-    {
-      id: 2,
-      name: "JavaScript Advanced",
-      instructor: "Sarah Brown",
-      time: "2:00 PM - 4:00 PM",
-      date: "2024-06-28",
-      students: [
-        {
-          id: 4,
-          name: "David Miller",
-          email: "david@example.com",
-          status: "enrolled",
-        },
-        {
-          id: 5,
-          name: "Eva Garcia",
-          email: "eva@example.com",
-          status: "enrolled",
-        },
-      ],
-    },
-  ]);
+  const { allSchedule, allUserData } = useContext(AppContent);
+  console.log(allSchedule, "test1");
+  console.log(allUserData, "test2");
 
-  const handleJoinClass = (classId, studentId) => {
-    console.log(`Student ${studentId} joining class ${classId}`);
-    // Add your join class logic here
+  // Extract the actual data arrays from the backend response
+  const classes = allSchedule?.data || [];
+  const users = allUserData?.data || [];
+
+  const handleJoinClass = (classLink) => {
+    if (classLink) {
+      // Open the class link in a new tab
+      window.open(classLink, "_blank", "noopener,noreferrer");
+    } else {
+      console.log("No class link available");
+      alert("Class link is not available");
+    }
   };
+
+  const getInstructorName = (instructorId) => {
+    const instructor = users.find((user) => user._id === instructorId);
+    return instructor ? instructor.name : instructorId; // Fallback to ID if not found
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
+  const getEnrolledStudents = (studentsEnrolled) => {
+    if (!studentsEnrolled || !Array.isArray(studentsEnrolled)) return [];
+
+    return studentsEnrolled.map((studentId) => {
+      const student = users.find(
+        (user) => user._id === studentId || user.name === studentId
+      );
+      return student
+        ? {
+            id: student._id,
+            name: student.name,
+            email: student.email,
+            status: "enrolled",
+          }
+        : {
+            id: studentId,
+            name: studentId,
+            email: "N/A",
+            status: "enrolled",
+          };
+    });
+  };
+
+  // Get filtered classes for each student (3 classes max)
+  const getFilteredClassesForStudent = (studentId) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get all classes where this student is enrolled, sorted by date
+    const studentClasses = classes
+      .filter(classItem => 
+        classItem.studentsEnrolled && 
+        classItem.studentsEnrolled.includes(studentId)
+      )
+      .sort((a, b) => new Date(a.classDate) - new Date(b.classDate));
+
+    // Separate classes into today's, past, and future
+    const todayClasses = studentClasses.filter(c => c.classDate === today);
+    const futureClasses = studentClasses.filter(c => c.classDate > today);
+    
+    let selectedClasses = [];
+    
+    if (todayClasses.length > 0) {
+      // If there's a class today, include it + 2 upcoming
+      selectedClasses = [
+        ...todayClasses.slice(0, 1), // Only first class of today
+        ...futureClasses.slice(0, 2)  // Next 2 upcoming classes
+      ];
+    } else {
+      // If no class today, show next 3 upcoming classes
+      selectedClasses = futureClasses.slice(0, 3);
+    }
+
+    // Add labels to classes
+    return selectedClasses.map(classItem => ({
+      ...classItem,
+      label: classItem.classDate === today ? 'Today' : 'Upcoming'
+    }));
+  };
+
+
+  const getAllEnrolledStudents = () => {
+    const studentSet = new Set();
+    classes.forEach(classItem => {
+      if (classItem.studentsEnrolled && Array.isArray(classItem.studentsEnrolled)) {
+        classItem.studentsEnrolled.forEach(studentId => {
+          studentSet.add(studentId);
+        });
+      }
+    });
+    return Array.from(studentSet);
+  };
+
+
+  const getStudentDetails = (studentId) => {
+    const student = users.find(user => user._id === studentId || user.name === studentId);
+    return student ? {
+      id: student._id,
+      name: student.name,
+      email: student.email
+    } : {
+      id: studentId,
+      name: studentId,
+      email: 'N/A'
+    };
+  };
+
+  if (!allSchedule || !allUserData) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-xl text-gray-400">Loading classes...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const enrolledStudents = getAllEnrolledStudents();
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -649,79 +1095,93 @@ function ManageClasses() {
         Manage Classes
       </h2>
 
-      <div className="space-y-6">
-        {classes.map((classItem) => (
-          <div
-            key={classItem.id}
-            className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-2xl font-bold mb-2">{classItem.name}</h3>
-                <div className="flex items-center space-x-4 text-gray-300">
-                  <span className="flex items-center">
-                    <User size={16} className="mr-1" /> {classItem.instructor}
-                  </span>
-                  <span className="flex items-center">
-                    <Clock size={16} className="mr-1" /> {classItem.time}
-                  </span>
-                  <span className="flex items-center">
-                    <Calendar size={16} className="mr-1" /> {classItem.date}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-sm text-gray-400">Students Enrolled</span>
-                <div className="text-2xl font-bold">
-                  {classItem.students.length}
-                </div>
-              </div>
-            </div>
+      <div className="space-y-8">
+        {enrolledStudents.length === 0 ? (
+          <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10 text-center">
+            <p className="text-gray-400">No enrolled students found</p>
+          </div>
+        ) : (
+          enrolledStudents.map((studentId) => {
+            const studentDetails = getStudentDetails(studentId);
+            const studentClasses = getFilteredClassesForStudent(studentId);
 
-            <div className="bg-white/5 rounded-xl p-4">
-              <h4 className="font-semibold mb-3 text-lg">Enrolled Students</h4>
-              <div className="space-y-3">
-                {classItem.students.map((student) => (
-                  <div
-                    key={student.id}
-                    className="flex items-center justify-between bg-white/5 p-3 rounded-lg"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                        <User size={16} />
-                      </div>
-                      <div>
-                        <div className="font-medium">{student.name}</div>
-                        <div className="text-sm text-gray-400">
-                          {student.email}
+            return (
+              <div
+                key={studentId}
+                className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10"
+              >
+                {/* Student Header */}
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <User size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">{studentDetails.name}</h3>
+                    <p className="text-gray-300">{studentDetails.email}</p>
+                    <p className="text-sm text-gray-400">
+                      Showing {studentClasses.length} of {studentClasses.length} upcoming classes
+                    </p>
+                  </div>
+                </div>
+
+                {/* Student's Classes */}
+                <div className="space-y-4">
+                  {studentClasses.length === 0 ? (
+                    <div className="bg-white/5 rounded-xl p-4 text-center">
+                      <p className="text-gray-400">No upcoming classes for this student</p>
+                    </div>
+                  ) : (
+                    studentClasses.map((classItem) => (
+                      <div
+                        key={classItem._id}
+                        className="bg-white/5 rounded-xl p-4 border border-white/5"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h4 className="text-xl font-bold">{classItem.className}</h4>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                classItem.label === 'Today' 
+                                  ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                              }`}>
+                                {classItem.label}
+                              </span>
+                            </div>
+                            <p className="text-gray-300 mb-3">{classItem.classDescription}</p>
+                            <div className="flex items-center space-x-4 text-gray-300 text-sm">
+                              <span className="flex items-center">
+                                <User size={14} className="mr-1" />
+                                {getInstructorName(classItem.instructorId)}
+                              </span>
+                              <span className="flex items-center">
+                                <Clock size={14} className="mr-1" />
+                                {classItem.classTime} ({classItem.classDuration})
+                              </span>
+                              <span className="flex items-center">
+                                <Calendar size={14} className="mr-1" />
+                                {formatDate(classItem.classDate)}
+                              </span>
+                            </div>
+
+                          </div>
+                          <div className="ml-4">
+                            <button
+                              onClick={() => handleJoinClass(classItem.classLink)}
+                              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105"
+                            >
+                              Join Class
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          student.status === "enrolled"
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-yellow-500/20 text-yellow-300"
-                        }`}
-                      >
-                        {student.status}
-                      </span>
-                      <button
-                        onClick={() =>
-                          handleJoinClass(classItem.id, student.id)
-                        }
-                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105"
-                      >
-                        Join Class
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
     </div>
   );
