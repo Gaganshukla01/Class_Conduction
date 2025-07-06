@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   User,
   BookOpen,
@@ -22,6 +22,16 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { AppContent } from "../context/Context";
+
+import {
+  getNoteById,
+  searchNotes,
+  deleteNote,
+  updateNote,
+  createNote,
+  getAllNotes,
+} from "../utils/noteServices";
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("notes");
@@ -34,6 +44,26 @@ export default function StudentDashboard() {
     class: "Computer Science - Year 3",
     email: "alice.johnson@university.edu",
   });
+
+  const { userData } = useContext(AppContent);
+
+  // for loading the data from the server
+  useEffect(() => {
+    const loadNotes = async () => {
+      try {
+        const response = await getAllNotes(userData.userId);
+        if (response.success) {
+          setNotes(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading notes:", error);
+      }
+    };
+
+    if (userData.userId) {
+      loadNotes();
+    }
+  }, [userData.userId]);
 
   // Notes State
   const [notes, setNotes] = useState([
@@ -67,7 +97,7 @@ export default function StudentDashboard() {
   });
   const [editingNote, setEditingNote] = useState(null);
   const [showNoteForm, setShowNoteForm] = useState(false);
-  const [searchNotes, setSearchNotes] = useState("");
+  const [searchNotesQuery, setSearchNotesQuery] = useState("");
 
   // Attendance State
   const [attendanceData] = useState([
@@ -205,25 +235,26 @@ export default function StudentDashboard() {
         .split(",")
         .map((tag) => tag.trim())
         .filter(Boolean),
-      date: new Date().toISOString().split("T")[0],
-      lastModified: new Date().toISOString(),
+      studentId: userData.userId,
     };
 
     try {
       if (editingNote) {
         // Update existing note
-        setNotes(
-          notes.map((note) =>
-            note.id === editingNote.id ? { ...note, ...noteData } : note
-          )
-        );
+        const response = await updateNote(editingNote._id, noteData);
+        if (response.success) {
+          setNotes(
+            notes.map((note) =>
+              note._id === editingNote._id ? response.data : note
+            )
+          );
+        }
       } else {
-        // Add new note
-        const newNote = {
-          ...noteData,
-          id: Date.now(),
-        };
-        setNotes([newNote, ...notes]);
+        // Create new note
+        const response = await createNote(noteData);
+        if (response.success) {
+          setNotes([response.data, ...notes]);
+        }
       }
 
       // Reset form
@@ -246,17 +277,34 @@ export default function StudentDashboard() {
     setShowNoteForm(true);
   };
 
-  const handleDeleteNote = (noteId) => {
-    if (window.confirm("Are you sure you want to delete this note?")) {
-      setNotes(notes.filter((note) => note.id !== noteId));
+  const handleDeleteNote = async (noteId) => {
+  if (window.confirm("Are you sure you want to delete this note?")) {
+    try {
+      console.log("Deleting note with ID:", noteId); // Debug log
+      const response = await deleteNote(noteId);
+      console.log("Delete response:", response); // Debug log
+      
+      if (response.success) {
+        // Filter out the deleted note using both _id and id for compatibility
+        setNotes(notes.filter((note) => note._id !== noteId && note.id !== noteId));
+        console.log("Note deleted successfully"); // Debug log
+      } else {
+        console.error("Delete failed:", response.message);
+        alert("Failed to delete note: " + (response.message || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error deleting note:", error);
+      alert("Error deleting note: " + error.message);
     }
-  };
+  }
+};
+
 
   const filteredNotes = notes.filter(
     (note) =>
-      note.title.toLowerCase().includes(searchNotes.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchNotes.toLowerCase()) ||
-      note.subject.toLowerCase().includes(searchNotes.toLowerCase())
+      note.title.toLowerCase().includes(searchNotesQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchNotesQuery.toLowerCase()) ||
+      note.subject.toLowerCase().includes(searchNotesQuery.toLowerCase())
   );
 
   return (
@@ -333,8 +381,8 @@ export default function StudentDashboard() {
                 <input
                   type="text"
                   placeholder="Search notes..."
-                  value={searchNotes}
-                  onChange={(e) => setSearchNotes(e.target.value)}
+                  value={searchNotesQuery}
+                  onChange={(e) => setSearchNotesQuery(e.target.value)}
                   className="bg-transparent text-white w-full outline-none placeholder:text-gray-400"
                 />
               </div>
@@ -365,7 +413,7 @@ export default function StudentDashboard() {
                     </button>
                   </div>
 
-                  <div className="space-y-4">
+                  <form onSubmit={handleNoteSubmit} className="space-y-4">
                     <Input
                       label="Title"
                       name="title"
@@ -429,62 +477,62 @@ export default function StudentDashboard() {
                         <span>{editingNote ? "Update" : "Save"} Note</span>
                       </button>
                     </div>
-                  </div>
+                  </form>
                 </div>
               </div>
             )}
 
-            {/* Notes List */}
+           
             <div className="grid gap-4">
-              {filteredNotes.map((note) => (
-                <div
-                  key={note.id}
-                  className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        {note.title}
-                      </h3>
-                      <div className="flex items-center space-x-4 text-sm text-gray-300">
-                        <span>{note.subject}</span>
-                        <span>•</span>
-                        <span>{new Date(note.date).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditNote(note)}
-                        className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition"
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
+  {filteredNotes.map((note) => (
+    <div
+      key={note._id || note.id} 
+      className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-1">
+            {note.title}
+          </h3>
+          <div className="flex items-center space-x-4 text-sm text-gray-300">
+            <span>{note.subject}</span>
+            <span>•</span>
+            <span>{new Date(note.date || note.createdAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handleEditNote(note)}
+            className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition"
+          >
+            <Edit3 size={16} />
+          </button>
+          <button
+            onClick={() => handleDeleteNote(note._id || note.id)} // Use _id first, fallback to id
+            className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
 
-                  <p className="text-gray-300 mb-3 line-clamp-3">
-                    {note.content}
-                  </p>
+      <p className="text-gray-300 mb-3 line-clamp-3">
+        {note.content}
+      </p>
 
-                  <div className="flex flex-wrap gap-2">
-                    {note.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+      <div className="flex flex-wrap gap-2">
+        {note.tags && note.tags.map((tag, index) => (
+          <span
+            key={index}
+            className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs"
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  ))}
+</div>
           </div>
         )}
 
