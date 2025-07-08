@@ -1,14 +1,13 @@
-import React from "react";
-import Home from "./pages/Home";
-import { Route, Routes } from "react-router-dom";
-import Login from "./pages/Login";
-import "./App.css";
-import ResetPassword from "./pages/ResetPassword";
-import EmailVerify from "./pages/EmailVerify";
-import AdminDashboard from "./pages/AdminPannel";
-import StudentDashboard from "./pages/StudentSection";
-import { ToastContainer } from "react-toastify";
-import Navbar from "./components/Navbar";
+import React from 'react'
+import Home from './pages/Home'
+import { Route, Routes } from 'react-router-dom'
+import Login from './pages/Login'
+import './App.css'
+import ResetPassword from './pages/ResetPassword'
+import EmailVerify from './pages/EmailVerify'
+import AdminDashboard from './pages/AdminPannel'
+import StudentDashboard from './pages/StudentSection'
+import { ToastContainer } from 'react-toastify'
 
 function App() {
   return (

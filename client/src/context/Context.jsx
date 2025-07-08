@@ -9,6 +9,7 @@ export const AppContextProvider = (props) => {
   const [userData, setUserData] = useState(false);
   const [allUserData, setAllUserData] = useState(false);
   const [allCourse, setAllCourseData] = useState(false);
+  const [allSchedule, setAllScheduleeData] = useState(false);
 
   const getAuthState = async () => {
     axios.defaults.withCredentials = true;
@@ -21,6 +22,7 @@ export const AppContextProvider = (props) => {
         getUserData();
         getAllUserData();
         getAllCourse();
+        getAllSchedule();
       }
     } catch (error) {
       console.log(error.response?.data?.message || "An error occurred");
@@ -59,6 +61,16 @@ export const AppContextProvider = (props) => {
     }
   };
 
+  const getAllSchedule = async () => {
+    axios.defaults.withCredentials = true;
+    try {
+      const res = await axios.get(`${backend_url}/api/classschedule/getallclasses`);
+      res.data ? setAllScheduleeData(res.data) : toast.error(res.message);
+    } catch (error) {
+      toast.error(data.message);
+    }
+  };
+
   const value = {
     backend_url,
     isLoggedIn,
@@ -70,6 +82,8 @@ export const AppContextProvider = (props) => {
     allUserData,
     getAllCourse,
     allCourse,
+    allSchedule,
+    getAllSchedule
   };
 
   return (
