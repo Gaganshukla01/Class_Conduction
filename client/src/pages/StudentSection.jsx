@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   MessageSquare,
   X,
+  Upload ,
   Plus,
   Edit3,
   Trash2,
@@ -32,11 +33,14 @@ import {
   createNote,
   getAllNotes,
 } from "../utils/noteServices";
+import axios from "axios";
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("notes");
   const [showClassInfo, setShowClassInfo] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [classesData, setClassesData] = useState([]);
+
   const [studentInfo] = useState({
     id: "CS001",
     name: "Alice Johnson",
@@ -45,28 +49,7 @@ export default function StudentDashboard() {
     email: "alice.johnson@university.edu",
   });
 
-  const { userData } = useContext(AppContent);
-
-  // for loading the data from the server
-  useEffect(() => {
-    const loadNotes = async () => {
-      try {
-        const response = await getAllNotes(userData.userId);
-        if (response.success) {
-          setNotes(response.data);
-        }
-      } catch (error) {
-        console.error("Error loading notes:", error);
-      }
-    };
-
-    if (userData.userId) {
-      loadNotes();
-    }
-  }, [userData.userId]);
-
-  // Notes State
-  const [notes, setNotes] = useState([
+    const [notes, setNotes] = useState([
     {
       id: 1,
       title: "JavaScript Fundamentals",
@@ -89,6 +72,249 @@ export default function StudentDashboard() {
     },
   ]);
 
+  const { userData, allSchedule } = useContext(AppContent);
+
+  // for loading the data from the server
+  useEffect(() => {
+    const loadNotes = async () => {
+      try {
+        const allclassSchedulesResponse = allSchedule;
+        console.log("All Class Schedules:", allclassSchedulesResponse);
+
+        if (allclassSchedulesResponse && allclassSchedulesResponse.length > 0) {
+          const processedClasses = processClassSchedules(
+            allclassSchedulesResponse
+          );
+          setClassesData(processedClasses);
+        }
+
+        const response = await getAllNotes(userData.userId);
+        if (response.success) {
+          setNotes(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading notes:", error);
+      }
+    };
+
+    if (userData.userId) {
+      loadNotes();
+    }
+  }, [userData.userId, allSchedule]);
+
+  const processClassSchedules = (schedules) => {
+    const now = new Date();
+    const today = now.toDateString();
+
+    console.log("Current time:", now);
+    console.log("Today:", today);
+
+    // Filter classes for today
+    const todayClasses = schedules.filter(
+      (cls) => new Date(cls.classDate).toDateString() === today
+    );
+
+    console.log("Today's classes:", todayClasses);
+
+    // Filter upcoming classes (future dates)
+    const upcomingClasses = schedules
+      .filter((cls) => new Date(cls.classDate) > now)
+      .sort((a, b) => new Date(a.classDate) - new Date(b.classDate));
+
+    // Find live class (check if current time is within class time)
+    const liveClass = todayClasses.find((cls) => {
+      const classDate = new Date(cls.classDate);
+
+      // Handle different time formats
+      let classTime = cls.classTime;
+      let hours, minutes;
+
+      if (classTime.includes(":")) {
+        [hours, minutes] = classTime.split(":");
+      } else {
+        // Handle 24-hour format like "14" or "1400"
+        if (classTime.length === 2) {
+          hours = classTime;
+          minutes = "00";
+        } else if (classTime.length === 4) {
+          hours = classTime.substring(0, 2);
+          minutes = classTime.substring(2, 4);
+        } else {
+          console.warn("Unexpected time format:", classTime);
+          return false;
+        }
+      }
+
+      // Create class start time
+      const classStart = new Date(classDate);
+      classStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+      // Create class end time (adding duration)
+      const classEnd = new Date(classStart);
+      const duration = parseInt(cls.classDuration) || 1;
+      classEnd.setHours(classStart.getHours() + duration);
+
+      return now >= classStart && now <= classEnd;
+    });
+
+    // Get remaining classes for today that haven't started yet
+    const remainingTodayClasses = todayClasses.filter((cls) => {
+      const classDate = new Date(cls.classDate);
+      let classTime = cls.classTime;
+      let hours, minutes;
+
+      if (classTime.includes(":")) {
+        [hours, minutes] = classTime.split(":");
+      } else {
+        if (classTime.length === 2) {
+          hours = classTime;
+          minutes = "00";
+        } else if (classTime.length === 4) {
+          hours = classTime.substring(0, 2);
+          minutes = classTime.substring(2, 4);
+        } else {
+          return false;
+        }
+      }
+
+      const classStart = new Date(classDate);
+      classStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return classStart > now; // Classes that haven't started yet today
+    });
+
+    // Sort remaining today classes by time
+    remainingTodayClasses.sort((a, b) => {
+      const timeA = a.classTime.includes(":")
+        ? a.classTime
+        : a.classTime.length === 2
+          ? a.classTime + ":00"
+          : a.classTime.substring(0, 2) + ":" + a.classTime.substring(2, 4);
+      const timeB = b.classTime.includes(":")
+        ? b.classTime
+        : b.classTime.length === 2
+          ? b.classTime + ":00"
+          : b.classTime.substring(0, 2) + ":" + b.classTime.substring(2, 4);
+      return timeA.localeCompare(timeB);
+    });
+
+    let result = [];
+
+    // Helper function to format class data
+    const formatClassData = (cls, status) => ({
+      ...cls,
+      id: cls._id,
+      date: cls.classDate,
+      time: cls.classTime,
+      meetingLink: cls.classLink,
+      instructor: cls.instructorName || "Instructor",
+      duration: `${cls.classDuration || 1} hour${parseInt(cls.classDuration) > 1 ? "s" : ""}`,
+      description: cls.classDescription,
+      classCode: cls._id.slice(-6).toUpperCase(),
+      meetingId: cls._id.slice(-10),
+      passcode: cls.passcode || "123456",
+      nextTopic: cls.classDescription,
+      prerequisites: cls.prerequisites || ["Basic programming knowledge"],
+      materials: cls.materials || [
+        "Lecture slides",
+        "Code examples",
+        "Practice exercises",
+      ],
+      assignments: cls.assignments || [
+        "Complete homework",
+        "Read next chapter",
+      ],
+      status: status,
+      className: cls.className || cls.subject || "Class",
+      classStartAt: (() => {
+        const classDateTime = new Date(cls.classDate);
+        let classTime = cls.classTime;
+        let hours, minutes;
+
+        if (classTime.includes(":")) {
+          [hours, minutes] = classTime.split(":");
+        } else {
+          if (classTime.length === 2) {
+            hours = classTime;
+            minutes = "00";
+          } else if (classTime.length === 4) {
+            hours = classTime.substring(0, 2);
+            minutes = classTime.substring(2, 4);
+          } else {
+            hours = "00";
+            minutes = "00";
+          }
+        }
+
+        classDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        return classDateTime.toISOString();
+      })(),
+      classEndAt: (() => {
+        const classDateTime = new Date(cls.classDate);
+        let classTime = cls.classTime;
+        let hours, minutes;
+
+        if (classTime.includes(":")) {
+          [hours, minutes] = classTime.split(":");
+        } else {
+          if (classTime.length === 2) {
+            hours = classTime;
+            minutes = "00";
+          } else if (classTime.length === 4) {
+            hours = classTime.substring(0, 2);
+            minutes = classTime.substring(2, 4);
+          } else {
+            hours = "00";
+            minutes = "00";
+          }
+        }
+
+        classDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        classDateTime.setHours(
+          classDateTime.getHours() + parseInt(cls.classDuration || 1)
+        );
+        return classDateTime.toISOString();
+      })(),
+    });
+
+    if (liveClass) {
+      // Add live class first
+      result.push(formatClassData(liveClass, "live"));
+
+      // Add remaining today classes
+      result.push(
+        ...remainingTodayClasses.map((cls) => formatClassData(cls, "upcoming"))
+      );
+
+      // Fill remaining slots with future classes
+      const remainingSlots = 3 - result.length;
+      if (remainingSlots > 0) {
+        result.push(
+          ...upcomingClasses
+            .slice(0, remainingSlots)
+            .map((cls) => formatClassData(cls, "upcoming"))
+        );
+      }
+    } else {
+      // No live class - show today's remaining classes first
+      result.push(
+        ...remainingTodayClasses.map((cls) => formatClassData(cls, "upcoming"))
+      );
+
+      // Fill remaining slots with future classes
+      const remainingSlots = 3 - remainingTodayClasses.length;
+      if (remainingSlots > 0) {
+        result.push(
+          ...upcomingClasses
+            .slice(0, remainingSlots)
+            .map((cls) => formatClassData(cls, "upcoming"))
+        );
+      }
+    }
+
+    console.log("Final result:", result);
+    return result;
+  };
+
   const [noteForm, setNoteForm] = useState({
     title: "",
     content: "",
@@ -98,6 +324,62 @@ export default function StudentDashboard() {
   const [editingNote, setEditingNote] = useState(null);
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [searchNotesQuery, setSearchNotesQuery] = useState("");
+
+  // Homework States
+  const [homeworkData, setHomeworkData] = useState([
+    {
+      id: 1,
+      title: "React Components Assignment",
+      subject: "Web Development",
+      description:
+        "Create a React component library with at least 5 reusable components.",
+      dueDate: "2024-07-15",
+      assignedDate: "2024-07-01",
+      status: "pending",
+      maxMarks: 100,
+      instructor: "Dr. Smith",
+      attachments: ["assignment_brief.pdf"],
+      submission: null,
+    },
+    // Add more homework items as needed
+  ]);
+
+  const [showHomeworkModal, setShowHomeworkModal] = useState(false);
+  const [selectedHomework, setSelectedHomework] = useState(null);
+  const [submissionForm, setSubmissionForm] = useState({
+    notes: "",
+    attachments: [],
+  });
+
+  // Homework Functions
+  const handleHomeworkSubmit = async (homeworkId) => {
+    try {
+      // API call to submit homework
+      const response = await submitHomework(homeworkId, submissionForm);
+      if (response.success) {
+        setHomeworkData((prev) =>
+          prev.map((hw) =>
+            hw.id === homeworkId
+              ? {
+                  ...hw,
+                  status: "submitted",
+                  submission: { ...submissionForm, submittedAt: new Date() },
+                }
+              : hw
+          )
+        );
+        setShowHomeworkModal(false);
+        setSubmissionForm({ notes: "", attachments: [] });
+      }
+    } catch (error) {
+      console.error("Error submitting homework:", error);
+    }
+  };
+
+  const handleViewHomework = (homework) => {
+    setSelectedHomework(homework);
+    setShowHomeworkModal(true);
+  };
 
   // Attendance State
   const [attendanceData] = useState([
@@ -133,76 +415,6 @@ export default function StudentDashboard() {
     },
   ]);
 
-  const [classesData] = useState([
-    {
-      id: 1,
-      className: "Web Development",
-      instructor: "Dr. Smith",
-      time: "09:00 AM - 11:00 AM",
-      date: "2024-06-27",
-      status: "live", // live, upcoming, ended
-      meetingLink: "https://meet.google.com/abc-defg-hij",
-      description: "Advanced React Components and State Management",
-      duration: "2 hours",
-      classCode: "WD-2024-CS3",
-      meetingId: "123-456-789",
-      passcode: "webdev123",
-      prerequisites: ["Basic JavaScript", "HTML/CSS"],
-      materials: [
-        "React Documentation",
-        "Component Lifecycle Guide",
-        "State Management Best Practices",
-      ],
-      assignments: ["Build a Todo App", "Create Custom Hooks"],
-      nextTopic: "Context API and useReducer",
-    },
-    {
-      id: 2,
-      className: "Database Systems",
-      instructor: "Prof. Johnson",
-      time: "02:00 PM - 04:00 PM",
-      date: "2024-06-27",
-      status: "upcoming",
-      meetingLink: "https://zoom.us/j/123456789",
-      description: "Database Optimization and Indexing",
-      duration: "2 hours",
-      classCode: "DB-2024-CS3",
-      meetingId: "987-654-321",
-      passcode: "database456",
-      prerequisites: ["SQL Basics", "Relational Database Concepts"],
-      materials: [
-        "Database Optimization Guide",
-        "Indexing Strategies",
-        "Performance Tuning",
-      ],
-      assignments: ["Optimize Slow Queries", "Design Database Indexes"],
-      nextTopic: "Query Execution Plans",
-    },
-    {
-      id: 3,
-      className: "Data Structures",
-      instructor: "Dr. Williams",
-      time: "10:00 AM - 12:00 PM",
-      date: "2024-06-26",
-      status: "ended",
-      meetingLink: "https://teams.microsoft.com/xyz",
-      description: "Graph Algorithms and Implementation",
-      duration: "2 hours",
-      classCode: "DS-2024-CS3",
-      meetingId: "456-789-123",
-      passcode: "graphs789",
-      prerequisites: ["Arrays and Linked Lists", "Tree Data Structures"],
-      materials: [
-        "Graph Theory Basics",
-        "Algorithm Implementation Guide",
-        "Complexity Analysis",
-      ],
-      assignments: ["Implement BFS/DFS", "Shortest Path Algorithm"],
-      nextTopic: "Dynamic Programming",
-    },
-  ]);
-
-  // Add this function to handle showing class info
   const handleShowClassInfo = (classInfo) => {
     setSelectedClass(classInfo);
     setShowClassInfo(true);
@@ -278,27 +490,30 @@ export default function StudentDashboard() {
   };
 
   const handleDeleteNote = async (noteId) => {
-  if (window.confirm("Are you sure you want to delete this note?")) {
-    try {
-      console.log("Deleting note with ID:", noteId); // Debug log
-      const response = await deleteNote(noteId);
-      console.log("Delete response:", response); // Debug log
-      
-      if (response.success) {
-        // Filter out the deleted note using both _id and id for compatibility
-        setNotes(notes.filter((note) => note._id !== noteId && note.id !== noteId));
-        console.log("Note deleted successfully"); // Debug log
-      } else {
-        console.error("Delete failed:", response.message);
-        alert("Failed to delete note: " + (response.message || "Unknown error"));
-      }
-    } catch (error) {
-      console.error("Error deleting note:", error);
-      alert("Error deleting note: " + error.message);
-    }
-  }
-};
+    if (window.confirm("Are you sure you want to delete this note?")) {
+      try {
+        console.log("Deleting note with ID:", noteId); // Debug log
+        const response = await deleteNote(noteId);
+        console.log("Delete response:", response); // Debug log
 
+        if (response.success) {
+          // Filter out the deleted note using both _id and id for compatibility
+          setNotes(
+            notes.filter((note) => note._id !== noteId && note.id !== noteId)
+          );
+          console.log("Note deleted successfully"); // Debug log
+        } else {
+          console.error("Delete failed:", response.message);
+          alert(
+            "Failed to delete note: " + (response.message || "Unknown error")
+          );
+        }
+      } catch (error) {
+        console.error("Error deleting note:", error);
+        alert("Error deleting note: " + error.message);
+      }
+    }
+  };
 
   const filteredNotes = notes.filter(
     (note) =>
@@ -342,6 +557,7 @@ export default function StudentDashboard() {
             { id: "notes", label: "My Notes", icon: FileText },
             { id: "classes", label: "Live Classes", icon: BookOpen },
             { id: "attendance", label: "Attendance", icon: Calendar },
+            { id: "homework", label: "Homework", icon: Target },
             { id: "progress", label: "Progress", icon: TrendingUp },
           ].map((tab) => (
             <button
@@ -482,57 +698,61 @@ export default function StudentDashboard() {
               </div>
             )}
 
-           
             <div className="grid gap-4">
-  {filteredNotes.map((note) => (
-    <div
-      key={note._id || note.id} 
-      className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
-    >
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-1">
-            {note.title}
-          </h3>
-          <div className="flex items-center space-x-4 text-sm text-gray-300">
-            <span>{note.subject}</span>
-            <span>•</span>
-            <span>{new Date(note.date || note.createdAt).toLocaleDateString()}</span>
-          </div>
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => handleEditNote(note)}
-            className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition"
-          >
-            <Edit3 size={16} />
-          </button>
-          <button
-            onClick={() => handleDeleteNote(note._id || note.id)} // Use _id first, fallback to id
-            className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </div>
+              {filteredNotes.map((note) => (
+                <div
+                  key={note._id || note.id}
+                  className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-1">
+                        {note.title}
+                      </h3>
+                      <div className="flex items-center space-x-4 text-sm text-gray-300">
+                        <span>{note.subject}</span>
+                        <span>•</span>
+                        <span>
+                          {new Date(
+                            note.date || note.createdAt
+                          ).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditNote(note)}
+                        className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition"
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNote(note._id || note.id)} // Use _id first, fallback to id
+                        className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
 
-      <p className="text-gray-300 mb-3 line-clamp-3">
-        {note.content}
-      </p>
+                  <p className="text-gray-300 mb-3 line-clamp-3">
+                    {note.content}
+                  </p>
 
-      <div className="flex flex-wrap gap-2">
-        {note.tags && note.tags.map((tag, index) => (
-          <span
-            key={index}
-            className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs"
-          >
-            {tag}
-          </span>
-        ))}
-      </div>
-    </div>
-  ))}
-</div>
+                  <div className="flex flex-wrap gap-2">
+                    {note.tags &&
+                      note.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -663,117 +883,129 @@ export default function StudentDashboard() {
             </div>
 
             {/* Classes List */}
-            <div className="grid gap-4">
-              {classesData.map((classInfo) => (
-                <div
-                  key={classInfo.id}
-                  className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-white">
-                          {classInfo.className}
-                        </h3>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            classInfo.status === "live"
-                              ? "bg-green-500/20 text-green-300 animate-pulse"
+            {classesData.length === 0 ? (
+              <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl border border-white/20 text-center">
+                <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  No Classes Scheduled
+                </h3>
+                <p className="text-gray-300">
+                  No upcoming classes found for today or in the near future.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {classesData.map((classInfo) => (
+                  <div
+                    key={classInfo.id}
+                    className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-semibold text-white">
+                            {classInfo.className}
+                          </h3>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              classInfo.status === "live"
+                                ? "bg-green-500/20 text-green-300 animate-pulse"
+                                : classInfo.status === "upcoming"
+                                  ? "bg-blue-500/20 text-blue-300"
+                                  : "bg-gray-500/20 text-gray-300"
+                            }`}
+                          >
+                            {classInfo.status === "live"
+                              ? "🔴 LIVE"
                               : classInfo.status === "upcoming"
-                                ? "bg-blue-500/20 text-blue-300"
-                                : "bg-gray-500/20 text-gray-300"
-                          }`}
-                        >
-                          {classInfo.status === "live"
-                            ? "🔴 LIVE"
-                            : classInfo.status === "upcoming"
-                              ? "⏰ Upcoming"
-                              : "✅ Ended"}
-                        </span>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
-                        <div className="flex items-center space-x-2">
-                          <User size={16} className="text-gray-400" />
-                          <span>{classInfo.instructor}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Clock size={16} className="text-gray-400" />
-                          <span>{classInfo.time}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Calendar size={16} className="text-gray-400" />
-                          <span>
-                            {new Date(classInfo.date).toLocaleDateString()}
+                                ? "⏰ Upcoming"
+                                : "✅ Ended"}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <BookOpen size={16} className="text-gray-400" />
-                          <span>{classInfo.duration}</span>
+
+                        <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
+                          <div className="flex items-center space-x-2">
+                            <User size={16} className="text-gray-400" />
+                            <span>{classInfo.instructor}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Clock size={16} className="text-gray-400" />
+                            <span>{classInfo.time}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Calendar size={16} className="text-gray-400" />
+                            <span>
+                              {new Date(classInfo.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <BookOpen size={16} className="text-gray-400" />
+                            <span>{classInfo.duration}</span>
+                          </div>
                         </div>
+
+                        <p className="text-gray-300 text-sm mb-4">
+                          {classInfo.description}
+                        </p>
                       </div>
 
-                      <p className="text-gray-300 text-sm mb-4">
-                        {classInfo.description}
-                      </p>
+                      {/* Action Buttons */}
+                      <div className="ml-4 flex flex-col gap-3">
+                        {/* Join Class Button */}
+                        {classInfo.status === "live" ? (
+                          <button
+                            onClick={() =>
+                              window.open(classInfo.meetingLink, "_blank")
+                            }
+                            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition font-semibold animate-pulse min-w-[140px]"
+                          >
+                            <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+                            <span>Join Now</span>
+                          </button>
+                        ) : classInfo.status === "upcoming" ? (
+                          <button
+                            onClick={() =>
+                              window.open(classInfo.meetingLink, "_blank")
+                            }
+                            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition font-semibold min-w-[140px]"
+                          >
+                            <Calendar size={18} />
+                            <span>Join Class</span>
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="flex items-center space-x-2 px-6 py-3 bg-gray-500/20 text-gray-400 rounded-xl cursor-not-allowed min-w-[140px]"
+                          >
+                            <X size={18} />
+                            <span>Class Ended</span>
+                          </button>
+                        )}
+
+                        {/* Class Info Button */}
+                        <button
+                          onClick={() => handleShowClassInfo(classInfo)}
+                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 transition font-semibold min-w-[140px]"
+                        >
+                          <Eye size={18} />
+                          <span>Class Info</span>
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="ml-4 flex flex-col gap-3">
-                      {/* Join Class Button */}
-                      {classInfo.status === "live" ? (
-                        <button
-                          onClick={() =>
-                            window.open(classInfo.meetingLink, "_blank")
-                          }
-                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition font-semibold animate-pulse min-w-[140px]"
-                        >
-                          <div className="w-2 h-2 bg-white rounded-full animate-ping" />
-                          <span>Join Now</span>
-                        </button>
-                      ) : classInfo.status === "upcoming" ? (
-                        <button
-                          onClick={() =>
-                            window.open(classInfo.meetingLink, "_blank")
-                          }
-                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition font-semibold min-w-[140px]"
-                        >
-                          <Calendar size={18} />
-                          <span>Join Class</span>
-                        </button>
-                      ) : (
-                        <button
-                          disabled
-                          className="flex items-center space-x-2 px-6 py-3 bg-gray-500/20 text-gray-400 rounded-xl cursor-not-allowed min-w-[140px]"
-                        >
-                          <X size={18} />
-                          <span>Class Ended</span>
-                        </button>
-                      )}
-
-                      {/* Class Info Button */}
-                      <button
-                        onClick={() => handleShowClassInfo(classInfo)}
-                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 transition font-semibold min-w-[140px]"
-                      >
-                        <Eye size={18} />
-                        <span>Class Info</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Quick Info Bar */}
-                  <div className="border-t border-white/10 pt-4">
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>Class Code: {classInfo.classCode}</span>
-                      {classInfo.status === "live" && (
-                        <span className="text-green-300">● Live now</span>
-                      )}
+                    {/* Quick Info Bar */}
+                    <div className="border-t border-white/10 pt-4">
+                      <div className="flex items-center justify-between text-xs text-gray-400">
+                        <span>Class Code: {classInfo.classCode}</span>
+                        {classInfo.status === "live" && (
+                          <span className="text-green-300">● Live now</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Class Info Modal */}
             {showClassInfo && selectedClass && (
@@ -977,6 +1209,268 @@ export default function StudentDashboard() {
                         </button>
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* HomeWork Tab */}
+
+        {/* Homework Tab */}
+        {activeTab === "homework" && (
+          <div className="space-y-6">
+            {/* Homework Header */}
+            <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
+              <h2 className="text-xl font-bold text-white mb-2">
+                Homework & Assignments
+              </h2>
+              <p className="text-gray-300">View and submit your assignments</p>
+            </div>
+
+            {/* Homework List */}
+            <div className="grid gap-4">
+              {homeworkData.map((homework) => (
+                <div
+                  key={homework.id}
+                  className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-lg font-semibold text-white">
+                          {homework.title}
+                        </h3>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            homework.status === "submitted"
+                              ? "bg-green-500/20 text-green-300"
+                              : homework.status === "pending"
+                                ? "bg-yellow-500/20 text-yellow-300"
+                                : "bg-red-500/20 text-red-300"
+                          }`}
+                        >
+                          {homework.status.charAt(0).toUpperCase() +
+                            homework.status.slice(1)}
+                        </span>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
+                        <div className="flex items-center space-x-2">
+                          <BookOpen size={16} className="text-gray-400" />
+                          <span>{homework.subject}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <User size={16} className="text-gray-400" />
+                          <span>{homework.instructor}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Calendar size={16} className="text-gray-400" />
+                          <span>
+                            Due:{" "}
+                            {new Date(homework.dueDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Target size={16} className="text-gray-400" />
+                          <span>Max Marks: {homework.maxMarks}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-gray-300 text-sm mb-4">
+                        {homework.description}
+                      </p>
+                    </div>
+
+                    <div className="ml-4 flex flex-col gap-3">
+                      <button
+                        onClick={() => handleViewHomework(homework)}
+                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition font-semibold min-w-[140px]"
+                      >
+                        <Eye size={18} />
+                        <span>View Details</span>
+                      </button>
+
+                      {homework.status === "pending" && (
+                        <button
+                          onClick={() => handleViewHomework(homework)}
+                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl hover:from-emerald-600 hover:to-green-700 transition font-semibold min-w-[140px]"
+                        >
+                          <Upload size={18} />
+                          <span>Submit</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Homework Modal */}
+            {showHomeworkModal && selectedHomework && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-bold text-white">
+                      {selectedHomework.title}
+                    </h3>
+                    <button
+                      onClick={() => setShowHomeworkModal(false)}
+                      className="text-white/70 hover:text-white transition"
+                    >
+                      <X size={28} />
+                    </button>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-8">
+                    {/* Assignment Details */}
+                    <div className="space-y-4">
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                        <h4 className="text-lg font-semibold text-white mb-4">
+                          Assignment Details
+                        </h4>
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Subject:</span>
+                            <span className="text-white">
+                              {selectedHomework.subject}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Instructor:</span>
+                            <span className="text-white">
+                              {selectedHomework.instructor}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Assigned:</span>
+                            <span className="text-white">
+                              {new Date(
+                                selectedHomework.assignedDate
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Due Date:</span>
+                            <span className="text-white">
+                              {new Date(
+                                selectedHomework.dueDate
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Max Marks:</span>
+                            <span className="text-white">
+                              {selectedHomework.maxMarks}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                        <h4 className="text-lg font-semibold text-white mb-4">
+                          Description
+                        </h4>
+                        <p className="text-gray-300 text-sm leading-relaxed">
+                          {selectedHomework.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Submission Form */}
+                    <div className="space-y-4">
+                      {selectedHomework.status === "pending" ? (
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Submit Assignment
+                          </h4>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-200 mb-2">
+                                Notes
+                              </label>
+                              <textarea
+                                value={submissionForm.notes}
+                                onChange={(e) =>
+                                  setSubmissionForm({
+                                    ...submissionForm,
+                                    notes: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-white/5 rounded-xl px-4 py-3 border border-white/10 text-white outline-none focus:ring-2 ring-emerald-400 transition placeholder:text-gray-400 resize-none"
+                                rows={4}
+                                placeholder="Add any notes about your submission..."
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-200 mb-2">
+                                Attachments
+                              </label>
+                              <div className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center">
+                                <Upload
+                                  size={32}
+                                  className="text-gray-400 mx-auto mb-2"
+                                />
+                                <p className="text-gray-300 text-sm">
+                                  Click to upload files or drag and drop
+                                </p>
+                                <input
+                                  type="file"
+                                  multiple
+                                  className="hidden"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Submission Status
+                          </h4>
+                          <div className="flex items-center space-x-2 text-green-300">
+                            <CheckCircle size={20} />
+                            <span>Assignment submitted successfully</span>
+                          </div>
+                          {selectedHomework.submission && (
+                            <div className="mt-4 text-sm text-gray-300">
+                              <p>
+                                <strong>Submitted on:</strong>{" "}
+                                {new Date(
+                                  selectedHomework.submission.submittedAt
+                                ).toLocaleDateString()}
+                              </p>
+                              <p>
+                                <strong>Notes:</strong>{" "}
+                                {selectedHomework.submission.notes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-white/10">
+                    <button
+                      onClick={() => setShowHomeworkModal(false)}
+                      className="px-6 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
+                    >
+                      Close
+                    </button>
+                    {selectedHomework.status === "pending" && (
+                      <button
+                        onClick={() =>
+                          handleHomeworkSubmit(selectedHomework.id)
+                        }
+                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl hover:from-emerald-600 hover:to-green-700 transition font-semibold"
+                      >
+                        Submit Assignment
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

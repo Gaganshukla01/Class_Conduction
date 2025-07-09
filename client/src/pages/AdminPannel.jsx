@@ -12,6 +12,7 @@ import {
   Image,
   Video,
   Tag,
+  Book,
   DollarSign,
   CheckCircle,
   TrendingUp ,
@@ -28,6 +29,7 @@ import { AppContent } from "../context/Context";
 import AddScheduleClass from "../components/AddScheduleClass";
 import AddCourse from "../components/CourseAdd";
 import AddClassAttendance from "../components/AddClassAttendance";
+import StudentHomeworkAssignment from "../components/HomeWorkAssign";
 import axios from "axios";
 import { toast } from "react-toastify";
 
@@ -41,6 +43,7 @@ export default function AdminDashboard() {
     { id: "updateUser", label: "Update User", icon: UserCheck },
     { id: "addClass", label: "Schedule Class", icon: Calendar },
     { id: "classAttendence", label: "Class Attendence", icon: Check },
+    { id: "homeWorkAssign", label: "Home Work", icon: Book },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -58,6 +61,8 @@ export default function AdminDashboard() {
         return <SettingsPanel />;
       case "manageClasses":
         return <ManageClasses />;
+      case "homeWorkAssign":
+        return <StudentHomeworkAssignment />;
       default:
         return <DashboardHome />;
     }
@@ -963,8 +968,7 @@ function ManageClasses() {
   console.log(allSchedule, "test1");
   console.log(allUserData, "test2");
 
-  // Extract the actual data arrays from the backend response
-  const classes = allSchedule?.data || [];
+  const classes = allSchedule|| [];
   const users = allUserData?.data || [];
 
   const handleJoinClass = (classLink) => {

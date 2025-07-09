@@ -6,9 +6,7 @@ import classAttendanceModel
         const {
             studentId,
             studentName,
-            className,
-            classStartAt,
-            classEndAt,
+            classScheduleId,
             topicCovered,
             additionalNotes
         } = req.body;
@@ -25,9 +23,7 @@ import classAttendanceModel
         const newAttendance = new classAttendanceModel({
             studentId,
             studentName,
-            className,
-            classStartAt: classStartAt ? new Date(classStartAt) : undefined,
-            classEndAt: classEndAt ? new Date(classEndAt) : undefined,
+            classScheduleId,
             topicCovered,
             additionalNotes
         });
