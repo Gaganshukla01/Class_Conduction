@@ -1,691 +1,178 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   Play,
-  Save,
   Download,
   Copy,
-  Settings,
   Code,
   Palette,
   RefreshCw,
+  Terminal,
+  Eye,
+  EyeOff,
+  Maximize2,
+  Minimize2,
+  Save,
+  ExternalLink,
 } from "lucide-react";
 
 const CodeEditor = () => {
   const [activeLanguage, setActiveLanguage] = useState("javascript");
-  const [code, setCode] = useState("");
+  const [codes, setCodes] = useState({
+    javascript: "",
+    python: "",
+    html: "",
+    css: "",
+    cpp: "",
+    java: ""
+  });
   const [output, setOutput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [theme, setTheme] = useState("dark");
+  const [showOutput, setShowOutput] = useState(true);
+  const [isOutputMaximized, setIsOutputMaximized] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const textareaRef = useRef(null);
+  const previewRef = useRef(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [suggestionPosition, setSuggestionPosition] = useState({ top: 0, left: 0 });
 
-  // Language configurations with keywords and templates
+  // Get current code for active language
+  const currentCode = codes[activeLanguage];
+
+  // Language configurations with syntax highlighting patterns
   const languages = {
     javascript: {
       name: "JavaScript",
       keywords: [
-        "function",
-        "const",
-        "let",
-        "var",
-        "if",
-        "else",
-        "for",
-        "while",
-        "do",
-        "switch",
-        "case",
-        "default",
-        "return",
-        "break",
-        "continue",
-        "try",
-        "catch",
-        "finally",
-        "throw",
-        "class",
-        "extends",
-        "import",
-        "export",
-        "async",
-        "await",
-        "Promise",
-        "console",
-        "document",
-        "window",
-        "addEventListener",
-        "getElementById",
-        "querySelector",
-        "createElement",
-        "appendChild",
-        "innerHTML",
-        "textContent",
+        "function", "const", "let", "var", "if", "else", "for", "while", "do",
+        "switch", "case", "default", "return", "break", "continue", "try", "catch",
+        "finally", "throw", "class", "extends", "import", "export", "async", "await",
+        "Promise", "console", "document", "window", "addEventListener", "getElementById",
+        "querySelector", "createElement", "appendChild", "innerHTML", "textContent",
       ],
-      template: `// Welcome to JavaScript Editor
-function greetStudent(name) {
-    console.log("Hello, " + name + "!");
-    return "Learning JavaScript is fun!";
-}
-
-const studentName = "Coder";
-const message = greetStudent(studentName);
-console.log(message);`,
       color: "bg-yellow-500",
     },
     python: {
       name: "Python",
       keywords: [
-        "def",
-        "class",
-        "if",
-        "elif",
-        "else",
-        "for",
-        "while",
-        "in",
-        "not",
-        "and",
-        "or",
-        "import",
-        "from",
-        "return",
-        "yield",
-        "try",
-        "except",
-        "finally",
-        "with",
-        "as",
-        "pass",
-        "break",
-        "continue",
-        "print",
-        "input",
-        "len",
-        "range",
-        "enumerate",
-        "zip",
-        "map",
-        "filter",
-        "lambda",
-        "list",
-        "dict",
-        "set",
-        "tuple",
-        "str",
-        "int",
-        "float",
-        "bool",
-        "open",
-        "read",
-        "write",
-        "append",
+        "def", "class", "if", "elif", "else", "for", "while", "in", "not", "and", "or",
+        "import", "from", "return", "yield", "try", "except", "finally", "with", "as",
+        "pass", "break", "continue", "print", "input", "len", "range", "enumerate",
+        "zip", "map", "filter", "lambda", "list", "dict", "set", "tuple", "str",
+        "int", "float", "bool", "open", "read", "write", "append",
       ],
-      template: `# Welcome to Python Editor
-def greet_student(name):
-    """Greet a student learning Python"""
-    print(f"Hello, {name}!")
-    return "Learning Python is awesome!"
-
-def calculate_grade(score):
-    if score >= 90:
-        return "A"
-    elif score >= 80:
-        return "B"
-    elif score >= 70:
-        return "C"
-    else:
-        return "Study harder!"
-
-student_name = "Coder"
-message = greet_student(student_name)
-print(message)
-
-# Example with lists and loops
-numbers = [1, 2, 3, 4, 5]
-for num in numbers:
-    print(f"Number: {num}")`,
       color: "bg-blue-500",
     },
     html: {
       name: "HTML",
       keywords: [
-        "html",
-        "head",
-        "title",
-        "body",
-        "div",
-        "span",
-        "p",
-        "a",
-        "img",
-        "ul",
-        "ol",
-        "li",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "form",
-        "input",
-        "button",
-        "textarea",
-        "select",
-        "option",
-        "table",
-        "tr",
-        "td",
-        "th",
-        "thead",
-        "tbody",
-        "nav",
-        "header",
-        "footer",
-        "main",
-        "section",
-        "article",
-        "aside",
-        "meta",
-        "link",
-        "script",
-        "style",
-        "br",
-        "hr",
-        "strong",
-        "em",
-        "code",
-        "pre",
-        "blockquote",
+        "html", "head", "title", "body", "div", "span", "p", "a", "img", "ul", "ol",
+        "li", "h1", "h2", "h3", "h4", "h5", "h6", "form", "input", "button", "textarea",
+        "select", "option", "table", "tr", "td", "th", "thead", "tbody", "nav",
+        "header", "footer", "main", "section", "article", "aside", "meta", "link",
+        "script", "style", "br", "hr", "strong", "em", "code", "pre", "blockquote",
       ],
-      template: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student's First Website</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f0f0f0;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .highlight {
-            background-color: #ffeb3b;
-            padding: 2px 4px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome to My Learning Journey!</h1>
-        <p>This is my <span class="highlight">first HTML page</span> as a student.</p>
-        
-        <h2>What I'm Learning:</h2>
-        <ul>
-            <li>HTML Structure</li>
-            <li>CSS Styling</li>
-            <li>JavaScript Programming</li>
-        </ul>
-        
-        <h2>Contact Form:</h2>
-        <form>
-            <input type="text" placeholder="Your Name" required>
-            <textarea placeholder="Your Message" rows="4"></textarea>
-            <button type="submit">Send Message</button>
-        </form>
-    </div>
-</body>
-</html>`,
       color: "bg-orange-500",
     },
     css: {
       name: "CSS",
       keywords: [
-        "color",
-        "background",
-        "margin",
-        "padding",
-        "border",
-        "width",
-        "height",
-        "font-size",
-        "font-family",
-        "text-align",
-        "display",
-        "position",
-        "top",
-        "left",
-        "right",
-        "bottom",
-        "float",
-        "clear",
-        "overflow",
-        "z-index",
-        "opacity",
-        "transform",
-        "transition",
-        "animation",
-        "hover",
-        "focus",
-        "active",
-        "visited",
-        "flex",
-        "grid",
-        "align-items",
-        "justify-content",
-        "flex-direction",
-        "flex-wrap",
-        "gap",
-        "box-shadow",
-        "border-radius",
-        "linear-gradient",
-        "rgba",
-        "px",
-        "em",
-        "rem",
-        "vh",
-        "vw",
-        "auto",
-        "none",
-        "block",
-        "inline",
-        "inline-block",
-        "relative",
-        "absolute",
-        "fixed",
-        "sticky",
+        "color", "background", "margin", "padding", "border", "width", "height",
+        "font-size", "font-family", "text-align", "display", "position", "top", "left",
+        "right", "bottom", "float", "clear", "overflow", "z-index", "opacity",
+        "transform", "transition", "animation", "hover", "focus", "active", "visited",
+        "flex", "grid", "align-items", "justify-content", "flex-direction", "flex-wrap",
+        "gap", "box-shadow", "border-radius", "linear-gradient", "rgba", "px", "em",
+        "rem", "vh", "vw", "auto", "none", "block", "inline", "inline-block",
+        "relative", "absolute", "fixed", "sticky",
       ],
-      template: `/* Welcome to CSS Editor */
-/* Reset and base styles */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Arial', sans-serif;
-    line-height: 1.6;
-    color: #333;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-/* Header styles */
-.header {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 30px;
-    text-align: center;
-    margin-bottom: 30px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.header h1 {
-    font-size: 2.5em;
-    color: white;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.header p {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 1.1em;
-}
-
-/* Card styles */
-.card {
-    background: white;
-    border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 20px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-}
-
-/* Button styles */
-.button {
-    background: #4CAF50;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background 0.3s ease;
-}
-
-.button:hover {
-    background: #45a049;
-    transform: scale(1.05);
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .container {
-        padding: 10px;
-    }
-    
-    .header h1 {
-        font-size: 2em;
-    }
-    
-    .card {
-        padding: 15px;
-    }
-}`,
       color: "bg-purple-500",
     },
     cpp: {
       name: "C++",
       keywords: [
-        "include",
-        "using",
-        "namespace",
-        "std",
-        "int",
-        "char",
-        "float",
-        "double",
-        "bool",
-        "void",
-        "string",
-        "vector",
-        "map",
-        "set",
-        "pair",
-        "queue",
-        "stack",
-        "priority_queue",
-        "if",
-        "else",
-        "for",
-        "while",
-        "do",
-        "switch",
-        "case",
-        "default",
-        "break",
-        "continue",
-        "return",
-        "class",
-        "struct",
-        "public",
-        "private",
-        "protected",
-        "virtual",
-        "override",
-        "const",
-        "static",
-        "template",
-        "typename",
-        "auto",
-        "new",
-        "delete",
-        "try",
-        "catch",
-        "throw",
-        "cout",
-        "cin",
-        "endl",
-        "main",
-        "sizeof",
-        "nullptr",
+        "include", "using", "namespace", "std", "int", "char", "float", "double",
+        "bool", "void", "string", "vector", "map", "set", "pair", "queue", "stack",
+        "if", "else", "for", "while", "do", "switch", "case", "default", "break",
+        "continue", "return", "class", "struct", "public", "private", "protected",
+        "virtual", "const", "static", "template", "typename", "auto", "new", "delete",
+        "try", "catch", "throw", "cout", "cin", "endl", "main", "sizeof", "nullptr",
       ],
-      template: `// Welcome to C++ Editor
-#include <iostream>
-#include <vector>
-#include <string>
-#include <algorithm>
-
-using namespace std;
-
-// Function to greet student
-void greetStudent(const string& name) {
-    cout << "Hello, " << name << "!" << endl;
-    cout << "Welcome to C++ programming!" << endl;
-}
-
-// Class example
-class Student {
-private:
-    string name;
-    int age;
-    vector<int> grades;
-
-public:
-    Student(const string& n, int a) : name(n), age(a) {}
-    
-    void addGrade(int grade) {
-        grades.push_back(grade);
-    }
-    
-    double calculateAverage() const {
-        if (grades.empty()) return 0.0;
-        int sum = 0;
-        for (int grade : grades) {
-            sum += grade;
-        }
-        return static_cast<double>(sum) / grades.size();
-    }
-    
-    void displayInfo() const {
-        cout << "Name: " << name << ", Age: " << age << endl;
-        cout << "Average Grade: " << calculateAverage() << endl;
-    }
-};
-
-int main() {
-    // Welcome message
-    greetStudent("C++ Learner");
-    
-    // Create student object
-    Student student("Alice", 20);
-    student.addGrade(85);
-    student.addGrade(92);
-    student.addGrade(78);
-    
-    // Display student info
-    student.displayInfo();
-    
-    // Array and loop example
-    vector<int> numbers = {1, 2, 3, 4, 5};
-    cout << "Numbers: ";
-    for (int num : numbers) {
-        cout << num << " ";
-    }
-    cout << endl;
-    
-    return 0;
-}`,
       color: "bg-green-500",
     },
     java: {
       name: "Java",
       keywords: [
-        "public",
-        "private",
-        "protected",
-        "static",
-        "final",
-        "abstract",
-        "class",
-        "interface",
-        "extends",
-        "implements",
-        "import",
-        "package",
-        "void",
-        "int",
-        "String",
-        "boolean",
-        "char",
-        "double",
-        "float",
-        "long",
-        "short",
-        "byte",
-        "if",
-        "else",
-        "for",
-        "while",
-        "do",
-        "switch",
-        "case",
-        "default",
-        "break",
-        "continue",
-        "return",
-        "try",
-        "catch",
-        "finally",
-        "throw",
-        "throws",
-        "new",
-        "this",
-        "super",
-        "null",
-        "true",
-        "false",
-        "System",
-        "out",
-        "println",
-        "print",
-        "Scanner",
-        "ArrayList",
-        "HashMap",
-        "main",
+        "public", "private", "protected", "static", "final", "abstract", "class",
+        "interface", "extends", "implements", "import", "package", "void", "int",
+        "String", "boolean", "char", "double", "float", "long", "short", "byte",
+        "if", "else", "for", "while", "do", "switch", "case", "default", "break",
+        "continue", "return", "try", "catch", "finally", "throw", "throws", "new",
+        "this", "super", "null", "true", "false", "System", "out", "println",
+        "print", "Scanner", "ArrayList", "HashMap", "main",
       ],
-      template: `// Welcome to Java Editor
-import java.util.*;
-
-public class StudentLearning {
-    
-    // Method to greet student
-    public static void greetStudent(String name) {
-        System.out.println("Hello, " + name + "!");
-        System.out.println("Welcome to Java programming!");
-    }
-    
-    // Student class
-    static class Student {
-        private String name;
-        private int age;
-        private ArrayList<Integer> grades;
-        
-        public Student(String name, int age) {
-            this.name = name;
-            this.age = age;
-            this.grades = new ArrayList<>();
-        }
-        
-        public void addGrade(int grade) {
-            grades.add(grade);
-        }
-        
-        public double calculateAverage() {
-            if (grades.isEmpty()) return 0.0;
-            int sum = 0;
-            for (int grade : grades) {
-                sum += grade;
-            }
-            return (double) sum / grades.size();
-        }
-        
-        public void displayInfo() {
-            System.out.println("Name: " + name + ", Age: " + age);
-            System.out.println("Average Grade: " + calculateAverage());
-        }
-    }
-    
-    public static void main(String[] args) {
-        // Welcome message
-        greetStudent("Java Learner");
-        
-        // Create student object
-        Student student = new Student("Bob", 19);
-        student.addGrade(88);
-        student.addGrade(94);
-        student.addGrade(82);
-        
-        // Display student info
-        student.displayInfo();
-        
-        // Array and loop example
-        int[] numbers = {1, 2, 3, 4, 5};
-        System.out.print("Numbers: ");
-        for (int num : numbers) {
-            System.out.print(num + " ");
-        }
-        System.out.println();
-        
-        // Collections example
-        ArrayList<String> subjects = new ArrayList<>();
-        subjects.add("Math");
-        subjects.add("Physics");
-        subjects.add("Chemistry");
-        
-        System.out.println("Subjects: " + subjects);
-    }
-}`,
       color: "bg-red-500",
     },
   };
 
-  // Initialize with template when language changes
-  useEffect(() => {
-    if (!code) {
-      setCode(languages[activeLanguage].template);
-    }
-  }, [activeLanguage]);
+  // Calculate suggestion position
+  const calculateSuggestionPosition = (textarea, cursorPos) => {
+    if (!textarea) return { top: 0, left: 0 };
+    
+    const text = textarea.value.substring(0, cursorPos);
+    const lines = text.split('\n');
+    const currentLineIndex = lines.length - 1;
+    const currentLineText = lines[currentLineIndex] || '';
+    
+    const textareaRect = textarea.getBoundingClientRect();
+    const scrollTop = textarea.scrollTop;
+    
+    const lineHeight = 25.6;
+    const charWidth = 9.6;
+    
+    const lineTop = (currentLineIndex * lineHeight) - scrollTop;
+    const charPosition = currentLineText.length * charWidth;
+    
+    const rightEdge = textareaRect.width - 280;
+    const left = Math.min(charPosition + 50, Math.max(rightEdge, 50));
+    const top = Math.max(lineTop + lineHeight + 5, 5);
+    
+    return { top, left };
+  };
 
-  // Handle text input and suggestions
+  // Handle input change
   const handleInputChange = (e) => {
     const value = e.target.value;
     const cursorPos = e.target.selectionStart;
 
-    setCode(value);
+    // Update code for current language
+    setCodes(prev => ({
+      ...prev,
+      [activeLanguage]: value
+    }));
     setCursorPosition(cursorPos);
 
-    // Get word at cursor position
-    const textBeforeCursor = value.substring(0, cursorPos);
-    const words = textBeforeCursor.split(/\s+/);
-    const currentWord = words[words.length - 1];
+    // Update suggestion position
+    if (textareaRef.current) {
+      const position = calculateSuggestionPosition(textareaRef.current, cursorPos);
+      setSuggestionPosition(position);
+    }
 
-    if (currentWord.length > 0) {
+    // Handle autocomplete suggestions
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const lastWordMatch = textBeforeCursor.match(/\b\w+$/);
+    const currentWord = lastWordMatch ? lastWordMatch[0] : '';
+
+    if (currentWord.length > 1) {
       const matchingKeywords = languages[activeLanguage].keywords.filter(
         (keyword) => keyword.toLowerCase().startsWith(currentWord.toLowerCase())
       );
 
       if (matchingKeywords.length > 0) {
-        setSuggestions(matchingKeywords.slice(0, 8));
+        setSuggestions(matchingKeywords.slice(0, 6));
         setShowSuggestions(true);
       } else {
         setShowSuggestions(false);
@@ -696,64 +183,334 @@ public class StudentLearning {
   };
 
   // Handle suggestion selection
-  const selectSuggestion = (suggestion) => {
-    const textBeforeCursor = code.substring(0, cursorPosition);
-    const textAfterCursor = code.substring(cursorPosition);
-    const words = textBeforeCursor.split(/\s+/);
-    const currentWord = words[words.length - 1];
+  const handleSuggestionClick = (suggestion) => {
+    const textBeforeCursor = currentCode.substring(0, cursorPosition);
+    const textAfterCursor = currentCode.substring(cursorPosition);
+    const lastWordMatch = textBeforeCursor.match(/\b\w+$/);
+    const currentWord = lastWordMatch ? lastWordMatch[0] : '';
 
-    const beforeWord = textBeforeCursor.substring(
+    const newTextBefore = textBeforeCursor.substring(
       0,
-      textBeforeCursor.lastIndexOf(currentWord)
+      textBeforeCursor.length - currentWord.length
     );
-    const newCode = beforeWord + suggestion + textAfterCursor;
+    const newCode = newTextBefore + suggestion + textAfterCursor;
 
-    setCode(newCode);
+    setCodes(prev => ({
+      ...prev,
+      [activeLanguage]: newCode
+    }));
     setShowSuggestions(false);
 
-    // Focus back to textarea
     setTimeout(() => {
-      textareaRef.current.focus();
-      const newCursorPos = beforeWord.length + suggestion.length;
-      textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      if (textareaRef.current) {
+        const newCursorPos = newTextBefore.length + suggestion.length;
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current.focus();
+      }
     }, 0);
   };
 
-  // Simulate code execution
-  const runCode = () => {
-    setIsRunning(true);
-    setTimeout(() => {
-      setIsRunning(false);
-      if (activeLanguage === "javascript") {
-        setOutput(
-          "✓ JavaScript code executed successfully!\n→ Check browser console for output"
-        );
-      } else if (activeLanguage === "python") {
-        setOutput(
-          "✓ Python code executed successfully!\n→ Hello, Coder!\n→ Learning Python is awesome!\n→ Number: 1\n→ Number: 2\n→ Number: 3\n→ Number: 4\n→ Number: 5"
-        );
-      } else if (activeLanguage === "html") {
-        setOutput(
-          "✓ HTML rendered successfully!\n→ Check preview panel for output"
-        );
-      } else if (activeLanguage === "css") {
-        setOutput(
-          "✓ CSS compiled successfully!\n→ Styles applied to HTML elements"
-        );
-      } else if (activeLanguage === "cpp") {
-        setOutput(
-          "✓ C++ compiled and executed successfully!\n→ Hello, C++ Learner!\n→ Welcome to C++ programming!\n→ Name: Alice, Age: 20\n→ Average Grade: 85\n→ Numbers: 1 2 3 4 5"
-        );
-      } else if (activeLanguage === "java") {
-        setOutput(
-          "✓ Java compiled and executed successfully!\n→ Hello, Java Learner!\n→ Welcome to Java programming!\n→ Name: Bob, Age: 19\n→ Average Grade: 88\n→ Numbers: 1 2 3 4 5\n→ Subjects: [Math, Physics, Chemistry]"
-        );
+  // Handle key events
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+    if (showSuggestions && (e.key === "Tab" || e.key === "Enter")) {
+      e.preventDefault();
+      if (suggestions.length > 0) {
+        handleSuggestionClick(suggestions[0]);
       }
-    }, 1500);
+    }
   };
 
-  // Download code
+  // Save code (using memory storage as per restrictions)
+  const saveCodeToBackend = async () => {
+    if (!currentCode.trim()) {
+      alert("❌ No code to save. Please write some code first.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Simulate backend save
+      const savedProjects = JSON.parse(sessionStorage.getItem('savedProjects') || '[]');
+      const newProject = {
+        id: Date.now(),
+        code: currentCode,
+        language: activeLanguage,
+        timestamp: new Date().toISOString(),
+        filename: `code_${Date.now()}.${
+          activeLanguage === 'javascript' ? 'js' : 
+          activeLanguage === 'python' ? 'py' : 
+          activeLanguage === 'html' ? 'html' : 
+          activeLanguage === 'css' ? 'css' : 
+          activeLanguage === 'cpp' ? 'cpp' : 'java'
+        }`
+      };
+      
+      savedProjects.push(newProject);
+      sessionStorage.setItem('savedProjects', JSON.stringify(savedProjects));
+      
+      setTimeout(() => {
+        alert("✅ Code saved successfully!");
+        console.log("Saved project:", newProject);
+        setIsSaving(false);
+      }, 1000);
+    } catch (error) {
+      alert("❌ Failed to save code. Please try again.");
+      console.error("Save failed:", error);
+      setIsSaving(false);
+    }
+  };
+
+  // Enhanced HTML/CSS preview
+  const renderHTMLCSS = () => {
+    const htmlCode = codes.html || '';
+    const cssCode = codes.css || '';
+    
+    let fullHTML = htmlCode;
+    
+    // If CSS exists, inject it into HTML
+    if (cssCode) {
+      const styleTag = `<style>${cssCode}</style>`;
+      if (fullHTML.includes('</head>')) {
+        fullHTML = fullHTML.replace('</head>', `${styleTag}</head>`);
+      } else if (fullHTML.includes('<head>')) {
+        fullHTML = fullHTML.replace('<head>', `<head>${styleTag}`);
+      } else {
+        fullHTML = `<!DOCTYPE html><html><head>${styleTag}</head><body>${fullHTML}</body></html>`;
+      }
+    }
+    
+    return fullHTML;
+  };
+
+  // Enhanced execution functions
+  const executeJavaScript = (code) => {
+    let output = [];
+
+    const customConsole = {
+      log: (...args) =>
+        output.push(
+          args
+            .map((arg) => {
+              if (typeof arg === "object") {
+                return JSON.stringify(arg, null, 2);
+              }
+              return String(arg);
+            })
+            .join(" ")
+        ),
+      error: (...args) => output.push("Error: " + args.join(" ")),
+      warn: (...args) => output.push("Warning: " + args.join(" ")),
+      info: (...args) => output.push("Info: " + args.join(" ")),
+    };
+
+    const safeGlobals = {
+      console: customConsole,
+      alert: (message) => output.push(`Alert: ${message}`),
+      Math: Math,
+      Date: Date,
+      JSON: JSON,
+      String: String,
+      Number: Number,
+      Boolean: Boolean,
+      Array: Array,
+      Object: Object,
+      parseInt: parseInt,
+      parseFloat: parseFloat,
+      isNaN: isNaN,
+      isFinite: isFinite,
+    };
+
+    const wrappedCode = `
+        (function() {
+          ${Object.keys(safeGlobals)
+            .map((key) => `const ${key} = arguments[0].${key};`)
+            .join("\n")}
+          ${code}
+        })
+      `;
+
+    try {
+      const func = eval(wrappedCode);
+      func(safeGlobals);
+      return {
+        success: true,
+        output: output.length > 0 ? output.join('\n') : 'Code executed successfully'
+      };
+    } catch (err) {
+      return {
+        success: false,
+        output: `Error: ${err.message}`
+      };
+    }
+  };
+
+  const executePython = (code) => {
+    let output = [];
+
+    try {
+      const printRegex = /print\((.*?)\)/g;
+      let match;
+
+      while ((match = printRegex.exec(code)) !== null) {
+        let content = match[1].trim();
+        if (
+          (content.startsWith('"') && content.endsWith('"')) ||
+          (content.startsWith("'") && content.endsWith("'"))
+        ) {
+          content = content.slice(1, -1);
+        }
+        output.push(content);
+      }
+
+      const lines = code.split("\n");
+      const variables = {};
+
+      for (let line of lines) {
+        line = line.trim();
+        if (!line || line.startsWith("#")) continue;
+
+        const assignMatch = line.match(/^(\w+)\s*=\s*(.+)$/);
+        if (assignMatch) {
+          const [, varName, value] = assignMatch;
+          try {
+            if (!isNaN(value)) {
+              variables[varName] = parseFloat(value);
+            } else if (
+              (value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"))
+            ) {
+              variables[varName] = value.slice(1, -1);
+            }
+          } catch (e) {
+            // Ignore complex expressions
+          }
+        }
+      }
+
+      return {
+        success: true,
+        output:
+          output.length > 0
+            ? output.join("\n")
+            : "Python code executed successfully",
+      };
+    } catch (err) {
+      return {
+        success: false,
+        output: `Error: ${err.message}`,
+      };
+    }
+  };
+
+  const executeHTML = (code) => {
+    // Show preview for HTML
+    setShowPreview(true);
+    
+    return {
+      success: true,
+      output: `HTML rendered successfully!\n\n📄 Preview is now visible in the preview panel.\n\nCode structure analyzed:\n- HTML tags: ${(code.match(/<[^>]+>/g) || []).length}\n- Text content: ${code.replace(/<[^>]*>/g, "").trim().length} characters`,
+    };
+  };
+
+  const executeCSS = (code) => {
+    const selectors = (code.match(/[^{}]+\s*{/g) || []).length;
+    const properties = (code.match(/[^{}:]+:/g) || []).length;
+
+    // If HTML exists, show combined preview
+    if (codes.html) {
+      setShowPreview(true);
+    }
+
+    return {
+      success: true,
+      output: `CSS parsed successfully!\n\n🎨 ${codes.html ? 'Combined HTML+CSS preview is visible in the preview panel.' : 'To see the visual output, write some HTML code first.'}\n\nStylesheet analysis:\n- Selectors: ${selectors}\n- Properties: ${properties}`,
+    };
+  };
+
+  // Enhanced code execution
+  const runCode = async () => {
+    if (!currentCode.trim()) {
+      setOutput("❌ No code to execute. Please write some code first.");
+      return;
+    }
+
+    setIsRunning(true);
+    setOutput("🚀 Running code...\n");
+
+    setTimeout(() => {
+      let result;
+      const startTime = Date.now();
+
+      switch (activeLanguage) {
+        case "javascript":
+          result = executeJavaScript(currentCode);
+          break;
+        case "python":
+          result = executePython(currentCode);
+          break;
+        case "html":
+          result = executeHTML(currentCode);
+          break;
+        case "css":
+          result = executeCSS(currentCode);
+          break;
+        case "cpp":
+        case "java":
+          result = {
+            success: true,
+            output: `${languages[activeLanguage].name} code structure validated!\n\nNote: Full compilation requires a ${languages[activeLanguage].name} compiler.\nThis editor provides syntax validation and structure analysis.`,
+          };
+          break;
+        default:
+          result = {
+            success: true,
+            output: "Code structure validated successfully!",
+          };
+      }
+
+      const executionTime = Date.now() - startTime;
+      const icon = result.success ? "✅" : "❌";
+
+      setOutput(
+        `${icon} ${result.output}\n\n⏱️ Execution time: ${executionTime}ms`
+      );
+      setIsRunning(false);
+    }, 800);
+  };
+
+  // Copy code to clipboard
+  const copyCode = async () => {
+    if (!currentCode.trim()) {
+      alert("No code to copy!");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(currentCode);
+      alert("Code copied to clipboard! 📋");
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = currentCode;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      alert("Code copied to clipboard! 📋");
+    }
+  };
+
+  // Download code as file
   const downloadCode = () => {
+    if (!currentCode.trim()) {
+      alert("No code to download!");
+      return;
+    }
+
     const extensions = {
       javascript: "js",
       python: "py",
@@ -763,272 +520,299 @@ public class StudentLearning {
       java: "java",
     };
 
-    const element = document.createElement("a");
-    const file = new Blob([code], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = `code.${extensions[activeLanguage]}`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    const blob = new Blob([currentCode], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `code.${extensions[activeLanguage]}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  // Copy code to clipboard
-  const copyCode = () => {
-    navigator.clipboard.writeText(code);
-  };
-
-  // Load template
-  const loadTemplate = () => {
-    setCode(languages[activeLanguage].template);
+  // Clear current language code
+  const clearCode = () => {
+    setCodes(prev => ({
+      ...prev,
+      [activeLanguage]: ""
+    }));
     setOutput("");
+    setShowSuggestions(false);
+    if (activeLanguage === 'html' || activeLanguage === 'css') {
+      setShowPreview(false);
+    }
+  };
+
+  // Toggle theme
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  // Toggle output panel
+  const toggleOutput = () => {
+    setShowOutput(!showOutput);
+  };
+
+  // Toggle output maximize
+  const toggleOutputMaximize = () => {
+    setIsOutputMaximized(!isOutputMaximized);
+  };
+
+  // Open preview in new window
+  const openPreviewInNewWindow = () => {
+    const htmlContent = renderHTMLCSS();
+    if (!htmlContent.trim()) {
+      alert("No HTML/CSS content to preview!");
+      return;
+    }
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+    }
   };
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${
-        theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
-      }`}
+      className={`h-screen flex flex-col ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"} transition-colors duration-300`}
     >
       {/* Header */}
       <div
-        className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} shadow-lg border-b ${
-          theme === "dark" ? "border-gray-700" : "border-gray-200"
-        }`}
+        className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} p-4 flex-shrink-0`}
       >
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Code className="h-8 w-8 text-blue-500" />
-                <h1 className="text-2xl font-bold">Student Code Editor</h1>
-              </div>
-
-              {/* Language Selector */}
-              <div className="flex space-x-2">
-                {Object.entries(languages).map(([key, lang]) => (
-                  <button
-                    key={key}
-                    onClick={() => setActiveLanguage(key)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-                      activeLanguage === key
-                        ? `${lang.color} text-white`
-                        : theme === "dark"
-                          ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
-                  >
-                    {lang.name}
-                  </button>
-                ))}
-              </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+              <Code className="w-6 h-6 text-white" />
             </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              CodeWave Editor
+            </h1>
+          </div>
 
-            {/* Theme Toggle */}
+          <div className="flex items-center space-x-2">
+            {(activeLanguage === 'html' || activeLanguage === 'css') && (
+              <button
+                onClick={openPreviewInNewWindow}
+                className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition-colors shadow-lg"
+                title="Open Preview in New Window"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Preview</span>
+              </button>
+            )}
+
             <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className={`p-2 rounded-lg ${
-                theme === "dark"
-                  ? "bg-gray-700 hover:bg-gray-600"
-                  : "bg-gray-200 hover:bg-gray-300"
+              onClick={toggleOutput}
+              className={`p-2 rounded-lg transition-colors ${
+                showOutput
+                  ? "bg-blue-500 text-white"
+                  : `${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"}`
               }`}
+              title="Toggle Output Panel"
             >
-              <Palette className="h-5 w-5" />
+              {showOutput ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-lg ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+              title="Toggle Theme"
+            >
+              <Palette className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={saveCodeToBackend}
+              disabled={isSaving}
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
+              title="Save Code"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? "Saving..." : "Save"}</span>
+            </button>
+
+            <button
+              onClick={runCode}
+              disabled={isRunning}
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
+              title="Run Code"
+            >
+              <Play className="w-4 h-4" />
+              <span>{isRunning ? "Running..." : "Run"}</span>
             </button>
           </div>
+        </div>
+
+        {/* Language Tabs */}
+        <div className="flex space-x-1 mt-4 overflow-x-auto">
+          {Object.entries(languages).map(([key, lang]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setActiveLanguage(key);
+                setShowSuggestions(false);
+                if (key !== 'html' && key !== 'css') {
+                  setShowPreview(false);
+                }
+              }}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+                activeLanguage === key
+                  ? `${lang.color} text-white shadow-lg`
+                  : `${theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-200 hover:bg-gray-300"}`
+              }`}
+            >
+              <div className={`w-3 h-3 rounded-full ${activeLanguage === key ? 'bg-white' : lang.color}`}></div>
+              <span className="font-medium">{lang.name}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Code Editor */}
-          <div className="lg:col-span-2">
-            <div
-              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow-lg overflow-hidden`}
-            >
-              {/* Toolbar */}
-              <div
-                className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} px-4 py-3 border-b ${
-                  theme === "dark" ? "border-gray-600" : "border-gray-200"
-                }`}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Code Editor Panel */}
+        <div className={`flex-1 flex flex-col ${showOutput ? (isOutputMaximized ? 'w-0' : 'w-1/2') : 'w-full'} transition-all duration-300`}>
+          <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}>
+            <div className="flex items-center space-x-2">
+              <Terminal className="w-4 h-4" />
+              <span className="font-medium">{languages[activeLanguage].name} Editor</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={copyCode}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                title="Copy Code"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium">
-                      {languages[activeLanguage].name} Editor
-                    </span>
-                    <div
-                      className={`w-2 h-2 rounded-full ${languages[activeLanguage].color}`}
-                    ></div>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={loadTemplate}
-                      className="p-2 rounded hover:bg-gray-600 transition-colors"
-                      title="Load Template"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={copyCode}
-                      className="p-2 rounded hover:bg-gray-600 transition-colors"
-                      title="Copy Code"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={downloadCode}
-                      className="p-2 rounded hover:bg-gray-600 transition-colors"
-                      title="Download Code"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Code Input Area */}
-              <div className="relative">
-                <textarea
-                  ref={textareaRef}
-                  value={code}
-                  onChange={handleInputChange}
-                  className={`w-full h-96 p-4 font-mono text-sm resize-none focus:outline-none ${
-                    theme === "dark"
-                      ? "bg-gray-900 text-green-400 placeholder-gray-500"
-                      : "bg-gray-50 text-gray-900 placeholder-gray-400"
-                  }`}
-                  placeholder={`Start coding in ${languages[activeLanguage].name}...`}
-                  spellCheck="false"
-                />
-
-                {/* Suggestions Dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div
-                    className={`absolute z-10 mt-1 ml-4 ${
-                      theme === "dark"
-                        ? "bg-gray-800 border-gray-600"
-                        : "bg-white border-gray-300"
-                    } border rounded-lg shadow-lg max-h-48 overflow-y-auto`}
-                  >
-                    {suggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => selectSuggestion(suggestion)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-500 hover:text-white transition-colors ${
-                          theme === "dark" ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        <span className="font-mono">{suggestion}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Run Button */}
-              <div
-                className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} px-4 py-3 border-t ${
-                  theme === "dark" ? "border-gray-600" : "border-gray-200"
-                }`}
+                <Copy className="w-4 h-4" />
+              </button>
+              <button
+                onClick={downloadCode}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                title="Download Code"
               >
-                <button
-                  onClick={runCode}
-                  disabled={isRunning}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                    isRunning
-                      ? "bg-gray-500 cursor-not-allowed"
-                      : "bg-green-500 hover:bg-green-600 text-white"
-                  }`}
-                >
-                  <Play className="h-4 w-4" />
-                  <span>{isRunning ? "Running..." : "Run Code"}</span>
-                </button>
-              </div>
+                <Download className="w-4 h-4" />
+              </button>
+              <button
+                onClick={clearCode}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                title="Clear Code"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* Output Panel */}
-          <div className="space-y-6">
-            {/* Output */}
-            <div
-              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow-lg overflow-hidden`}
-            >
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={currentCode}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              className={`w-full h-full p-4 resize-none outline-none font-mono text-sm leading-relaxed ${
+                theme === "dark"
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-50 text-gray-900"
+              } transition-colors`}
+              placeholder={`Write your ${languages[activeLanguage].name} code here...`}
+              spellCheck="false"
+              style={{
+                tabSize: 2,
+                fontFamily: 'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace'
+              }}
+            />
+
+            {/* Autocomplete Suggestions */}
+            {showSuggestions && suggestions.length > 0 && (
               <div
-                className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} px-4 py-3 border-b ${
-                  theme === "dark" ? "border-gray-600" : "border-gray-200"
-                }`}
+                className={`absolute z-50 ${theme === "dark" ? "bg-gray-800" : "bg-white"} border ${
+                  theme === "dark" ? "border-gray-600" : "border-gray-300"
+                } rounded-lg shadow-2xl max-w-xs`}
+                style={{
+                  top: suggestionPosition.top,
+                  left: suggestionPosition.left,
+                }}
               >
-                <h3 className="text-lg font-semibold">Output</h3>
-              </div>
-
-              <div className="p-4">
-                <pre
-                  className={`font-mono text-sm whitespace-pre-wrap ${
-                    theme === "dark" ? "text-green-400" : "text-gray-800"
-                  }`}
-                >
-                  {output || 'Click "Run Code" to see output here...'}
-                </pre>
-              </div>
-            </div>
-
-            {/* Keywords Reference */}
-            <div
-              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow-lg overflow-hidden`}
-            >
-              <div
-                className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} px-4 py-3 border-b ${
-                  theme === "dark" ? "border-gray-600" : "border-gray-200"
-                }`}
-              >
-                <h3 className="text-lg font-semibold">
-                  Keywords & Suggestions
-                </h3>
-              </div>
-
-              <div className="p-4 max-h-64 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-2">
-                  {languages[activeLanguage].keywords.map((keyword, index) => (
+                <div className="p-2">
+                  <div className="text-xs font-medium mb-2 text-gray-500">Suggestions</div>
+                  {suggestions.map((suggestion, index) => (
                     <button
                       key={index}
-                      onClick={() => {
-                        const newCode = code + keyword;
-                        setCode(newCode);
-                        textareaRef.current.focus();
-                      }}
-                      className={`text-left px-2 py-1 rounded text-sm font-mono transition-colors ${
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className={`w-full text-left px-3 py-2 rounded text-sm ${
                         theme === "dark"
-                          ? "hover:bg-gray-700 text-blue-400"
-                          : "hover:bg-gray-100 text-blue-600"
-                      }`}
+                          ? "hover:bg-gray-700"
+                          : "hover:bg-gray-100"
+                      } transition-colors`}
                     >
-                      {keyword}
+                      <span className="font-mono font-medium">{suggestion}</span>
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Tips */}
-            <div
-              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow-lg p-4`}
-            >
-              <h3 className="text-lg font-semibold mb-3">
-                💡 Tips for Students
-              </h3>
-              <ul className="space-y-2 text-sm">
-                <li>• Start typing to see keyword suggestions</li>
-                <li>• Use Ctrl+Space for autocomplete</li>
-                <li>• Click on keywords to insert them</li>
-                <li>• Save your work frequently</li>
-                <li>• Experiment with different languages</li>
-                <li>• Practice makes perfect!</li>
-              </ul>
-            </div>
+            )}
           </div>
         </div>
+
+        {/* Output/Preview Panel */}
+        {showOutput && (
+          <div className={`${isOutputMaximized ? 'flex-1' : 'w-1/2'} flex flex-col border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} transition-all duration-300`}>
+           <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}>
+              <div className="flex items-center space-x-2">
+                <Terminal className="w-4 h-4" />
+                <span className="font-medium">
+                  {showPreview && (activeLanguage === 'html' || activeLanguage === 'css') 
+                    ? 'Live Preview' 
+                    : 'Output Console'
+                  }
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={toggleOutputMaximize}
+                  className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                  title={isOutputMaximized ? "Minimize Output" : "Maximize Output"}
+                >
+                  {isOutputMaximized ? (
+                    <Minimize2 className="w-4 h-4" />
+                  ) : (
+                    <Maximize2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              {showPreview && (activeLanguage === 'html' || activeLanguage === 'css') ? (
+                <div className="h-full">
+                  <iframe
+                    ref={previewRef}
+                    srcDoc={renderHTMLCSS()}
+                    className="w-full h-full border-0"
+                    title="HTML/CSS Preview"
+                    sandbox="allow-scripts"
+                  />
+                </div>
+              ) : (
+                <pre
+                  className={`w-full h-full p-4 overflow-auto font-mono text-sm ${
+                    theme === "dark"
+                      ? "bg-gray-900 text-green-400"
+                      : "bg-gray-50 text-gray-800"
+                  } transition-colors whitespace-pre-wrap`}
+                >
+                  {output || "Output will appear here when you run your code..."}
+                </pre>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

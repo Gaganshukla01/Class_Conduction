@@ -9,6 +9,8 @@ import AdminDashboard from './pages/AdminPannel'
 import StudentDashboard from './pages/StudentSection'
 import CodeEditor from './pages/PlayGround'
 import { ToastContainer } from 'react-toastify'
+import CourseDetails from './components/CourseDetails'
+import SeeHowItWorks from './pages/SeeHowItWork'
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route path='/admin' element={<AdminDashboard />} />
           <Route path='/studentdash' element={<StudentDashboard />} />
           <Route path='/playground' element={<CodeEditor />} />
+          <Route path='/coursedetails' element={<CourseDetails />} />
+          <Route path='/seehowitworks' element={<SeeHowItWorks />} />
         </Routes>
       </div>
     </>
