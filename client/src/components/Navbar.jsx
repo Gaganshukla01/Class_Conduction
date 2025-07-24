@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useEffect, useContext, useState } from "react";
 import { assets } from "../assets/assets";
 import { useNavigate } from "react-router-dom";
 import { AppContent } from "../context/Context";
@@ -6,14 +6,16 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { Users, BookOpen, GraduationCap, ArrowLeft, Mail, LogOut, User } from "lucide-react";
 
+
 function Navbar() {
   const navigate = useNavigate();
   const { userData, setUserData, setIsLoggedin, backend_url } = useContext(AppContent);
+  const [userType, setUserType] = useState("")
 
   const goBack = () => {
     navigate(-1);
   };
-
+ 
   const sendVerificationMail = async () => {
     try {
       axios.defaults.withCredentials = true;
@@ -44,8 +46,12 @@ function Navbar() {
     } catch (error) {
       toast.error(error.message || "Logout error");
     }
-  };
-
+  }; 
+  
+  useEffect(() => {
+    if (userData && userData.userType) setUserType(userData.userType);
+  }, [userData]);
+ 
   return (
     <>
       <nav className="w-full backdrop-blur-xl bg-gradient-to-r from-blue-600/95 to-purple-600/95 border-b border-white/10 sticky top-0 z-50">

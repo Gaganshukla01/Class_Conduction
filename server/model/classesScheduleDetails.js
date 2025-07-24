@@ -8,6 +8,9 @@ const classScheduleSchema = new mongoose.Schema({
   studentsEnrolled: [{ type: String }],
   classLink: { type: String, required: true },
   classDuration: { type: String, required: true },
+  attendance: { type: String, default: "Absent", enum: ["Present", "Absent"] },
+  notes: { type: String, default: "" },
+  topicCovered: { type: String, default: "" },
 });
 
 const classSchedule =

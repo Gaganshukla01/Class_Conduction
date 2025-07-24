@@ -1,4 +1,5 @@
 import classSchedule from "../model/classesScheduleDetails.js";
+import mongoose from "mongoose";
 
 export const classCreate = async (req, res) => {
   try {
@@ -8,14 +9,21 @@ export const classCreate = async (req, res) => {
       studentsEnrolled,
       classLink,
       classDuration,
-      weeklySchedule, // Array of {date, time} objects
+      weeklySchedule,
     } = req.body;
 
     // Validate required fields
-    if (!className || !instructorId || !weeklySchedule || !Array.isArray(weeklySchedule) || weeklySchedule.length === 0) {
+    if (
+      !className ||
+      !instructorId ||
+      !weeklySchedule ||
+      !Array.isArray(weeklySchedule) ||
+      weeklySchedule.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: className, instructorId, and weeklySchedule are required",
+        message:
+          "Missing required fields: className, instructorId, and weeklySchedule are required",
       });
     }
 
@@ -25,13 +33,13 @@ export const classCreate = async (req, res) => {
     // Process each schedule in the weeklySchedule array
     for (const schedule of weeklySchedule) {
       const { date, time } = schedule;
-      
+
       if (!date || !time) {
         continue; // Skip invalid schedule entries
       }
 
       const initialDate = new Date(date);
-      
+
       // Create 30 weekly recurring classes for this specific date/time
       for (let i = 0; i < 30; i++) {
         const weeklyDate = new Date(initialDate);
@@ -61,7 +69,7 @@ export const classCreate = async (req, res) => {
 
     // Group results by original date for better response structure
     const resultsByDate = {};
-    savedClassSchedules.forEach(classItem => {
+    savedClassSchedules.forEach((classItem) => {
       const originalDate = classItem.originalDate;
       if (!resultsByDate[originalDate]) {
         resultsByDate[originalDate] = [];
@@ -77,7 +85,7 @@ export const classCreate = async (req, res) => {
         scheduledDates: weeklySchedule.length,
         weeksPerDate: 30,
         resultsByDate,
-        summary: Object.keys(resultsByDate).map(date => ({
+        summary: Object.keys(resultsByDate).map((date) => ({
           originalDate: date,
           classesCreated: resultsByDate[date].length,
           firstClass: resultsByDate[date][0],
@@ -130,6 +138,73 @@ export const getAllClasses = async (req, res) => {
     });
   } catch (error) {
     console.error("Error retrieving class schedules:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const markAttendance = async (req, res) => {
+  try {
+    const { id, attendance, notes, topicCovered } = req.body;
+
+    // Validate the ID format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class schedule ID format",
+      });
+    }
+
+    // Validate attendance value if provided
+    if (attendance && !["Present", "Absent"].includes(attendance)) {
+      return res.status(400).json({
+        success: false,
+        message: "Attendance must be either 'Present' or 'Absent'",
+      });
+    }
+
+    // Build update object with only provided fields
+    const updateFields = {};
+    if (attendance !== undefined) updateFields.attendance = attendance;
+    if (notes !== undefined) updateFields.notes = notes;
+    if (topicCovered !== undefined) updateFields.topicCovered = topicCovered;
+
+    // Check if there are fields to update
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update",
+      });
+    }
+
+    const updatedClass = await classSchedule.findByIdAndUpdate(
+      id,
+      updateFields,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    // Check if class schedule exists
+    if (!updatedClass) {
+      return res.status(404).json({
+        success: false,
+        message: "Class schedule not found",
+      });
+    }
+
+    // Success response
+    res.status(200).json({
+      success: true,
+      message: "Attendance marked successfully",
+      data: updatedClass,
+    });
+  } catch (error) {
+    console.error("Error marking attendance:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",

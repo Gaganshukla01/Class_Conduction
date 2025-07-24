@@ -19,8 +19,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export default function StudentAttendanceForm() {
-  const { getAllUserData, allUserData, backend_url, allSchedule } = useContext(AppContent);
-  
+  const { getAllUserData, allUserData, backend_url, allSchedule } =
+    useContext(AppContent);
+
   const generateStudentData = (userData) => {
     if (!userData?.data || !Array.isArray(userData.data)) return [];
 
@@ -119,15 +120,16 @@ export default function StudentAttendanceForm() {
     today.setHours(0, 0, 0, 0);
 
     return allSchedule
-      .filter(scheduleClass => 
-        scheduleClass.studentsEnrolled && 
-        scheduleClass.studentsEnrolled.includes(studentId)
+      .filter(
+        (scheduleClass) =>
+          scheduleClass.studentsEnrolled &&
+          scheduleClass.studentsEnrolled.includes(studentId)
       )
-      .map(scheduleClass => ({
+      .map((scheduleClass) => ({
         ...scheduleClass,
-        classDate: new Date(scheduleClass.classDate)
+        classDate: new Date(scheduleClass.classDate),
       }))
-      .filter(scheduleClass => {
+      .filter((scheduleClass) => {
         const classDate = new Date(scheduleClass.classDate);
         classDate.setHours(0, 0, 0, 0);
         return classDate >= today;
@@ -149,7 +151,7 @@ export default function StudentAttendanceForm() {
       ...prev,
       studentId: student.id,
       studentName: student.name,
-      selectedClass: null, // Reset selected class when student changes
+      selectedClass: null,
     }));
     setShowStudentDropdown(false);
     setStudentSearch("");
@@ -192,48 +194,58 @@ export default function StudentAttendanceForm() {
     return date.toDateString() === today.toDateString();
   };
 
- const handleSubmit = async () => {
-  if (!formData.selectedClass) {
-    toast.error("Please select a class");
-    return;
-  }
-
-  const payload = {
-    studentId: formData.studentId,
-    studentName: formData.studentName,
-    classScheduleId: formData.selectedClass._id,
-    additionalNotes: formData.additionalNotes,
-  };
-
-  try {
-    const res = await axios.post(`${backend_url}/api/attendence/add`, payload);
-    if (res.data.success) {
-      toast.success(res.data.message);
+  const handleSubmit = async () => {
+    if (!formData.selectedClass) {
+      toast.error("Please select a class");
+      return;
     }
 
-    setTimeout(() => {
-      setMessage("✅ Student attendance recorded successfully!");
-      setFormData({
-        studentId: "",
-        studentName: "",
-        selectedClass: null,
-        topicCovered: "",
-        additionalNotes: "",
-      });
+    if (!formData.topicCovered.trim()) {
+      toast.error("Topics covered is required");
+      return;
+    }
 
+    const payload = {
+      id: formData.selectedClass._id,
+      attendance: "Present",
+      notes: formData.additionalNotes,
+      topicCovered: formData.topicCovered,
+    };
+
+    try {
+      const res = await axios.put(
+        `${backend_url}/api/classschedule/markattendence`,
+        payload
+      );
+      if (res.data.success) {
+        toast.success(res.data.message);
+
+        setTimeout(() => {
+          setMessage("✅ Student attendance recorded successfully!");
+          setFormData({
+            studentId: "",
+            studentName: "",
+            selectedClass: null,
+            topicCovered: "",
+            additionalNotes: "",
+          });
+
+          setTimeout(() => {
+            setMessage("");
+          }, 3000);
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("Error recording attendance:", error);
+      toast.error(
+        error.response?.data?.message || "Error recording attendance"
+      );
+      setMessage("❌ Error recording attendance");
       setTimeout(() => {
         setMessage("");
       }, 3000);
-    }, 1000);
-  } catch (error) {
-    console.error("Error recording attendance:", error);
-    toast.error("Error recording attendance");
-    setMessage("❌ Error recording attendance");
-    setTimeout(() => {
-      setMessage("");
-    }, 3000);
-  }
-};
+    }
+  };
 
   const selectedStudent = studentsData.find((s) => s.id === formData.studentId);
   const availableClasses = getAvailableClasses(formData.studentId);
@@ -492,15 +504,15 @@ export default function StudentAttendanceForm() {
             </div>
           )}
 
-          {/* Topics Covered */}
           <TextArea
-            label="Topics Covered"
+            label="Topics Covered *"
             name="topicCovered"
             value={formData.topicCovered}
             onChange={handleChange}
             Icon={BookOpen}
             placeholder="What topics were covered in this class..."
             rows={3}
+            required={true}
           />
 
           {/* Additional Notes */}
@@ -519,7 +531,8 @@ export default function StudentAttendanceForm() {
             onClick={handleSubmit}
             disabled={
               !formData.studentId ||
-              !formData.selectedClass
+              !formData.selectedClass ||
+              !formData.topicCovered.trim()
             }
             className="w-full mt-6 px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-2xl text-lg font-semibold hover:from-emerald-600 hover:to-cyan-700 transition-all duration-300 shadow-xl hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
