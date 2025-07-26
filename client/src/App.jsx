@@ -105,10 +105,8 @@ function App() {
           />
           <Route 
             path="/emailVerify" 
-            element={
-              <PublicRoute isLoggedIn={isLoggedIn} userType={userType}>
-                <EmailVerify />
-              </PublicRoute>
+            element={<EmailVerify />}
+              
             } 
           />
           
