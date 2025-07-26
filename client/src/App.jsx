@@ -1,38 +1,176 @@
-import React from 'react'
-import Home from './pages/Home'
-import { Route, Routes } from 'react-router-dom'
-import Login from './pages/Login'
-import './App.css'
-import ResetPassword from './pages/ResetPassword'
-import EmailVerify from './pages/EmailVerify'
-import AdminDashboard from './pages/AdminPannel'
-import StudentDashboard from './pages/StudentSection'
-import CodeEditor from './pages/PlayGround'
-import { ToastContainer } from 'react-toastify'
-import CourseDetails from './components/CourseDetails'
-import SeeHowItWorks from './pages/SeeHowItWork'
+import { use, useContext, useEffect, useState } from "react";
+import Home from "./pages/Home";
+import { Route, Routes, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
+import "./App.css";
+import ResetPassword from "./pages/ResetPassword";
+import EmailVerify from "./pages/EmailVerify";
+import AdminDashboard from "./pages/AdminPannel";
+import StudentDashboard from "./pages/StudentSection";
+import CodeEditor from "./pages/PlayGround";
+import { ToastContainer } from "react-toastify";
+import CourseDetails from "./components/CourseDetails";
+import SeeHowItWorks from "./pages/SeeHowItWork";
+import { AppContent } from "./context/Context";
+
+const ProtectedRoute = ({ children, allowedUserTypes, userType, isLoggedIn }) => {
+
+  if (isLoggedIn && userType === undefined) {
+    return <div>Loading...</div>; 
+  }
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (allowedUserTypes && !allowedUserTypes.includes(userType)) {
+    if (userType === 'admin') {
+      return <Navigate to="/admin" replace />;
+    } else if (userType === 'student') {
+      return <Navigate to="/studentdash" replace />;
+    }
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
+
+const PublicRoute = ({ children, isLoggedIn, userType }) => {
+  
+  if (isLoggedIn && userType === undefined) {
+    return <div>Loading...</div>; 
+  }
+
+  if (isLoggedIn) {
+    if (userType === 'admin') {
+      return <Navigate to="/admin" replace />;
+    } else if (userType === 'student') {
+      return <Navigate to="/studentdash" replace />;
+    }
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
 
 function App() {
+  const { isLoggedIn, userData } = useContext(AppContent);
+  const [userType, setUserType] = useState(undefined);
+
+  useEffect(() => {
+    if (userData && userData.userType) {
+      setUserType(userData.userType);
+    } else if (!userData && !isLoggedIn) {
+
+      setUserType(undefined);
+    }
+  }, [userData, isLoggedIn]);
+
+  if (isLoggedIn && userType === undefined) {
+    return (
+      <>
+        <ToastContainer />
+        <div id="main-flow">
+       <div>Loading...</div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <ToastContainer />
-    
-     
+      
       <div id="main-flow">
         <Routes>
-          <Route path='/' element={<Home />} />
-          <Route path='/login' element={<Login />} />
-          <Route path='/resetPassword' element={<ResetPassword />} />
-          <Route path='/emailVerify' element={<EmailVerify />} />
-          <Route path='/admin' element={<AdminDashboard />} />
-          <Route path='/studentdash' element={<StudentDashboard />} />
-          <Route path='/playground' element={<CodeEditor />} />
-          <Route path='/coursedetails' element={<CourseDetails />} />
-          <Route path='/seehowitworks' element={<SeeHowItWorks />} />
+          {/* Public routes - accessible to everyone */}
+          <Route path="/" element={<Home />} />
+          <Route path="/seehowitworks" element={<SeeHowItWorks />} />
+          
+          <Route 
+            path="/login" 
+            element={
+              <PublicRoute isLoggedIn={isLoggedIn} userType={userType}>
+                <Login />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/resetPassword" 
+            element={
+              <PublicRoute isLoggedIn={isLoggedIn} userType={userType}>
+                <ResetPassword />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/emailVerify" 
+            element={
+              <PublicRoute isLoggedIn={isLoggedIn} userType={userType}>
+                <EmailVerify />
+              </PublicRoute>
+            } 
+          />
+          
+          {/* Admin-only routes */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute 
+                allowedUserTypes={['admin']} 
+                userType={userType} 
+                isLoggedIn={isLoggedIn}
+              >
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Student-only routes */}
+          <Route 
+            path="/studentdash" 
+            element={
+              <ProtectedRoute 
+                allowedUserTypes={['student']} 
+                userType={userType} 
+                isLoggedIn={isLoggedIn}
+              >
+                <StudentDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/playground" 
+            element={
+              <ProtectedRoute 
+                allowedUserTypes={['admin', 'student']} 
+                userType={userType} 
+                isLoggedIn={isLoggedIn}
+              >
+                <CodeEditor />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/coursedetails" 
+            element={
+              <ProtectedRoute 
+                allowedUserTypes={['admin', 'student']} 
+                userType={userType} 
+                isLoggedIn={isLoggedIn}
+              >
+                <CourseDetails />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Catch-all route - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

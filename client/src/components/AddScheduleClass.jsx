@@ -13,6 +13,7 @@ import {
   Minus,
   ChevronLeft,
   ChevronRight,
+  IndianRupee,
   Trash2,
 } from "lucide-react";
 import { AppContent } from "../context/Context";
@@ -67,6 +68,7 @@ export default function AddClassSchedule() {
     instructorId: "",
     studentsEnrolled: [],
     classLink: "",
+    classRate: "",
     classDuration: "",
     weeklySchedule: [],
   });
@@ -220,6 +222,7 @@ export default function AddClassSchedule() {
         studentsEnrolled: formData.studentsEnrolled,
         classLink: formData.classLink,
         classDuration: formData.classDuration,
+        classRate: formData.classRate,
         weeklySchedule: formData.weeklySchedule,
       };
 
@@ -233,6 +236,7 @@ export default function AddClassSchedule() {
         studentsEnrolled: [],
         classLink: "",
         classDuration: "",
+        classRate: "",
         weeklySchedule: [],
       });
     } catch (error) {
@@ -958,6 +962,15 @@ export default function AddClassSchedule() {
               value={formData.classDuration}
               onChange={handleChange}
               Icon={Clock}
+            />
+
+            <Input
+              label="Class Rate (per session)"
+              name="classRate"
+              value={formData.classRate}
+              onChange={handleChange}
+              type="number"
+              Icon={IndianRupee}
             />
           </div>
 

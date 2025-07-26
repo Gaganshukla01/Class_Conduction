@@ -22,10 +22,19 @@ import {
   FileText,
   Eye,
   EyeOff,
+  IndianRupeeIcon,
 } from "lucide-react";
-
+import {
+  getNoteById,
+  searchNotes,
+  deleteNote,
+  updateNote,
+  createNote,
+  getAllNotes,
+} from "../utils/noteServices";
 import { AppContent } from "../context/Context";
 import axios from "axios";
+import PaymentTab from "../components/PaymentBoard";
 const ProgressTab = ({
   activeTab,
   allSchedule = [],
@@ -555,6 +564,7 @@ export default function StudentDashboard() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [classesData, setClassesData] = useState([]);
   const [homeWorkData, setHomeworkData] = useState([]);
+  
 
   const [notes, setNotes] = useState([
     {
@@ -877,23 +887,7 @@ export default function StudentDashboard() {
     setShowClassInfo(true);
   };
 
-  // Progress/Stats State
-  const [progressData] = useState({
-    totalClasses: 45,
-    attended: 42,
-    attendanceRate: 93.3,
-    subjects: [
-      { name: "Web Development", attended: 15, total: 16, percentage: 93.8 },
-      { name: "Database Systems", attended: 14, total: 15, percentage: 93.3 },
-      { name: "Data Structures", attended: 13, total: 14, percentage: 92.9 },
-    ],
-    weeklyProgress: [
-      { week: "Week 1", attendance: 100 },
-      { week: "Week 2", attendance: 95 },
-      { week: "Week 3", attendance: 90 },
-      { week: "Week 4", attendance: 93 },
-    ],
-  });
+
 
   // Notes Functions
   const handleNoteSubmit = async (e) => {
@@ -948,7 +942,9 @@ export default function StudentDashboard() {
 
   const handleDeleteNote = async (noteId) => {
     if (window.confirm("Are you sure you want to delete this note?")) {
+
       try {
+        const response = await deleteNote(noteId);
         if (response.success) {
           // Filter out the deleted note using both _id and id for compatibility
           setNotes(
@@ -1025,6 +1021,7 @@ export default function StudentDashboard() {
             { id: "attendance", label: "Attendance", icon: Calendar },
             { id: "homework", label: "Homework", icon: Target },
             { id: "progress", label: "Progress", icon: TrendingUp },
+            { id: "payment", label: "Payments", icon: IndianRupeeIcon },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -3045,6 +3042,9 @@ export default function StudentDashboard() {
             userData={userData}
           />
         )}
+        {activeTab === "payment" && (
+          <PaymentTab/>
+        )}
       </div>
     </div>
   );
@@ -3076,7 +3076,6 @@ function Input({
     </div>
   );
 }
-
 function TextArea({
   label,
   name,

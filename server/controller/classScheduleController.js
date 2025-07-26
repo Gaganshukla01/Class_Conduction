@@ -9,6 +9,7 @@ export const classCreate = async (req, res) => {
       studentsEnrolled,
       classLink,
       classDuration,
+      classRate,
       weeklySchedule,
     } = req.body;
 
@@ -16,6 +17,9 @@ export const classCreate = async (req, res) => {
     if (
       !className ||
       !instructorId ||
+      !classLink ||
+      !classDuration ||
+      !classRate ||
       !weeklySchedule ||
       !Array.isArray(weeklySchedule) ||
       weeklySchedule.length === 0
@@ -23,7 +27,7 @@ export const classCreate = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Missing required fields: className, instructorId, and weeklySchedule are required",
+          "Missing required fields: className, instructorId, classLink, classDuration, classRate, and weeklySchedule are required",
       });
     }
 
@@ -47,12 +51,16 @@ export const classCreate = async (req, res) => {
 
         const classScheduleData = {
           className,
-          classDate: weeklyDate.toISOString().split("T")[0],
+          classDate: weeklyDate,
           classTime: time,
           instructorId,
           studentsEnrolled: studentsEnrolled || [],
           classLink,
           classDuration,
+          classRate,
+          attendance: "Absent", // Default value
+          notes: "", // Default value
+          topicCovered: "", // Default value
           weekNumber: i + 1,
           seriesId: `${seriesId}_${date}`, // Unique series ID for each date
           originalDate: date, // Store the original scheduled date
@@ -205,6 +213,249 @@ export const markAttendance = async (req, res) => {
     });
   } catch (error) {
     console.error("Error marking attendance:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { id, paid } = req.body;
+
+   
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Class ID is required",
+      });
+    }
+
+    // Validate paid field - should be boolean
+    if (typeof paid !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Paid status must be a boolean value (true or false)",
+      });
+    }
+
+    // Find and update the class schedule
+    const updatedClass = await classSchedule.findByIdAndUpdate(
+      id,
+      { 
+        paid: paid,
+        // Optionally add timestamp for when payment status was updated
+        paymentUpdatedAt: new Date()
+      },
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run mongoose validations
+      }
+    );
+
+    // Check if class was found
+    if (!updatedClass) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found with the provided ID",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Payment status updated successfully. Class marked as ${paid ? 'paid' : 'unpaid'}.`,
+      data: updatedClass,
+    });
+
+  } catch (error) {
+    // Handle mongoose validation errors
+    if (error.name === "ValidationError") {
+      const validationErrors = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: validationErrors,
+      });
+    }
+
+    // Handle mongoose cast errors (invalid ObjectId)
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID format",
+      });
+    }
+
+    console.error("Error updating payment status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
+export const updateBatchPaymentStatus = async (req, res) => {
+  try {
+    const { classIds, paid } = req.body;
+
+    // Validate required fields
+    if (!classIds || !Array.isArray(classIds) || classIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "classIds array is required and must not be empty",
+      });
+    }
+
+    // Validate paid field - should be boolean
+    if (typeof paid !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Paid status must be a boolean value (true or false)",
+      });
+    }
+
+    // Update multiple classes at once
+    const updateResult = await classSchedule.updateMany(
+      { _id: { $in: classIds } },
+      { 
+        paid: paid,
+        paymentUpdatedAt: new Date()
+      }
+    );
+
+    // Get the updated classes to return in response
+    const updatedClasses = await classSchedule.find({ 
+      _id: { $in: classIds } 
+    }).sort({ classDate: 1 });
+
+    // Check if any classes were updated
+    if (updateResult.modifiedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No classes were updated. Please check the provided IDs.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `${updateResult.modifiedCount} class(es) payment status updated successfully. Classes marked as ${paid ? 'paid' : 'unpaid'}.`,
+      data: {
+        modifiedCount: updateResult.modifiedCount,
+        matchedCount: updateResult.matchedCount,
+        updatedClasses: updatedClasses
+      },
+    });
+
+  } catch (error) {
+    // Handle mongoose validation errors
+    if (error.name === "ValidationError") {
+      const validationErrors = Object.values(error.errors).map(
+        (err) => err.message
+      );
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: validationErrors,
+      });
+    }
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "One or more class IDs have invalid format",
+      });
+    }
+
+    console.error("Error updating batch payment status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
+export const getPaymentStats = async (req, res) => {
+  try {
+    const { month, year, instructorId } = req.query;
+
+    // Build match conditions
+    let matchConditions = {};
+
+    // Add instructor filter if provided
+    if (instructorId) {
+      matchConditions.instructorId = instructorId;
+    }
+
+    // Add date filter if month and year are provided
+    if (month && year) {
+      const startDate = new Date(year, month - 1, 1); // month - 1 because Date months are 0-indexed
+      const endDate = new Date(year, month, 0, 23, 59, 59); // Last day of the month
+      
+      matchConditions.classDate = {
+        $gte: startDate,
+        $lte: endDate
+      };
+    }
+
+    // Aggregate payment statistics
+    const stats = await classSchedule.aggregate([
+      { $match: matchConditions },
+      {
+        $group: {
+          _id: null,
+          totalClasses: { $sum: 1 },
+          paidClasses: { 
+            $sum: { $cond: [{ $eq: ["$paid", true] }, 1, 0] }
+          },
+          unpaidClasses: { 
+            $sum: { $cond: [{ $eq: ["$paid", false] }, 1, 0] }
+          },
+          totalAmount: { $sum: "$classRate" },
+          paidAmount: { 
+            $sum: { $cond: [{ $eq: ["$paid", true] }, "$classRate", 0] }
+          },
+          unpaidAmount: { 
+            $sum: { $cond: [{ $eq: ["$paid", false] }, "$classRate", 0] }
+          }
+        }
+      }
+    ]);
+
+    const result = stats.length > 0 ? stats[0] : {
+      totalClasses: 0,
+      paidClasses: 0,
+      unpaidClasses: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      unpaidAmount: 0
+    };
+
+    // Remove the _id field from the result
+    delete result._id;
+
+    res.status(200).json({
+      success: true,
+      message: "Payment statistics retrieved successfully",
+      data: {
+        ...result,
+        filters: {
+          month: month || "all",
+          year: year || "all",
+          instructorId: instructorId || "all"
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting payment statistics:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",

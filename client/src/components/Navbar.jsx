@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AppContent } from "../context/Context";
 import { toast } from "react-toastify";
 import axios from "axios";
-import { Users, BookOpen, GraduationCap, ArrowLeft, Mail, LogOut, User } from "lucide-react";
+import { Users, BookOpen, GraduationCap, ArrowLeft, Mail, LogOut, User, LayoutDashboard, Code } from "lucide-react";
 
 
 function Navbar() {
@@ -47,6 +47,18 @@ function Navbar() {
       toast.error(error.message || "Logout error");
     }
   }; 
+
+  const goToDashboard = () => {
+    if (userData.userType === 'student') {
+      navigate('/studentdash');
+    } else if (userData.userType === 'admin') {
+      navigate('/admin');
+    }
+  };
+
+  const goToCodeEditor = () => {
+    navigate('/playground');
+  };
   
   useEffect(() => {
     if (userData && userData.userType) setUserType(userData.userType);
@@ -82,6 +94,27 @@ function Navbar() {
             </div>
           </div>
 
+          {/* Center Section - Navigation Buttons (only when logged in) */}
+          {userData && userData.name && (
+            <div className="hidden md:flex items-center space-x-3 mx-4">
+              <button
+                onClick={goToDashboard}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
+              >
+                <LayoutDashboard size={18} />
+                <span>Dashboard</span>
+              </button>
+              
+              <button
+                onClick={goToCodeEditor}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
+              >
+                <Code size={18} />
+                <span>Code Editor</span>
+              </button>
+            </div>
+          )}
+
           {/* Right Section - User Menu or Login */}
           <div className="flex items-center justify-end flex-shrink-0">
             {userData && userData.name ? (
@@ -108,6 +141,34 @@ function Navbar() {
 
                     {/* Menu Items */}
                     <div className="py-2">
+                      {/* Mobile Dashboard Button */}
+                      <button 
+                        onClick={goToDashboard}
+                        className="w-full md:hidden flex items-center space-x-3 px-4 py-3 hover:bg-blue-50 transition-colors duration-200 text-left group/item"
+                      >
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover/item:bg-blue-200 transition-colors">
+                          <LayoutDashboard size={16} className="text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm">Dashboard</p>
+                          <p className="text-xs text-gray-500">View your dashboard</p>
+                        </div>
+                      </button>
+
+                      {/* Mobile Code Editor Button */}
+                      <button 
+                        onClick={goToCodeEditor}
+                        className="w-full md:hidden flex items-center space-x-3 px-4 py-3 hover:bg-purple-50 transition-colors duration-200 text-left group/item"
+                      >
+                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center group-hover/item:bg-purple-200 transition-colors">
+                          <Code size={16} className="text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm">Code Editor</p>
+                          <p className="text-xs text-gray-500">Open playground</p>
+                        </div>
+                      </button>
+
                       {!userData.isAccountVerified && (
                         <button 
                           onClick={sendVerificationMail} 

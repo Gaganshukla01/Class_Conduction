@@ -9,6 +9,7 @@ import { courseRouter } from "./router/courseRouter.js"
 import { classScheduleRouter } from "./router/classScheduleRouter.js" 
 import { noteRouter } from "./router/noteRouter.js"
 import { homeworkRouter } from "./router/homeworkRouter.js"
+import { codeSaveRouter } from "./router/codeSave.js"
 
 
 const allowedOrigins = [
@@ -50,6 +51,7 @@ app.use("/api/course",courseRouter)
 app.use("/api/classschedule",classScheduleRouter)
 app.use("/api/notes",noteRouter)
 app.use("/api/homework",homeworkRouter)
+app.use("/api/codesave",codeSaveRouter)
 
 
 app.listen(port, () => console.log(`Server is running on port ${port}`))

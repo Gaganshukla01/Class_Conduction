@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import {
   Play,
   Download,
@@ -13,9 +13,15 @@ import {
   Minimize2,
   Save,
   ExternalLink,
+  FileText,
+  FolderOpen,
 } from "lucide-react";
-
+import { toast } from "react-toastify";
+import { AppContent } from "../context/Context";
+import axios from "axios";
+import CodeProjectsModal from "../components/CodeModal.jsx";
 const CodeEditor = () => {
+  const { userData, backend_url } = useContext(AppContent);
   const [activeLanguage, setActiveLanguage] = useState("javascript");
   const [codes, setCodes] = useState({
     javascript: "",
@@ -23,7 +29,7 @@ const CodeEditor = () => {
     html: "",
     css: "",
     cpp: "",
-    java: ""
+    java: "",
   });
   const [output, setOutput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -37,7 +43,40 @@ const CodeEditor = () => {
   const previewRef = useRef(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [suggestionPosition, setSuggestionPosition] = useState({ top: 0, left: 0 });
+  const [fileName, setFileName] = useState("");
+  const [suggestionPosition, setSuggestionPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+
+  // modal states
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSavedProject, setSelectedProject] = useState(null);
+  const [savedCode, setSavedCode] = useState("");
+  const [savedlanguage, setSavedLanguage] = useState("javascript");
+  const [savedProjectId, setSavedProjectId] = useState();
+
+  const handleSelectProject = (project) => {
+    setSelectedProject(project);
+    setSavedCode(project.code);
+    setSavedLanguage(project.language);
+    setSavedProjectId(project.id);
+    setFileName(project.title);
+  };
+  
+  // to set selcetd save code and language when modal opens
+  useEffect(() => {
+    setActiveLanguage(savedlanguage ? savedlanguage : "javascript");
+    setCodes((prevCodes) => ({
+      ...prevCodes,
+      [savedlanguage]: savedCode,
+    }));
+  }, [selectedSavedProject]);
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
 
   // Get current code for active language
   const currentCode = codes[activeLanguage];
@@ -47,72 +86,319 @@ const CodeEditor = () => {
     javascript: {
       name: "JavaScript",
       keywords: [
-        "function", "const", "let", "var", "if", "else", "for", "while", "do",
-        "switch", "case", "default", "return", "break", "continue", "try", "catch",
-        "finally", "throw", "class", "extends", "import", "export", "async", "await",
-        "Promise", "console", "document", "window", "addEventListener", "getElementById",
-        "querySelector", "createElement", "appendChild", "innerHTML", "textContent",
+        "function",
+        "const",
+        "let",
+        "var",
+        "if",
+        "else",
+        "for",
+        "while",
+        "do",
+        "switch",
+        "case",
+        "default",
+        "return",
+        "break",
+        "continue",
+        "try",
+        "catch",
+        "finally",
+        "throw",
+        "class",
+        "extends",
+        "import",
+        "export",
+        "async",
+        "await",
+        "Promise",
+        "console",
+        "document",
+        "window",
+        "addEventListener",
+        "getElementById",
+        "querySelector",
+        "createElement",
+        "appendChild",
+        "innerHTML",
+        "textContent",
       ],
       color: "bg-yellow-500",
     },
     python: {
       name: "Python",
       keywords: [
-        "def", "class", "if", "elif", "else", "for", "while", "in", "not", "and", "or",
-        "import", "from", "return", "yield", "try", "except", "finally", "with", "as",
-        "pass", "break", "continue", "print", "input", "len", "range", "enumerate",
-        "zip", "map", "filter", "lambda", "list", "dict", "set", "tuple", "str",
-        "int", "float", "bool", "open", "read", "write", "append",
+        "def",
+        "class",
+        "if",
+        "elif",
+        "else",
+        "for",
+        "while",
+        "in",
+        "not",
+        "and",
+        "or",
+        "import",
+        "from",
+        "return",
+        "yield",
+        "try",
+        "except",
+        "finally",
+        "with",
+        "as",
+        "pass",
+        "break",
+        "continue",
+        "print",
+        "input",
+        "len",
+        "range",
+        "enumerate",
+        "zip",
+        "map",
+        "filter",
+        "lambda",
+        "list",
+        "dict",
+        "set",
+        "tuple",
+        "str",
+        "int",
+        "float",
+        "bool",
+        "open",
+        "read",
+        "write",
+        "append",
       ],
       color: "bg-blue-500",
     },
     html: {
       name: "HTML",
       keywords: [
-        "html", "head", "title", "body", "div", "span", "p", "a", "img", "ul", "ol",
-        "li", "h1", "h2", "h3", "h4", "h5", "h6", "form", "input", "button", "textarea",
-        "select", "option", "table", "tr", "td", "th", "thead", "tbody", "nav",
-        "header", "footer", "main", "section", "article", "aside", "meta", "link",
-        "script", "style", "br", "hr", "strong", "em", "code", "pre", "blockquote",
+        "html",
+        "head",
+        "title",
+        "body",
+        "div",
+        "span",
+        "p",
+        "a",
+        "img",
+        "ul",
+        "ol",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "form",
+        "input",
+        "button",
+        "textarea",
+        "select",
+        "option",
+        "table",
+        "tr",
+        "td",
+        "th",
+        "thead",
+        "tbody",
+        "nav",
+        "header",
+        "footer",
+        "main",
+        "section",
+        "article",
+        "aside",
+        "meta",
+        "link",
+        "script",
+        "style",
+        "br",
+        "hr",
+        "strong",
+        "em",
+        "code",
+        "pre",
+        "blockquote",
       ],
       color: "bg-orange-500",
     },
     css: {
       name: "CSS",
       keywords: [
-        "color", "background", "margin", "padding", "border", "width", "height",
-        "font-size", "font-family", "text-align", "display", "position", "top", "left",
-        "right", "bottom", "float", "clear", "overflow", "z-index", "opacity",
-        "transform", "transition", "animation", "hover", "focus", "active", "visited",
-        "flex", "grid", "align-items", "justify-content", "flex-direction", "flex-wrap",
-        "gap", "box-shadow", "border-radius", "linear-gradient", "rgba", "px", "em",
-        "rem", "vh", "vw", "auto", "none", "block", "inline", "inline-block",
-        "relative", "absolute", "fixed", "sticky",
+        "color",
+        "background",
+        "margin",
+        "padding",
+        "border",
+        "width",
+        "height",
+        "font-size",
+        "font-family",
+        "text-align",
+        "display",
+        "position",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "float",
+        "clear",
+        "overflow",
+        "z-index",
+        "opacity",
+        "transform",
+        "transition",
+        "animation",
+        "hover",
+        "focus",
+        "active",
+        "visited",
+        "flex",
+        "grid",
+        "align-items",
+        "justify-content",
+        "flex-direction",
+        "flex-wrap",
+        "gap",
+        "box-shadow",
+        "border-radius",
+        "linear-gradient",
+        "rgba",
+        "px",
+        "em",
+        "rem",
+        "vh",
+        "vw",
+        "auto",
+        "none",
+        "block",
+        "inline",
+        "inline-block",
+        "relative",
+        "absolute",
+        "fixed",
+        "sticky",
       ],
       color: "bg-purple-500",
     },
     cpp: {
       name: "C++",
       keywords: [
-        "include", "using", "namespace", "std", "int", "char", "float", "double",
-        "bool", "void", "string", "vector", "map", "set", "pair", "queue", "stack",
-        "if", "else", "for", "while", "do", "switch", "case", "default", "break",
-        "continue", "return", "class", "struct", "public", "private", "protected",
-        "virtual", "const", "static", "template", "typename", "auto", "new", "delete",
-        "try", "catch", "throw", "cout", "cin", "endl", "main", "sizeof", "nullptr",
+        "include",
+        "using",
+        "namespace",
+        "std",
+        "int",
+        "char",
+        "float",
+        "double",
+        "bool",
+        "void",
+        "string",
+        "vector",
+        "map",
+        "set",
+        "pair",
+        "queue",
+        "stack",
+        "if",
+        "else",
+        "for",
+        "while",
+        "do",
+        "switch",
+        "case",
+        "default",
+        "break",
+        "continue",
+        "return",
+        "class",
+        "struct",
+        "public",
+        "private",
+        "protected",
+        "virtual",
+        "const",
+        "static",
+        "template",
+        "typename",
+        "auto",
+        "new",
+        "delete",
+        "try",
+        "catch",
+        "throw",
+        "cout",
+        "cin",
+        "endl",
+        "main",
+        "sizeof",
+        "nullptr",
       ],
       color: "bg-green-500",
     },
     java: {
       name: "Java",
       keywords: [
-        "public", "private", "protected", "static", "final", "abstract", "class",
-        "interface", "extends", "implements", "import", "package", "void", "int",
-        "String", "boolean", "char", "double", "float", "long", "short", "byte",
-        "if", "else", "for", "while", "do", "switch", "case", "default", "break",
-        "continue", "return", "try", "catch", "finally", "throw", "throws", "new",
-        "this", "super", "null", "true", "false", "System", "out", "println",
-        "print", "Scanner", "ArrayList", "HashMap", "main",
+        "public",
+        "private",
+        "protected",
+        "static",
+        "final",
+        "abstract",
+        "class",
+        "interface",
+        "extends",
+        "implements",
+        "import",
+        "package",
+        "void",
+        "int",
+        "String",
+        "boolean",
+        "char",
+        "double",
+        "float",
+        "long",
+        "short",
+        "byte",
+        "if",
+        "else",
+        "for",
+        "while",
+        "do",
+        "switch",
+        "case",
+        "default",
+        "break",
+        "continue",
+        "return",
+        "try",
+        "catch",
+        "finally",
+        "throw",
+        "throws",
+        "new",
+        "this",
+        "super",
+        "null",
+        "true",
+        "false",
+        "System",
+        "out",
+        "println",
+        "print",
+        "Scanner",
+        "ArrayList",
+        "HashMap",
+        "main",
       ],
       color: "bg-red-500",
     },
@@ -121,25 +407,25 @@ const CodeEditor = () => {
   // Calculate suggestion position
   const calculateSuggestionPosition = (textarea, cursorPos) => {
     if (!textarea) return { top: 0, left: 0 };
-    
+
     const text = textarea.value.substring(0, cursorPos);
-    const lines = text.split('\n');
+    const lines = text.split("\n");
     const currentLineIndex = lines.length - 1;
-    const currentLineText = lines[currentLineIndex] || '';
-    
+    const currentLineText = lines[currentLineIndex] || "";
+
     const textareaRect = textarea.getBoundingClientRect();
     const scrollTop = textarea.scrollTop;
-    
+
     const lineHeight = 25.6;
     const charWidth = 9.6;
-    
-    const lineTop = (currentLineIndex * lineHeight) - scrollTop;
+
+    const lineTop = currentLineIndex * lineHeight - scrollTop;
     const charPosition = currentLineText.length * charWidth;
-    
+
     const rightEdge = textareaRect.width - 280;
     const left = Math.min(charPosition + 50, Math.max(rightEdge, 50));
     const top = Math.max(lineTop + lineHeight + 5, 5);
-    
+
     return { top, left };
   };
 
@@ -149,22 +435,25 @@ const CodeEditor = () => {
     const cursorPos = e.target.selectionStart;
 
     // Update code for current language
-    setCodes(prev => ({
+    setCodes((prev) => ({
       ...prev,
-      [activeLanguage]: value
+      [activeLanguage]: value,
     }));
     setCursorPosition(cursorPos);
 
     // Update suggestion position
     if (textareaRef.current) {
-      const position = calculateSuggestionPosition(textareaRef.current, cursorPos);
+      const position = calculateSuggestionPosition(
+        textareaRef.current,
+        cursorPos
+      );
       setSuggestionPosition(position);
     }
 
     // Handle autocomplete suggestions
     const textBeforeCursor = value.substring(0, cursorPos);
     const lastWordMatch = textBeforeCursor.match(/\b\w+$/);
-    const currentWord = lastWordMatch ? lastWordMatch[0] : '';
+    const currentWord = lastWordMatch ? lastWordMatch[0] : "";
 
     if (currentWord.length > 1) {
       const matchingKeywords = languages[activeLanguage].keywords.filter(
@@ -187,7 +476,7 @@ const CodeEditor = () => {
     const textBeforeCursor = currentCode.substring(0, cursorPosition);
     const textAfterCursor = currentCode.substring(cursorPosition);
     const lastWordMatch = textBeforeCursor.match(/\b\w+$/);
-    const currentWord = lastWordMatch ? lastWordMatch[0] : '';
+    const currentWord = lastWordMatch ? lastWordMatch[0] : "";
 
     const newTextBefore = textBeforeCursor.substring(
       0,
@@ -195,9 +484,9 @@ const CodeEditor = () => {
     );
     const newCode = newTextBefore + suggestion + textAfterCursor;
 
-    setCodes(prev => ({
+    setCodes((prev) => ({
       ...prev,
-      [activeLanguage]: newCode
+      [activeLanguage]: newCode,
     }));
     setShowSuggestions(false);
 
@@ -209,7 +498,6 @@ const CodeEditor = () => {
       }
     }, 0);
   };
-
   // Handle key events
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
@@ -222,43 +510,67 @@ const CodeEditor = () => {
       }
     }
   };
+  // Clear current language code
+  const clearCode = () => {
+    setCodes((prev) => ({
+      ...prev,
+      [activeLanguage]: "",
+    }));
+    setOutput("");
+    setShowSuggestions(false);
+    if (activeLanguage === "html" || activeLanguage === "css") {
+      setShowPreview(false);
+    }
+  };
 
   // Save code (using memory storage as per restrictions)
   const saveCodeToBackend = async () => {
     if (!currentCode.trim()) {
-      alert("❌ No code to save. Please write some code first.");
+      toast.warning(" No code to save. Please write some code first.");
       return;
     }
 
     setIsSaving(true);
 
     try {
-      // Simulate backend save
-      const savedProjects = JSON.parse(sessionStorage.getItem('savedProjects') || '[]');
       const newProject = {
-        id: Date.now(),
+        _id: savedProjectId,
         code: currentCode,
+        userId: userData.userId,
+        title: fileName,
         language: activeLanguage,
         timestamp: new Date().toISOString(),
         filename: `code_${Date.now()}.${
-          activeLanguage === 'javascript' ? 'js' : 
-          activeLanguage === 'python' ? 'py' : 
-          activeLanguage === 'html' ? 'html' : 
-          activeLanguage === 'css' ? 'css' : 
-          activeLanguage === 'cpp' ? 'cpp' : 'java'
-        }`
+          activeLanguage === "javascript"
+            ? "js"
+            : activeLanguage === "python"
+              ? "py"
+              : activeLanguage === "html"
+                ? "html"
+                : activeLanguage === "css"
+                  ? "css"
+                  : activeLanguage === "cpp"
+                    ? "cpp"
+                    : "java"
+        }`,
       };
-      
-      savedProjects.push(newProject);
-      sessionStorage.setItem('savedProjects', JSON.stringify(savedProjects));
-      
+
+      const response = await axios.post(
+        `${backend_url}/api/codesave/save`,
+        newProject
+      );
+
       setTimeout(() => {
-        alert("✅ Code saved successfully!");
-        console.log("Saved project:", newProject);
+        toast.success(response.data.message);
+        setOutput("");
+        setSavedProjectId("");
+        setSavedCode("");
+        setSavedLanguage();
+        setFileName("")
         setIsSaving(false);
       }, 1000);
     } catch (error) {
-      alert("❌ Failed to save code. Please try again.");
+      toast.error(response.data.message);
       console.error("Save failed:", error);
       setIsSaving(false);
     }
@@ -266,23 +578,23 @@ const CodeEditor = () => {
 
   // Enhanced HTML/CSS preview
   const renderHTMLCSS = () => {
-    const htmlCode = codes.html || '';
-    const cssCode = codes.css || '';
-    
+    const htmlCode = codes.html || "";
+    const cssCode = codes.css || "";
+
     let fullHTML = htmlCode;
-    
+
     // If CSS exists, inject it into HTML
     if (cssCode) {
       const styleTag = `<style>${cssCode}</style>`;
-      if (fullHTML.includes('</head>')) {
-        fullHTML = fullHTML.replace('</head>', `${styleTag}</head>`);
-      } else if (fullHTML.includes('<head>')) {
-        fullHTML = fullHTML.replace('<head>', `<head>${styleTag}`);
+      if (fullHTML.includes("</head>")) {
+        fullHTML = fullHTML.replace("</head>", `${styleTag}</head>`);
+      } else if (fullHTML.includes("<head>")) {
+        fullHTML = fullHTML.replace("<head>", `<head>${styleTag}`);
       } else {
         fullHTML = `<!DOCTYPE html><html><head>${styleTag}</head><body>${fullHTML}</body></html>`;
       }
     }
-    
+
     return fullHTML;
   };
 
@@ -338,12 +650,13 @@ const CodeEditor = () => {
       func(safeGlobals);
       return {
         success: true,
-        output: output.length > 0 ? output.join('\n') : 'Code executed successfully'
+        output:
+          output.length > 0 ? output.join("\n") : "Code executed successfully",
       };
     } catch (err) {
       return {
         success: false,
-        output: `Error: ${err.message}`
+        output: `Error: ${err.message}`,
       };
     }
   };
@@ -409,7 +722,7 @@ const CodeEditor = () => {
   const executeHTML = (code) => {
     // Show preview for HTML
     setShowPreview(true);
-    
+
     return {
       success: true,
       output: `HTML rendered successfully!\n\n📄 Preview is now visible in the preview panel.\n\nCode structure analyzed:\n- HTML tags: ${(code.match(/<[^>]+>/g) || []).length}\n- Text content: ${code.replace(/<[^>]*>/g, "").trim().length} characters`,
@@ -427,7 +740,7 @@ const CodeEditor = () => {
 
     return {
       success: true,
-      output: `CSS parsed successfully!\n\n🎨 ${codes.html ? 'Combined HTML+CSS preview is visible in the preview panel.' : 'To see the visual output, write some HTML code first.'}\n\nStylesheet analysis:\n- Selectors: ${selectors}\n- Properties: ${properties}`,
+      output: `CSS parsed successfully!\n\n🎨 ${codes.html ? "Combined HTML+CSS preview is visible in the preview panel." : "To see the visual output, write some HTML code first."}\n\nStylesheet analysis:\n- Selectors: ${selectors}\n- Properties: ${properties}`,
     };
   };
 
@@ -531,19 +844,6 @@ const CodeEditor = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Clear current language code
-  const clearCode = () => {
-    setCodes(prev => ({
-      ...prev,
-      [activeLanguage]: ""
-    }));
-    setOutput("");
-    setShowSuggestions(false);
-    if (activeLanguage === 'html' || activeLanguage === 'css') {
-      setShowPreview(false);
-    }
-  };
-
   // Toggle theme
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -566,7 +866,7 @@ const CodeEditor = () => {
       alert("No HTML/CSS content to preview!");
       return;
     }
-    const newWindow = window.open('', '_blank');
+    const newWindow = window.open("", "_blank");
     if (newWindow) {
       newWindow.document.write(htmlContent);
       newWindow.document.close();
@@ -592,7 +892,7 @@ const CodeEditor = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            {(activeLanguage === 'html' || activeLanguage === 'css') && (
+            {(activeLanguage === "html" || activeLanguage === "css") && (
               <button
                 onClick={openPreviewInNewWindow}
                 className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition-colors shadow-lg"
@@ -602,6 +902,23 @@ const CodeEditor = () => {
                 <span>Preview</span>
               </button>
             )}
+
+            <FileText size={18} className="text-white-500" />
+            <input
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              placeholder="Enter file name..."
+              className="bg-transparent outline-none flex-1 text-white-900 placeholder-white-800"
+            />
+
+            <button
+              onClick={handleOpenModal}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+            >
+              <FolderOpen size={18} />
+              <span>Open Project</span>
+            </button>
 
             <button
               onClick={toggleOutput}
@@ -657,7 +974,7 @@ const CodeEditor = () => {
               onClick={() => {
                 setActiveLanguage(key);
                 setShowSuggestions(false);
-                if (key !== 'html' && key !== 'css') {
+                if (key !== "html" && key !== "css") {
                   setShowPreview(false);
                 }
               }}
@@ -667,7 +984,9 @@ const CodeEditor = () => {
                   : `${theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-200 hover:bg-gray-300"}`
               }`}
             >
-              <div className={`w-3 h-3 rounded-full ${activeLanguage === key ? 'bg-white' : lang.color}`}></div>
+              <div
+                className={`w-3 h-3 rounded-full ${activeLanguage === key ? "bg-white" : lang.color}`}
+              ></div>
               <span className="font-medium">{lang.name}</span>
             </button>
           ))}
@@ -677,11 +996,17 @@ const CodeEditor = () => {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Code Editor Panel */}
-        <div className={`flex-1 flex flex-col ${showOutput ? (isOutputMaximized ? 'w-0' : 'w-1/2') : 'w-full'} transition-all duration-300`}>
-          <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}>
+        <div
+          className={`flex-1 flex flex-col ${showOutput ? (isOutputMaximized ? "w-0" : "w-1/2") : "w-full"} transition-all duration-300`}
+        >
+          <div
+            className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}
+          >
             <div className="flex items-center space-x-2">
               <Terminal className="w-4 h-4" />
-              <span className="font-medium">{languages[activeLanguage].name} Editor</span>
+              <span className="font-medium">
+                {languages[activeLanguage].name} Editor
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <button
@@ -724,7 +1049,8 @@ const CodeEditor = () => {
               spellCheck="false"
               style={{
                 tabSize: 2,
-                fontFamily: 'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace'
+                fontFamily:
+                  'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace',
               }}
             />
 
@@ -740,7 +1066,9 @@ const CodeEditor = () => {
                 }}
               >
                 <div className="p-2">
-                  <div className="text-xs font-medium mb-2 text-gray-500">Suggestions</div>
+                  <div className="text-xs font-medium mb-2 text-gray-500">
+                    Suggestions
+                  </div>
                   {suggestions.map((suggestion, index) => (
                     <button
                       key={index}
@@ -751,7 +1079,9 @@ const CodeEditor = () => {
                           : "hover:bg-gray-100"
                       } transition-colors`}
                     >
-                      <span className="font-mono font-medium">{suggestion}</span>
+                      <span className="font-mono font-medium">
+                        {suggestion}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -762,22 +1092,28 @@ const CodeEditor = () => {
 
         {/* Output/Preview Panel */}
         {showOutput && (
-          <div className={`${isOutputMaximized ? 'flex-1' : 'w-1/2'} flex flex-col border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} transition-all duration-300`}>
-           <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}>
+          <div
+            className={`${isOutputMaximized ? "flex-1" : "w-1/2"} flex flex-col border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} transition-all duration-300`}
+          >
+            <div
+              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}
+            >
               <div className="flex items-center space-x-2">
                 <Terminal className="w-4 h-4" />
                 <span className="font-medium">
-                  {showPreview && (activeLanguage === 'html' || activeLanguage === 'css') 
-                    ? 'Live Preview' 
-                    : 'Output Console'
-                  }
+                  {showPreview &&
+                  (activeLanguage === "html" || activeLanguage === "css")
+                    ? "Live Preview"
+                    : "Output Console"}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={toggleOutputMaximize}
                   className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
-                  title={isOutputMaximized ? "Minimize Output" : "Maximize Output"}
+                  title={
+                    isOutputMaximized ? "Minimize Output" : "Maximize Output"
+                  }
                 >
                   {isOutputMaximized ? (
                     <Minimize2 className="w-4 h-4" />
@@ -789,7 +1125,8 @@ const CodeEditor = () => {
             </div>
 
             <div className="flex-1 overflow-hidden">
-              {showPreview && (activeLanguage === 'html' || activeLanguage === 'css') ? (
+              {showPreview &&
+              (activeLanguage === "html" || activeLanguage === "css") ? (
                 <div className="h-full">
                   <iframe
                     ref={previewRef}
@@ -807,13 +1144,20 @@ const CodeEditor = () => {
                       : "bg-gray-50 text-gray-800"
                   } transition-colors whitespace-pre-wrap`}
                 >
-                  {output || "Output will appear here when you run your code..."}
+                  {output ||
+                    "Output will appear here when you run your code..."}
                 </pre>
               )}
             </div>
           </div>
         )}
       </div>
+      <CodeProjectsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSelectProject={handleSelectProject}
+        userId={userData.userId}
+      />
     </div>
   );
 };
