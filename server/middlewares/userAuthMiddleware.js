@@ -1,9 +1,13 @@
 import jwt from "jsonwebtoken";
 
 const userAuth = async (req, res, next) => {
+    const {token}=req.cookies;
+    
     console.log('Received cookies:', req.cookies)
 console.log('Auth header:', req.headers.authorization)
-    const {token}=req.cookies;
+    // TEMPORARY - just for testing
+const testSecret = process.env.JWT_SECRET || 'your-local-jwt-secret-here'
+const decoded = jwt.verify(token, testSecret)
 
     try {
         const tokenDecode = jwt.verify(token, process.env.JWT_SECRET);
