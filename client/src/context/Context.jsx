@@ -65,7 +65,7 @@ export const AppContextProvider = (props) => {
     axios.defaults.withCredentials = true;
     try {
       const res = await axios.get(`${backend_url}/api/classschedule/getallclasses`);
-      res.data ? setAllScheduleeData(res.data) : toast.error(res.message);
+      res.data ? setAllScheduleeData(res.data.data) : toast.error(res.message);
     } catch (error) {
       toast.error(data.message);
     }

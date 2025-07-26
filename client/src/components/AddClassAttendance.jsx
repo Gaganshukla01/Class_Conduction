@@ -19,7 +19,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export default function StudentAttendanceForm() {
-  const { getAllUserData, allUserData, backend_url } = useContext(AppContent);
+  const { getAllUserData, allUserData, backend_url, allSchedule } =
+    useContext(AppContent);
 
   const generateStudentData = (userData) => {
     if (!userData?.data || !Array.isArray(userData.data)) return [];
@@ -45,7 +46,6 @@ export default function StudentAttendanceForm() {
     };
 
     const generateRollNo = (id, index) => {
-      // Generate roll number from ID
       const shortId = id.substring(id.length - 4);
       return `ST${shortId.toUpperCase()}`;
     };
@@ -57,7 +57,7 @@ export default function StudentAttendanceForm() {
         name: student.name,
         rollNo: generateRollNo(student._id, index),
         email: student.email,
-        status: "present", // Assuming all fetched students are present
+        status: "present",
         avatar: generateAvatar(student.name),
         color: colors[index % colors.length],
         isVerified: student.isAccountVerified,
@@ -72,13 +72,10 @@ export default function StudentAttendanceForm() {
     const loadStudentData = async () => {
       try {
         setLoading(true);
-
-        // If data is already available, use it
         if (allUserData?.data && Array.isArray(allUserData.data)) {
           const students = generateStudentData(allUserData);
           setStudentsData(students);
         } else {
-          // Try to fetch data if not available
           if (typeof getAllUserData === "function") {
             await getAllUserData();
           }
@@ -105,27 +102,41 @@ export default function StudentAttendanceForm() {
   const [formData, setFormData] = useState({
     studentId: "",
     studentName: "",
-    className: "",
-    date: "",
-    classStartTime: "",
-    classEndTime: "",
+    selectedClass: null,
     topicCovered: "",
     additionalNotes: "",
   });
 
   const [message, setMessage] = useState("");
-  const [showTimeModal, setShowTimeModal] = useState(false);
-  const [showDateModal, setShowDateModal] = useState(false);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+  const [showClassDropdown, setShowClassDropdown] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
-  const [currentTimeField, setCurrentTimeField] = useState("");
-  const [tempTime, setTempTime] = useState({
-    hours: "09",
-    minutes: "00",
-    period: "AM",
-  });
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
+
+  // Get available classes for selected student
+  const getAvailableClasses = (studentId) => {
+    if (!allSchedule || !Array.isArray(allSchedule) || !studentId) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return allSchedule
+      .filter(
+        (scheduleClass) =>
+          scheduleClass.studentsEnrolled &&
+          scheduleClass.studentsEnrolled.includes(studentId)
+      )
+      .map((scheduleClass) => ({
+        ...scheduleClass,
+        classDate: new Date(scheduleClass.classDate),
+      }))
+      .filter((scheduleClass) => {
+        const classDate = new Date(scheduleClass.classDate);
+        classDate.setHours(0, 0, 0, 0);
+        return classDate >= today;
+      })
+      .sort((a, b) => a.classDate - b.classDate)
+      .slice(0, 2); // Only show today and next class
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -140,9 +151,18 @@ export default function StudentAttendanceForm() {
       ...prev,
       studentId: student.id,
       studentName: student.name,
+      selectedClass: null,
     }));
     setShowStudentDropdown(false);
     setStudentSearch("");
+  };
+
+  const handleClassSelect = (selectedClass) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedClass: selectedClass,
+    }));
+    setShowClassDropdown(false);
   };
 
   const filteredStudents = studentsData.filter(
@@ -152,151 +172,74 @@ export default function StudentAttendanceForm() {
       student.email.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
-  const openTimeModal = (fieldName, currentValue = "") => {
-    setCurrentTimeField(fieldName);
-    if (currentValue) {
-      const [time, period] =
-        currentValue.includes("AM") || currentValue.includes("PM")
-          ? currentValue.split(" ")
-          : [currentValue, "AM"];
-      const [hours, minutes] = time.split(":");
-      setTempTime({
-        hours: hours.padStart(2, "0"),
-        minutes: minutes.padStart(2, "0"),
-        period: period || "AM",
-      });
-    } else {
-      setTempTime({ hours: "09", minutes: "00", period: "AM" });
-    }
-    setShowTimeModal(true);
-  };
-
-  const handleTimeChange = (type, increment) => {
-    setTempTime((prev) => {
-      let newValue = { ...prev };
-
-      if (type === "hours") {
-        let hours = parseInt(prev.hours);
-        hours += increment;
-        if (hours > 12) hours = 1;
-        if (hours < 1) hours = 12;
-        newValue.hours = hours.toString().padStart(2, "0");
-      } else if (type === "minutes") {
-        let minutes = parseInt(prev.minutes);
-        minutes += increment * 5;
-        if (minutes >= 60) minutes = 0;
-        if (minutes < 0) minutes = 55;
-        newValue.minutes = minutes.toString().padStart(2, "0");
-      } else if (type === "period") {
-        newValue.period = prev.period === "AM" ? "PM" : "AM";
-      }
-
-      return newValue;
-    });
-  };
-
-  const confirmTime = () => {
-    const timeString = `${tempTime.hours}:${tempTime.minutes} ${tempTime.period}`;
-    setFormData((prev) => ({
-      ...prev,
-      [currentTimeField]: timeString,
-    }));
-    setShowTimeModal(false);
-  };
-
-  // Date picker functions
-  const getDaysInMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
   const formatDate = (date) => {
-    return date.toISOString().split("T")[0];
-  };
-
-  const handleDateSelect = (day) => {
-    const newDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      day
-    );
-    setSelectedDate(newDate);
-    setFormData((prev) => ({
-      ...prev,
-      date: formatDate(newDate),
-    }));
-    setShowDateModal(false);
-  };
-
-  const navigateMonth = (direction) => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + direction);
-      return newDate;
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
-  const convertTimeToDateTime = (dateStr, timeStr) => {
-    if (!dateStr || !timeStr) return null;
-
-    const [time, period] = timeStr.split(" ");
+  const formatTime = (time) => {
     const [hours, minutes] = time.split(":");
-    let hour24 = parseInt(hours);
+    const hour = parseInt(hours);
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${minutes} ${period}`;
+  };
 
-    if (period === "PM" && hour24 !== 12) {
-      hour24 += 12;
-    } else if (period === "AM" && hour24 === 12) {
-      hour24 = 0;
-    }
-
-    const dateTime = new Date(dateStr);
-    dateTime.setHours(hour24, parseInt(minutes), 0, 0);
-    return dateTime.toISOString();
+  const isToday = (date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
   };
 
   const handleSubmit = async () => {
+    if (!formData.selectedClass) {
+      toast.error("Please select a class");
+      return;
+    }
+
+    if (!formData.topicCovered.trim()) {
+      toast.error("Topics covered is required");
+      return;
+    }
+
     const payload = {
-      studentId: formData.studentId,
-      studentName: formData.studentName,
-      className: formData.className,
-      classStartAt: convertTimeToDateTime(
-        formData.date,
-        formData.classStartTime
-      ),
-      classEndAt: convertTimeToDateTime(formData.date, formData.classEndTime),
+      id: formData.selectedClass._id,
+      attendance: "Present",
+      notes: formData.additionalNotes,
       topicCovered: formData.topicCovered,
-      additionalNotes: formData.additionalNotes,
     };
 
     try {
-      const res= await axios.post(`${backend_url}/api/attendence/add`,payload)
-      if(res.data.success){
-        toast.success(res.data.message)
-      }
-   
-      setTimeout(() => {
-        setMessage("✅ Student attendance recorded successfully!");
-        setFormData({
-          studentId: "",
-          studentName: "",
-          className: "",
-          date: "",
-          classStartTime: "",
-          classEndTime: "",
-          topicCovered: "",
-          additionalNotes: "",
-        });
+      const res = await axios.put(
+        `${backend_url}/api/classschedule/markattendence`,
+        payload
+      );
+      if (res.data.success) {
+        toast.success(res.data.message);
 
         setTimeout(() => {
-          setMessage("");
-        }, 3000);
-      }, 1000);
+          setMessage("✅ Student attendance recorded successfully!");
+          setFormData({
+            studentId: "",
+            studentName: "",
+            selectedClass: null,
+            topicCovered: "",
+            additionalNotes: "",
+          });
+
+          setTimeout(() => {
+            setMessage("");
+          }, 3000);
+        }, 1000);
+      }
     } catch (error) {
       console.error("Error recording attendance:", error);
-      toast.error("Error recording attendance:");
+      toast.error(
+        error.response?.data?.message || "Error recording attendance"
+      );
       setMessage("❌ Error recording attendance");
       setTimeout(() => {
         setMessage("");
@@ -305,23 +248,7 @@ export default function StudentAttendanceForm() {
   };
 
   const selectedStudent = studentsData.find((s) => s.id === formData.studentId);
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const daysInMonth = getDaysInMonth(currentDate);
-  const firstDay = getFirstDayOfMonth(currentDate);
-  const today = new Date();
+  const availableClasses = getAvailableClasses(formData.studentId);
 
   // Show loading state
   if (loading) {
@@ -358,196 +285,6 @@ export default function StudentAttendanceForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-800 to-indigo-900 px-6 py-12 text-white">
-      {/* Time Modal */}
-      {showTimeModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-sm w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-white">Select Time</h3>
-              <button
-                onClick={() => setShowTimeModal(false)}
-                className="text-white/70 hover:text-white transition"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-center space-x-4 mb-8">
-              {/* Hours */}
-              <div className="text-center">
-                <button
-                  onClick={() => handleTimeChange("hours", 1)}
-                  className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition mb-2"
-                >
-                  <ChevronUp size={20} />
-                </button>
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 rounded-2xl flex items-center justify-center text-2xl font-bold border border-white/20">
-                  {tempTime.hours}
-                </div>
-                <button
-                  onClick={() => handleTimeChange("hours", -1)}
-                  className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition mt-2"
-                >
-                  <ChevronDown size={20} />
-                </button>
-              </div>
-
-              <div className="text-3xl font-bold text-white/60">:</div>
-
-              {/* Minutes */}
-              <div className="text-center">
-                <button
-                  onClick={() => handleTimeChange("minutes", 1)}
-                  className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition mb-2"
-                >
-                  <ChevronUp size={20} />
-                </button>
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 rounded-2xl flex items-center justify-center text-2xl font-bold border border-white/20">
-                  {tempTime.minutes}
-                </div>
-                <button
-                  onClick={() => handleTimeChange("minutes", -1)}
-                  className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition mt-2"
-                >
-                  <ChevronDown size={20} />
-                </button>
-              </div>
-
-              {/* AM/PM */}
-              <div className="text-center">
-                <button
-                  onClick={() => handleTimeChange("period")}
-                  className="w-16 h-20 bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 rounded-2xl flex items-center justify-center text-lg font-bold border border-white/20 hover:from-emerald-500/40 hover:to-cyan-500/40 transition"
-                >
-                  {tempTime.period}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowTimeModal(false)}
-                className="flex-1 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmTime}
-                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 transition font-semibold"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Date Modal */}
-      {showDateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20 shadow-2xl max-w-md w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-white">Select Date</h3>
-              <button
-                onClick={() => setShowDateModal(false)}
-                className="text-white/70 hover:text-white transition"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Month Navigation */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={() => navigateMonth(-1)}
-                className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <h4 className="text-lg font-semibold">
-                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-              </h4>
-              <button
-                onClick={() => navigateMonth(1)}
-                className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-1 mb-4">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div
-                  key={day}
-                  className="text-center text-sm text-white/60 py-2 font-medium"
-                >
-                  {day}
-                </div>
-              ))}
-
-              {/* Empty cells for days before month starts */}
-              {Array.from({ length: firstDay }, (_, i) => (
-                <div key={`empty-${i}`} className="h-10"></div>
-              ))}
-
-              {/* Days of the month */}
-              {Array.from({ length: daysInMonth }, (_, i) => {
-                const day = i + 1;
-                const isToday =
-                  today.getDate() === day &&
-                  today.getMonth() === currentDate.getMonth() &&
-                  today.getFullYear() === currentDate.getFullYear();
-                const isSelected =
-                  selectedDate &&
-                  selectedDate.getDate() === day &&
-                  selectedDate.getMonth() === currentDate.getMonth() &&
-                  selectedDate.getFullYear() === currentDate.getFullYear();
-
-                return (
-                  <button
-                    key={day}
-                    onClick={() => handleDateSelect(day)}
-                    className={`h-10 w-10 rounded-xl flex items-center justify-center text-sm font-medium transition ${
-                      isSelected
-                        ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white"
-                        : isToday
-                          ? "bg-white/20 text-white ring-2 ring-emerald-400"
-                          : "hover:bg-white/10 text-white/80"
-                    }`}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowDateModal(false)}
-                className="flex-1 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (selectedDate) {
-                    setFormData((prev) => ({
-                      ...prev,
-                      date: formatDate(selectedDate),
-                    }));
-                  }
-                  setShowDateModal(false);
-                }}
-                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 transition font-semibold"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-2xl mx-auto bg-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
@@ -596,8 +333,34 @@ export default function StudentAttendanceForm() {
           </div>
         )}
 
+        {/* Selected Class Info */}
+        {formData.selectedClass && (
+          <div className="mb-6 bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-4 rounded-2xl border border-blue-400/30">
+            <div className="flex items-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm mr-4">
+                <BookOpen size={20} />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-blue-200">
+                  {formData.selectedClass.className}
+                </div>
+                <div className="text-sm text-gray-300 flex items-center flex-wrap gap-2">
+                  <span>{formatDate(formData.selectedClass.classDate)}</span>
+                  <span>{formatTime(formData.selectedClass.classTime)}</span>
+                  <span>Duration: {formData.selectedClass.classDuration}h</span>
+                  {isToday(formData.selectedClass.classDate) && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                      Today
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-6">
-          {/* Enhanced Student Dropdown */}
+          {/* Student Dropdown */}
           <div className="relative">
             <label className="block text-sm font-medium text-gray-200 mb-2">
               Select Present Student
@@ -620,7 +383,6 @@ export default function StudentAttendanceForm() {
 
             {showStudentDropdown && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-lg rounded-2xl border border-white/20 shadow-2xl z-40 overflow-hidden">
-                {/* Search */}
                 <div className="p-4 border-b border-white/10">
                   <div className="flex items-center bg-white/5 rounded-xl px-3 py-2">
                     <Search size={16} className="text-gray-400 mr-2" />
@@ -634,7 +396,6 @@ export default function StudentAttendanceForm() {
                   </div>
                 </div>
 
-                {/* Student List */}
                 <div className="max-h-64 overflow-y-auto">
                   {filteredStudents.map((student) => (
                     <div
@@ -680,75 +441,78 @@ export default function StudentAttendanceForm() {
             )}
           </div>
 
-          {/* Class Name and Enhanced Date Picker */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Input
-              label="Class Name"
-              name="className"
-              value={formData.className}
-              onChange={handleChange}
-              Icon={BookOpen}
-              required
-            />
-
-            {/* Enhanced Date Input */}
-            <div>
+          {/* Class Dropdown */}
+          {formData.studentId && (
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-200 mb-2">
-                Date
+                Select Class
               </label>
               <div
-                onClick={() => setShowDateModal(true)}
-                className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-emerald-400 transition backdrop-blur-sm cursor-pointer hover:bg-white/10"
+                onClick={() => setShowClassDropdown(!showClassDropdown)}
+                className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-emerald-400 transition backdrop-blur-sm cursor-pointer"
               >
-                <Calendar size={18} className="text-gray-300 mr-3" />
+                <BookOpen size={18} className="text-gray-300 mr-3" />
                 <span className="text-white flex-1">
-                  {formData.date
-                    ? new Date(formData.date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })
-                    : "Select date..."}
+                  {formData.selectedClass
+                    ? `${formData.selectedClass.className} - ${formatDate(formData.selectedClass.classDate)}`
+                    : "Choose a class..."}
                 </span>
-                <Calendar size={16} className="text-gray-400 ml-2" />
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform ${showClassDropdown ? "rotate-180" : ""}`}
+                />
               </div>
+
+              {showClassDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-lg rounded-2xl border border-white/20 shadow-2xl z-40 overflow-hidden">
+                  <div className="max-h-64 overflow-y-auto">
+                    {availableClasses.length > 0 ? (
+                      availableClasses.map((classItem) => (
+                        <div
+                          key={classItem._id}
+                          onClick={() => handleClassSelect(classItem)}
+                          className="flex items-center p-4 hover:bg-white/10 cursor-pointer transition group"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs mr-3 group-hover:scale-110 transition-transform">
+                            <BookOpen size={16} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-white">
+                              {classItem.className}
+                            </div>
+                            <div className="text-sm text-gray-400 flex items-center gap-2">
+                              <span>{formatDate(classItem.classDate)}</span>
+                              <span>{formatTime(classItem.classTime)}</span>
+                              <span>Duration: {classItem.classDuration}h</span>
+                              {isToday(classItem.classDate) && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                                  Today
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-gray-400">
+                        No upcoming classes found for this student
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
-          {/* Class Times */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <TimeInput
-              label="Class Start Time"
-              name="classStartTime"
-              value={formData.classStartTime}
-              onClick={() =>
-                openTimeModal("classStartTime", formData.classStartTime)
-              }
-              Icon={Clock}
-              required
-            />
-            <TimeInput
-              label="Class End Time"
-              name="classEndTime"
-              value={formData.classEndTime}
-              onClick={() =>
-                openTimeModal("classEndTime", formData.classEndTime)
-              }
-              Icon={Clock}
-              required
-            />
-          </div>
-
-          {/* Topics Covered */}
           <TextArea
-            label="Topics Covered"
+            label="Topics Covered *"
             name="topicCovered"
             value={formData.topicCovered}
             onChange={handleChange}
             Icon={BookOpen}
             placeholder="What topics were covered in this class..."
             rows={3}
+            required={true}
           />
 
           {/* Additional Notes */}
@@ -767,10 +531,8 @@ export default function StudentAttendanceForm() {
             onClick={handleSubmit}
             disabled={
               !formData.studentId ||
-              !formData.className ||
-              !formData.date ||
-              !formData.classStartTime ||
-              !formData.classEndTime
+              !formData.selectedClass ||
+              !formData.topicCovered.trim()
             }
             className="w-full mt-6 px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-2xl text-lg font-semibold hover:from-emerald-600 hover:to-cyan-700 transition-all duration-300 shadow-xl hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
@@ -778,63 +540,6 @@ export default function StudentAttendanceForm() {
             Record Attendance
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Input({
-  label,
-  name,
-  value,
-  onChange,
-  type = "text",
-  Icon,
-  required = false,
-  placeholder,
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-200 mb-2">
-        {label}
-      </label>
-      <div className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10 focus-within:ring-2 ring-emerald-400 transition backdrop-blur-sm">
-        {Icon && <Icon size={18} className="text-gray-300 mr-3" />}
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={onChange}
-          className="bg-transparent text-white w-full outline-none placeholder:text-gray-400"
-          placeholder={placeholder || label}
-          required={required}
-        />
-      </div>
-    </div>
-  );
-}
-
-function TimeInput({ label, name, value, onClick, Icon, required = false }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-200 mb-2">
-        {label}
-      </label>
-      <div
-        onClick={onClick}
-        className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-emerald-400 transition backdrop-blur-sm cursor-pointer hover:bg-white/10"
-      >
-        {Icon && <Icon size={18} className="text-gray-300 mr-3" />}
-        <input
-          type="text"
-          name={name}
-          value={value}
-          readOnly
-          className="bg-transparent text-white w-full outline-none placeholder:text-gray-400 cursor-pointer"
-          placeholder="Select time..."
-          required={required}
-        />
-        <Clock size={16} className="text-gray-400 ml-2" />
       </div>
     </div>
   );
