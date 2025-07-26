@@ -106,9 +106,7 @@ function App() {
           <Route 
             path="/emailVerify" 
             element={<EmailVerify />}
-              
-            } 
-          />
+       />
           
           {/* Admin-only routes */}
           <Route 
