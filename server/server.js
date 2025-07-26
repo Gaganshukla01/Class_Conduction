@@ -15,7 +15,8 @@ import { codeSaveRouter } from "./router/codeSave.js"
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000', 
-  'http://localhost:5173', 
+  'http://localhost:5173',
+  'https://class-conduction-a8ar.vercel.app',
 ]
 
 const app=express()
