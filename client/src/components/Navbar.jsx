@@ -21,7 +21,7 @@ function Navbar() {
       axios.defaults.withCredentials = true;
       const { data } = await axios.post(backend_url + "/api/auth/sendverifyOtp");
       if (data.sucess) { 
-        navigate("/EmailVerify");
+        navigate("/emailVerify");
       } else {
         toast.error(data.message);
       }
