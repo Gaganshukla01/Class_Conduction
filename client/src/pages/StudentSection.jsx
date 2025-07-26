@@ -35,12 +35,19 @@ import {
 import { AppContent } from "../context/Context";
 import axios from "axios";
 import PaymentTab from "../components/PaymentBoard";
+
 const ProgressTab = ({
   activeTab,
   allSchedule = [],
   homeWorkData = [],
   userData = {},
 }) => {
+
+  if(!allSchedule)
+  {
+   return <div className="text-white">Enroll the course</div>;
+  }
+  
   const progressData = useMemo(() => {
     const userSchedule = allSchedule.filter(
       (schedule) =>
