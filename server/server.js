@@ -14,41 +14,50 @@ import { codeSaveRouter } from "./router/codeSave.js"
 const app=express()
 const port=process.env.PORT||4000
 
-// Parse JSON before CORS
 app.use(express.json())
 
-// More robust CORS configuration
+// Define allowed origins and patterns
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  'https://class-conduction-a8ar.vercel.app', // Add your exact Vercel URL
   'http://localhost:3000', 
   'http://localhost:5173', 
 ]
 
-// Remove any undefined values from allowedOrigins
+// Regex patterns for dynamic origins (like Vercel deployments)
+const allowedOriginPatterns = [
+  /^https:\/\/class-conduction-.*\.vercel\.app$/,  // Matches any Vercel deployment
+  /^https:\/\/.*-gaganshukla01s-projects\.vercel\.app$/  // Matches your project deployments
+]
+
 const validOrigins = allowedOrigins.filter(Boolean)
 
 console.log('Valid allowed origins:', validOrigins)
+console.log('Allowed origin patterns:', allowedOriginPatterns.map(p => p.toString()))
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl requests, Postman, etc.)
     if (!origin) {
       console.log('Request with no origin - allowing')
       return callback(null, true)
     }
     
     console.log('Request origin:', origin)
-    console.log('Checking against origins:', validOrigins)
     
+    // Check exact matches
     if (validOrigins.includes(origin)) {
-      console.log('✅ Origin allowed:', origin)
-      callback(null, true)
-    } else {
-      console.log('❌ Origin blocked:', origin)
-      console.log('Valid origins are:', validOrigins)
-      callback(new Error(`CORS blocked: Origin ${origin} not allowed`))
+      console.log('✅ Origin allowed (exact match):', origin)
+      return callback(null, true)
     }
+    
+    // Check pattern matches
+    const matchesPattern = allowedOriginPatterns.some(pattern => pattern.test(origin))
+    if (matchesPattern) {
+      console.log('✅ Origin allowed (pattern match):', origin)
+      return callback(null, true)
+    }
+    
+    console.log('❌ Origin blocked:', origin)
+    callback(new Error(`CORS blocked: Origin ${origin} not allowed`))
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -62,15 +71,11 @@ const corsOptions = {
     'Set-Cookie'
   ],
   exposedHeaders: ['Set-Cookie'],
-  optionsSuccessStatus: 200 // For legacy browser support
+  optionsSuccessStatus: 200
 }
 
-// Apply CORS before other middleware
 app.use(cors(corsOptions))
-
-// Handle preflight requests explicitly
 app.options('*', cors(corsOptions))
-
 app.use(cookieParser())
 
 connectDb()
@@ -85,14 +90,14 @@ app.use("/api/notes",noteRouter)
 app.use("/api/homework",homeworkRouter)
 app.use("/api/codesave",codeSaveRouter)
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.message)
   if (err.message.includes('CORS')) {
     res.status(403).json({ 
       error: 'CORS Error', 
       message: err.message,
-      allowedOrigins: validOrigins 
+      allowedOrigins: validOrigins,
+      allowedPatterns: allowedOriginPatterns.map(p => p.toString())
     })
   } else {
     res.status(500).json({ error: 'Internal server error' })
