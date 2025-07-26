@@ -103,10 +103,7 @@ function App() {
               </PublicRoute>
             } 
           />
-          <Route 
-            path="/emailVerify" 
-            element={<EmailVerify />}
-       />
+          <Route path="/emailVerify" element={<EmailVerify />} />
           
           {/* Admin-only routes */}
           <Route 
