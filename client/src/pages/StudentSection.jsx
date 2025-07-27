@@ -41,6 +41,9 @@ const ProgressTab = ({
   homeWorkData = [],
   userData = {},
 }) => {
+  if(!allSchedule) {
+    return <div className="text-white">Loading...</div>;
+  }
   const progressData = useMemo(() => {
     const userSchedule = allSchedule.filter(
       (schedule) =>
@@ -590,7 +593,7 @@ export default function StudentDashboard() {
   ]);
 
   const { userData, allSchedule, backend_url } = useContext(AppContent);
-
+  
   // for loading the data from the server
   useEffect(() => {
     const loadNotes = async () => {
@@ -626,8 +629,7 @@ export default function StudentDashboard() {
     const now = new Date();
     const today = now.toDateString();
 
-    console.log("Current time:", now);
-    console.log("Today:", today);
+  
 
     // Filter classes for today
     const todayClasses = schedules.filter(

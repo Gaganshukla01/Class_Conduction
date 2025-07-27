@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useContext, use } from "react";
+import React, { useState, useEffect, useMemo, useContext } from "react";
 import {
   Calendar,
   DollarSign,
@@ -13,6 +13,7 @@ import {
   BookOpen,
   X,
   IndianRupee,
+  UserCheck,
 } from "lucide-react";
 import {
   BarChart,
@@ -31,6 +32,7 @@ import {
   AreaChart,
 } from "recharts";
 import { AppContent } from "../context/Context";
+
 const PaymentTab = () => {
   const [selectedMonth, setSelectedMonth] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
@@ -38,20 +40,28 @@ const PaymentTab = () => {
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [selectedPaymentMonth, setSelectedPaymentMonth] = useState(null);
   const [data, setData] = useState([]);
-  const { allSchedule } = useContext(AppContent);
+  const { allSchedule, userData } = useContext(AppContent);
 
   useEffect(() => {
-    if (allSchedule) {
-      setData(allSchedule);
+    if (allSchedule && userData?.userId) {
+      // Filter classes for current user and only "Present" attendance for payable classes
+      const userClasses = allSchedule.filter(classItem => 
+        classItem.studentsEnrolled && 
+        classItem.studentsEnrolled.includes(userData.userId) &&
+        classItem.attendance === "Present" // Only present classes are payable
+      );
+      setData(userClasses);
+      console.log("User ID:", userData.userId);
+      console.log("Filtered Present Classes for Payment:", userClasses);
     }
-  }, [allSchedule]);
+  }, [allSchedule, userData]);
 
   // Process data by month
   const monthlyData = useMemo(() => {
     const grouped = {};
 
     data.forEach((classItem) => {
-      if (classItem.classRate) {
+      if (classItem.classRate && classItem.attendance === "Present") {
         const date = new Date(classItem.classDate);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
         const monthName = date.toLocaleDateString("en-US", {
@@ -189,12 +199,20 @@ const PaymentTab = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Payment Management
-          </h1>
-          <p className="text-gray-300">
-            Track and manage your class payments with detailed analytics
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                My Payment Dashboard
+              </h1>
+              <p className="text-gray-300">
+                Track your class payments for attended sessions only
+              </p>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-300 rounded-xl">
+              <UserCheck className="w-5 h-5" />
+              <span className="text-sm font-medium">Present Classes Only</span>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -202,12 +220,12 @@ const PaymentTab = () => {
           <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-300">Total Amount</p>
+                <p className="text-sm text-gray-300">Total Due Amount</p>
                 <p className="text-2xl font-bold text-white">
                   ₹{totalStats.totalAmount.toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {totalStats.totalClasses} classes
+                  {totalStats.totalClasses} attended classes
                 </p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
@@ -219,7 +237,7 @@ const PaymentTab = () => {
           <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-300">Paid Amount</p>
+                <p className="text-sm text-gray-300">Amount Paid</p>
                 <p className="text-2xl font-bold text-green-400">
                   ₹{totalStats.paidAmount.toLocaleString()}
                 </p>
@@ -236,7 +254,7 @@ const PaymentTab = () => {
           <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-300">Unpaid Amount</p>
+                <p className="text-sm text-gray-300">Outstanding Amount</p>
                 <p className="text-2xl font-bold text-red-400">
                   ₹{totalStats.unpaidAmount.toLocaleString()}
                 </p>
@@ -253,7 +271,7 @@ const PaymentTab = () => {
           <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-300">Payment Rate</p>
+                <p className="text-sm text-gray-300">Payment Progress</p>
                 <p className="text-2xl font-bold text-white">
                   {totalStats.totalClasses > 0
                     ? Math.round(
@@ -332,7 +350,7 @@ const PaymentTab = () => {
                 Paid Only
               </option>
               <option value="unpaid" className="bg-gray-800">
-                Unpaid Only
+                Outstanding Only
               </option>
             </select>
 
@@ -483,7 +501,7 @@ const PaymentTab = () => {
                 <div className="space-y-3 mb-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-300">
-                      Total Classes:
+                      Attended Classes:
                     </span>
                     <span className="font-medium text-white">
                       {month.totalClasses}
@@ -516,14 +534,14 @@ const PaymentTab = () => {
                   </div>
 
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-300">Paid Amount:</span>
+                    <span className="text-sm text-gray-300">Amount Paid:</span>
                     <span className="font-medium text-green-400">
                       ₹{month.paidAmount.toLocaleString()}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-300">Due Amount:</span>
+                    <span className="text-sm text-gray-300">Amount Due:</span>
                     <span className="font-medium text-red-400">
                       ₹{month.unpaidAmount.toLocaleString()}
                     </span>
@@ -568,7 +586,7 @@ const PaymentTab = () => {
               No payment data found
             </h3>
             <p className="text-gray-300">
-              Try adjusting your filters to see more results.
+              No attended classes found with the current filters. Try adjusting your filters to see more results.
             </p>
           </div>
         )}
@@ -597,7 +615,7 @@ const PaymentTab = () => {
                   </h4>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-300">Total Classes:</span>
+                      <span className="text-gray-300">Attended Classes:</span>
                       <span className="text-white font-medium">
                         {selectedPaymentMonth.totalClasses}
                       </span>
@@ -622,13 +640,13 @@ const PaymentTab = () => {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-300">Paid Amount:</span>
+                        <span className="text-gray-300">Amount Paid:</span>
                         <span className="text-green-400 font-medium">
                           ₹{selectedPaymentMonth.paidAmount.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-300">Due Amount:</span>
+                        <span className="text-gray-300">Amount Due:</span>
                         <span className="text-red-400 font-medium">
                           ₹{selectedPaymentMonth.unpaidAmount.toLocaleString()}
                         </span>
@@ -684,10 +702,12 @@ const PaymentTab = () => {
               {/* Individual Class Details */}
               <div className="bg-white/5 p-6 rounded-xl border border-white/10">
                 <h4 className="text-lg font-semibold text-white mb-4">
-                  Class Details
+                  Attended Class Details
                 </h4>
                 <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {selectedPaymentMonth.classes.map((classItem) => (
+                  {selectedPaymentMonth.classes
+                    .filter(classItem => classItem.attendance === "Present")
+                    .map((classItem) => (
                     <div
                       key={classItem._id}
                       className={`p-4 rounded-xl border transition-all ${
@@ -704,56 +724,70 @@ const PaymentTab = () => {
                           <div className="flex items-center gap-4 text-xs text-gray-400">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              {new Date(
-                                classItem.classDate
-                              ).toLocaleDateString()}
+                              <span>
+                                {new Date(classItem.classDate).toLocaleDateString()}
+                              </span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {classItem.classTime}
+                              <span>{classItem.startTime} - {classItem.endTime}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
-                              {classItem.topicCovered}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {classItem.attendance}
+                              <span>{classItem.subject}</span>
                             </div>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-white">
-                              ₹{classItem.classRate}
-                            </div>
-                            <div
-                              className={`text-xs font-medium ${
-                                classItem.paid
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }`}
-                            >
-                              {classItem.paid ? "PAID" : "UNPAID"}
-                            </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-white mb-1">
+                            ₹{classItem.classRate?.toLocaleString()}
                           </div>
-
                           <div
-                            className={`w-4 h-4 rounded-full ${
-                              classItem.paid ? "bg-green-500" : "bg-red-500"
+                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                              classItem.paid
+                                ? "bg-green-500/20 text-green-400"
+                                : "bg-red-500/20 text-red-400"
                             }`}
-                          ></div>
+                          >
+                            {classItem.paid ? (
+                              <>
+                                <CheckCircle className="w-3 h-3" />
+                                <span>Paid</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-3 h-3" />
+                                <span>Unpaid</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-
-                      <div className="text-xs text-gray-400">
-                        Duration: {classItem.classDuration} hour
-                        {classItem.classDuration !== "1" ? "s" : ""}
-                      </div>
+                      {classItem.instructor && (
+                        <div className="flex items-center gap-1 text-xs text-gray-400 mt-2">
+                          <User className="w-3 h-3" />
+                          <span>Instructor: {classItem.instructor}</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-4 mt-6">
+                <button
+                  onClick={() => setShowPaymentDetails(false)}
+                  className="px-6 py-3 bg-white/10 border border-white/20 rounded-xl text-white hover:bg-white/20 transition-all font-medium"
+                >
+                  Close
+                </button>
+                {selectedPaymentMonth.unpaidClasses > 0 && (
+                  <button className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white hover:from-green-600 hover:to-emerald-700 transition-all font-medium flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Pay Outstanding (₹{selectedPaymentMonth.unpaidAmount.toLocaleString()})
+                  </button>
+                )}
               </div>
             </div>
           </div>

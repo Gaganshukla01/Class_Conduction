@@ -11,7 +11,7 @@ import {
 // for regiter new user
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
-
+  
   if (!name || !email || !password) {
     return res.json({ sucess: false, message: "Missing Details" });
   }
@@ -34,7 +34,7 @@ export const register = async (req, res) => {
     const mailOption = {
       from: process.env.SENDER_EMAIL,
       to: email,
-      subject: "Welocme to Auth",
+      subject: "Welocme to ClassWave",
       html: USER_REGISTER_TEMPLATE.replace("{{name}}", user.name),
     };
 
@@ -52,7 +52,7 @@ export const googleAuth = async (req, res) => {
     if (!name || !email || !Validuser) {
       return res.json({ sucess: false, message: "Cred not fetched" });
     }
-
+   
     const existingUser = await userModel.findOne({ email });
 
     if (existingUser) {
@@ -81,7 +81,7 @@ export const googleAuth = async (req, res) => {
     const mailOption = {
       from: process.env.SENDER_EMAIL,
       to: email,
-      subject: "Welocme to Auth",
+      subject: "Welocme to ClassWave",
       html: USER_REGISTER_TEMPLATE.replace("{{name}}", newUser.name),
     };
 
