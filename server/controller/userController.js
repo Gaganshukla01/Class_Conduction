@@ -6,6 +6,7 @@ export const userData= async(req,res)=>{
        
         const {userId}=req.body
         const user= await userModel.findById(userId)
+        console.log("test",user)
         if(!user){
             return res.json({sucess:false,message:"user not found.."})
         }
