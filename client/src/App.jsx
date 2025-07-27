@@ -18,7 +18,7 @@ const ProtectedRoute = ({ children, allowedUserTypes, userType, isLoggedIn }) =>
   if (isLoggedIn && userType === undefined) {
     return  <Navigate to="/login" replace />;
   }
-  }
+  
 
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
