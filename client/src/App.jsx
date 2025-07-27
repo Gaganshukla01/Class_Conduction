@@ -16,7 +16,8 @@ import { AppContent } from "./context/Context";
 const ProtectedRoute = ({ children, allowedUserTypes, userType, isLoggedIn }) => {
 
   if (isLoggedIn && userType === undefined) {
-    return <div>Loading...</div>; 
+    return  <Navigate to="/login" replace />;
+  }
   }
 
   if (!isLoggedIn) {
