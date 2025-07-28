@@ -35,17 +35,6 @@ const allowedOriginPatterns = [
 
 
 const validOrigins = allowedOrigins.filter(Boolean);
-// Regex patterns for dynamic origins (like Vercel deployments)
-const allowedOriginPatterns = [
-  /^https:\/\/class-conduction-.*\.vercel\.app$/,  // Matches any Vercel deployment
-  /^https:\/\/.*-gaganshukla01s-projects\.vercel\.app$/  // Matches your project deployments
-]
-
-const validOrigins = allowedOrigins.filter(Boolean)
-
-
-
-
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) {
