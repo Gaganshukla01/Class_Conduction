@@ -12,12 +12,14 @@ function Login() {
   const { backend_url, setIsLoggedin, getUserData } = useContext(AppContent);
   const navigate = useNavigate();
   const [state, setState] = useState("Sign Up");
-  const [name, setName] = useState();
-  const [email, setEmail] = useState();
-  const [password, setPassword] = useState();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleGoogleSignIn = async (e) => {
     try {
+      e.preventDefault(); // Prevent form submission
+      
       const provider = new GoogleAuthProvider();
       const auth = getAuth(app);
       const result = await signInWithPopup(auth, provider);
@@ -40,7 +42,8 @@ function Login() {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      console.error('Google auth error:', error);
+      toast.error(error.message || "Authentication failed");
     }
   };
 
@@ -79,7 +82,8 @@ function Login() {
         }
       }
     } catch (error) {
-      toast.error(data.message);
+      console.error('Form submission error:', error);
+      toast.error(error.response?.data?.message || error.message || "Authentication failed");
     }
   };
 
@@ -161,13 +165,16 @@ function Login() {
           )}
 
           <button
+            type="submit"
             className="w-full py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-900
           text-white font-medium cursor-pointer"
           >
             {state}
           </button>
 
+          {/* Fixed: Added type="button" to prevent form submission */}
           <button
+            type="button"
             className="w-full py-2.5 mt-3 rounded-full bg-gradient-to-r from-red-500 to-indigo-900
           text-white font-medium cursor-pointer"
             onClick={handleGoogleSignIn}

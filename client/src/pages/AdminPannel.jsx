@@ -23,7 +23,8 @@ import {
   Mail,
   Phone,
   Check,
-  IndianRupeeIcon,
+  DollarSign as IndianRupeeIcon,
+  Menu,
 } from "lucide-react";
 
 import { AppContent } from "../context/Context";
@@ -38,6 +39,7 @@ import { toast } from "react-toastify";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -50,6 +52,11 @@ export default function AdminDashboard() {
     { id: "paymentUpdate", label: "Payment Update", icon: IndianRupeeIcon },
     { id: "settings", label: "Settings", icon: Settings },
   ];
+
+  const handleNavClick = (tabId) => {
+    setActiveTab(tabId);
+    setSidebarOpen(false); // Close sidebar on mobile after selection
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -83,493 +90,67 @@ export default function AdminDashboard() {
       <div className="absolute bottom-40 right-20 w-48 h-48 bg-pink-400/10 rounded-full blur-xl animate-pulse delay-1000"></div>
 
       <div className="relative z-10 flex min-h-screen">
+        {/* Mobile Header */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
+            Admin Panel
+          </h1>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+
         {/* Sidebar Navigation */}
-        <div className="w-64 bg-white/10 backdrop-blur-sm border-r border-white/10 p-6">
-          <h1 className="text-2xl font-bold mb-8 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
+        <div className={`
+          fixed lg:relative inset-y-0 left-0 z-40 w-64 bg-white/10 backdrop-blur-sm border-r border-white/10 p-6 transform transition-transform duration-300 ease-in-out lg:transform-none
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
+          <h1 className="text-2xl font-bold mb-8 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent hidden lg:block">
             Admin Panel
           </h1>
 
-          <nav className="space-y-2">
+          <nav className="space-y-2 mt-16 lg:mt-0">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => handleNavClick(item.id)}
                   className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 ${
                     activeTab === item.id
                       ? "bg-white/20 text-white shadow-lg"
                       : "text-gray-300 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <Icon size={20} className="mr-3" />
-                  {item.label}
+                  <Icon size={20} className="mr-3 flex-shrink-0" />
+                  <span className="truncate">{item.label}</span>
                 </button>
               );
             })}
           </nav>
         </div>
 
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          ></div>
+        )}
+
         {/* Main Content */}
-        <div className="flex-1 p-8">{renderContent()}</div>
+        <div className="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-0">
+          {renderContent()}
+        </div>
       </div>
     </div>
   );
 }
 
-// Dashboard Home Component
-// function DashboardHome() {
-//   const { allSchedule, allUserData, allCourse } = useContext(AppContent);
-//   const [hoveredStat, setHoveredStat] = useState(null);
 
-//   // Extract data arrays from backend response
-//   const classes = allSchedule?.data || [];
-//   const users = allUserData?.data || [];
-//   // Fix: Handle different possible data structures for courses
-//   const courses = allCourse?.data || allCourse || [];
-
-//   // Calculate statistics from real data
-//   const totalCourses = courses.length;
-  
-//   // Separate instructors and students
-//   const instructors = users.filter(user => user.userType === 'admin');
-//   const students = users.filter(user => user.userType === 'student');
-//   const totalStudents = students.length;
-//   const totalInstructors = instructors.length;
-
-//   // Calculate total enrolled students across all classes
-//   const totalEnrollments = classes.reduce((total, classItem) => {
-//     return total + (classItem.studentsEnrolled?.length || 0);
-//   }, 0);
-
-//   // Get current date to filter active classes
-//   const currentDate = new Date();
-//   const activeClasses = classes.filter(classItem => {
-//     const classDate = new Date(classItem.classDate);
-//     return classDate >= currentDate;
-//   }).length;
-
-//   // Static payment data (to be replaced with API later)
-//   const paymentStats = {
-//     totalRevenue: 25750,
-//     pendingPayments: 3200,
-//     completedPayments: 22550,
-//     averageClassFee: 150
-//   };
-
-//   // Get detailed breakdowns for hover tooltips
-//   const getStudentDetails = () => {
-//     const verifiedStudents = students.filter(student => student.isAccountVerified).length;
-//     const unverifiedStudents = students.length - verifiedStudents;
-//     return {
-//       total: students.length,
-//       verified: verifiedStudents,
-//       unverified: unverifiedStudents,
-//       enrollments: totalEnrollments
-//     };
-//   };
-
-//   const getInstructorDetails = () => {
-//     const verifiedInstructors = instructors.filter(instructor => instructor.isAccountVerified).length;
-//     const unverifiedInstructors = instructors.length - verifiedInstructors;
-//     return {
-//       total: instructors.length,
-//       verified: verifiedInstructors,
-//       unverified: unverifiedInstructors,
-//       activeClasses: activeClasses
-//     };
-//   };
-
-//   const getCourseDetails = () => {
-//     // Assuming courses might have categories or status fields
-//     return {
-//       total: courses.length,
-//       activeClasses: classes.length,
-//       upcomingClasses: activeClasses,
-//       totalEnrollments: totalEnrollments
-//     };
-//   };
-
-//   const formatCurrency = (amount) => {
-//     return new Intl.NumberFormat('en-US', {
-//       style: 'currency',
-//       currency: 'USD'
-//     }).format(amount);
-//   };
-
-//   const stats = [
-//     {
-//       id: 'courses',
-//       label: "Total Courses",
-//       value: totalCourses.toString(),
-//       icon: BookOpen,
-//       color: "from-blue-500 to-cyan-500",
-//       subtext: `${activeClasses} active`,
-//       hasHover: true,
-//       details: getCourseDetails()
-//     },
-//     {
-//       id: 'students',
-//       label: "Total Students",
-//       value: totalStudents.toString(),
-//       icon: Users,
-//       color: "from-green-500 to-emerald-500",
-//       subtext: `${totalEnrollments} enrollments`,
-//       hasHover: true,
-//       details: getStudentDetails()
-//     },
-//     {
-//       id: 'instructors',
-//       label: "Instructors",
-//       value: totalInstructors.toString(),
-//       icon: GraduationCap,
-//       color: "from-purple-500 to-violet-500",
-//       subtext: "Active instructors",
-//       hasHover: true,
-//       details: getInstructorDetails()
-//     },
-//     {
-//       id: 'revenue',
-//       label: "Total Revenue",
-//       value: formatCurrency(paymentStats.totalRevenue),
-//       icon: DollarSign,
-//       color: "from-orange-500 to-red-500",
-//       subtext: "This month",
-//       hasHover: false
-//     },
-//     {
-//       id: 'pending',
-//       label: "Pending Payments",
-//       value: formatCurrency(paymentStats.pendingPayments),
-//       icon: Clock,
-//       color: "from-yellow-500 to-amber-500",
-//       subtext: "Awaiting payment",
-//       hasHover: false
-//     },
-//     {
-//       id: 'completed',
-//       label: "Completed Payments",
-//       value: formatCurrency(paymentStats.completedPayments),
-//       icon: CheckCircle,
-//       color: "from-emerald-500 to-teal-500",
-//       subtext: "Successfully paid",
-//       hasHover: false
-//     },
-//     {
-//       id: 'average',
-//       label: "Average Class Fee",
-//       value: formatCurrency(paymentStats.averageClassFee),
-//       icon: TrendingUp,
-//       color: "from-indigo-500 to-blue-500",
-//       subtext: "Per class",
-//       hasHover: false
-//     },
-//     {
-//       id: 'active',
-//       label: "Active Classes",
-//       value: activeClasses.toString(),
-//       icon: Calendar,
-//       color: "from-pink-500 to-rose-500",
-//       subtext: "Upcoming classes",
-//       hasHover: false
-//     }
-//   ];
-
-//   // Get recent classes (next 3 upcoming)
-//   const upcomingClasses = classes
-//     .filter(classItem => new Date(classItem.classDate) >= currentDate)
-//     .sort((a, b) => new Date(a.classDate) - new Date(b.classDate))
-//     .slice(0, 3);
-
-//   // Get instructor name by ID
-//   const getInstructorName = (instructorId) => {
-//     const instructor = users.find(user => user._id === instructorId);
-//     return instructor ? instructor.name : 'Unknown Instructor';
-//   };
-
-//   // Format date for display
-//   const formatDate = (dateString) => {
-//     const date = new Date(dateString);
-//     return date.toLocaleDateString('en-US', {
-//       month: 'short',
-//       day: 'numeric',
-//       year: 'numeric'
-//     });
-//   };
-
-//   // Show loading state if data is not available
-//   if (!allSchedule || !allUserData || !allCourse) {
-//     return (
-//       <div className="max-w-6xl mx-auto">
-//         <div className="flex items-center justify-center h-64">
-//           <div className="text-xl text-gray-400">Loading dashboard...</div>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // Debug: Add console log to check data
-//   console.log('Course data:', allCourse);
-//   console.log('Courses array:', courses);
-//   console.log('Total courses:', totalCourses);
-
-//   // Render hover tooltip
-//   const renderHoverTooltip = (stat) => {
-//     if (!stat.hasHover || hoveredStat !== stat.id) return null;
-
-//     let tooltipContent;
-    
-//     if (stat.id === 'courses') {
-//       tooltipContent = (
-//         <div className="space-y-2">
-//           <div className="font-semibold text-blue-300 border-b border-blue-400/30 pb-1">
-//             Course Overview
-//           </div>
-//           <div className="grid grid-cols-2 gap-3 text-sm">
-//             <div>
-//               <div className="text-gray-300">Total Courses:</div>
-//               <div className="font-medium text-white">{stat.details.total}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Active Classes:</div>
-//               <div className="font-medium text-white">{stat.details.activeClasses}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Upcoming:</div>
-//               <div className="font-medium text-white">{stat.details.upcomingClasses}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Total Enrollments:</div>
-//               <div className="font-medium text-white">{stat.details.totalEnrollments}</div>
-//             </div>
-//           </div>
-//         </div>
-//       );
-//     } else if (stat.id === 'students') {
-//       tooltipContent = (
-//         <div className="space-y-2">
-//           <div className="font-semibold text-green-300 border-b border-green-400/30 pb-1">
-//             Student Breakdown
-//           </div>
-//           <div className="grid grid-cols-2 gap-3 text-sm">
-//             <div>
-//               <div className="text-gray-300">Total Students:</div>
-//               <div className="font-medium text-white">{stat.details.total}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Verified:</div>
-//               <div className="font-medium text-green-400">{stat.details.verified}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Unverified:</div>
-//               <div className="font-medium text-yellow-400">{stat.details.unverified}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Total Enrollments:</div>
-//               <div className="font-medium text-white">{stat.details.enrollments}</div>
-//             </div>
-//           </div>
-//         </div>
-//       );
-//     } else if (stat.id === 'instructors') {
-//       tooltipContent = (
-//         <div className="space-y-2">
-//           <div className="font-semibold text-purple-300 border-b border-purple-400/30 pb-1">
-//             Instructor Details
-//           </div>
-//           <div className="grid grid-cols-2 gap-3 text-sm">
-//             <div>
-//               <div className="text-gray-300">Total Instructors:</div>
-//               <div className="font-medium text-white">{stat.details.total}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Verified:</div>
-//               <div className="font-medium text-green-400">{stat.details.verified}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Unverified:</div>
-//               <div className="font-medium text-yellow-400">{stat.details.unverified}</div>
-//             </div>
-//             <div>
-//               <div className="text-gray-300">Active Classes:</div>
-//               <div className="font-medium text-white">{stat.details.activeClasses}</div>
-//             </div>
-//           </div>
-//         </div>
-//       );
-//     }
-
-//     return (
-//       <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[9999] bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-xl p-4 shadow-2xl min-w-[280px] animate-in fade-in duration-200">
-//         <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gray-900 border-l border-t border-gray-700 rotate-45"></div>
-//         {tooltipContent}
-//       </div>
-//     );
-//   };
-
-//   return (
-//     <div className="max-w-7xl mx-auto">
-//       <h2 className="text-4xl font-bold mb-8 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
-//         Dashboard Overview
-//       </h2>
-
-//       {/* Statistics Grid */}
-//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-//         {stats.map((stat, index) => {
-//           const Icon = stat.icon;
-//           return (
-//             <div
-//               key={index}
-//               className={`relative bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10 transition-all duration-300 ${
-//                 stat.hasHover 
-//                   ? 'hover:bg-white/15 hover:scale-105 hover:shadow-xl cursor-pointer' 
-//                   : 'hover:bg-white/15'
-//               }`}
-//               onMouseEnter={() => stat.hasHover && setHoveredStat(stat.id)}
-//               onMouseLeave={() => stat.hasHover && setHoveredStat(null)}
-//               style={{ zIndex: hoveredStat === stat.id ? 100 : 'auto' }}
-//             >
-//               <div
-//                 className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.color} flex items-center justify-center mb-4`}
-//               >
-//                 <Icon size={24} className="text-white" />
-//               </div>
-//               <h3 className="text-2xl font-bold mb-1">{stat.value}</h3>
-//               <p className="text-gray-300 font-medium">{stat.label}</p>
-//               {stat.subtext && (
-//                 <p className="text-sm text-gray-400 mt-1">{stat.subtext}</p>
-//               )}
-//               {stat.hasHover && (
-//                 <div className="absolute top-2 right-2 opacity-50">
-//                   <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-//                 </div>
-//               )}
-//               {renderHoverTooltip(stat)}
-//             </div>
-//           );
-//         })}
-//       </div>
-
-//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-//         {/* Welcome Section */}
-//         <div className="lg:col-span-2 bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/10">
-//           <h3 className="text-2xl font-semibold mb-4">Welcome to Admin Panel</h3>
-//           <p className="text-gray-300 mb-6">
-//             Manage your courses, students, instructors, and payments from this centralized
-//             dashboard. Use the navigation to access different sections.
-//           </p>
-          
-//           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//             <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
-//               <BookOpen className="mb-2 text-blue-400" size={24} />
-//               <h4 className="font-semibold mb-1">Course Management</h4>
-//               <p className="text-sm text-gray-400">
-//                 Create and manage course content
-//               </p>
-//               <div className="text-xs text-blue-400 mt-2">
-//                 {totalCourses} courses available
-//               </div>
-//             </div>
-            
-//             <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
-//               <Users className="mb-2 text-green-400" size={24} />
-//               <h4 className="font-semibold mb-1">Student Management</h4>
-//               <p className="text-sm text-gray-400">
-//                 Add and track student progress
-//               </p>
-//               <div className="text-xs text-green-400 mt-2">
-//                 {totalStudents} students registered
-//               </div>
-//             </div>
-            
-//             <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
-//               <Calendar className="mb-2 text-purple-400" size={24} />
-//               <h4 className="font-semibold mb-1">Class Scheduling</h4>
-//               <p className="text-sm text-gray-400">
-//                 Schedule and manage classes
-//               </p>
-//               <div className="text-xs text-purple-400 mt-2">
-//                 {activeClasses} upcoming classes
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Upcoming Classes */}
-//         <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
-//           <h3 className="text-xl font-semibold mb-4 flex items-center">
-//             <Calendar className="mr-2 text-blue-400" size={20} />
-//             Upcoming Classes
-//           </h3>
-          
-//           <div className="space-y-3">
-//             {upcomingClasses.length === 0 ? (
-//               <p className="text-gray-400 text-sm">No upcoming classes</p>
-//             ) : (
-//               upcomingClasses.map((classItem) => (
-//                 <div
-//                   key={classItem._id}
-//                   className="bg-white/5 p-3 rounded-lg hover:bg-white/10 transition-all duration-300"
-//                 >
-//                   <div className="font-medium text-sm mb-1">
-//                     {classItem.className}
-//                   </div>
-//                   <div className="text-xs text-gray-400 mb-1">
-//                     {getInstructorName(classItem.instructorId)}
-//                   </div>
-//                   <div className="flex justify-between items-center">
-//                     <span className="text-xs text-blue-400">
-//                       {formatDate(classItem.classDate)}
-//                     </span>
-//                     <span className="text-xs text-gray-400">
-//                       {classItem.classTime}
-//                     </span>
-//                   </div>
-//                   <div className="text-xs text-gray-500 mt-1">
-//                     {classItem.studentsEnrolled?.length || 0} students enrolled
-//                   </div>
-//                 </div>
-//               ))
-//             )}
-//           </div>
-          
-//           {upcomingClasses.length > 0 && (
-//             <div className="mt-4 pt-3 border-t border-white/10">
-//               <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
-//                 View all classes →
-//               </button>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-
-//       {/* Quick Stats Summary */}
-//       <div className="mt-8 bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
-//         <h3 className="text-xl font-semibold mb-4">Quick Summary</h3>
-//         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-//           <div>
-//             <div className="text-2xl font-bold text-blue-400">{totalCourses}</div>
-//             <div className="text-sm text-gray-400">Total Courses</div>
-//           </div>
-//           <div>
-//             <div className="text-2xl font-bold text-green-400">{totalStudents}</div>
-//             <div className="text-sm text-gray-400">Students</div>
-//           </div>
-//           <div>
-//             <div className="text-2xl font-bold text-purple-400">{totalInstructors}</div>
-//             <div className="text-sm text-gray-400">Instructors</div>
-//           </div>
-//           <div>
-//             <div className="text-2xl font-bold text-orange-400">
-//               {formatCurrency(paymentStats.totalRevenue)}
-//             </div>
-//             <div className="text-sm text-gray-400">Revenue</div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
 
 // Update user type
 function UpdateUserType() {
