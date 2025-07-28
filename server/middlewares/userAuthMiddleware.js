@@ -1,9 +1,7 @@
 import jwt from "jsonwebtoken";
 
 const userAuth = async (req, res, next) => {
-    
     const {token}=req.cookies;
-   
     try {
         const tokenDecode = jwt.verify(token, process.env.JWT_SECRET);
 

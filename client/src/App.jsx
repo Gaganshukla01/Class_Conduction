@@ -13,6 +13,7 @@ import CourseDetails from "./components/CourseDetails";
 import SeeHowItWorks from "./pages/SeeHowItWork";
 import { AppContent } from "./context/Context";
 
+
 const ProtectedRoute = ({
   children,
   allowedUserTypes,
@@ -85,10 +86,10 @@ function App() {
               <PublicRoute isLoggedIn={isLoggedIn} userType={userType}>
                 <ResetPassword />
               </PublicRoute>
-            }
-          />
-          <Route path="/emailVerify" element={<EmailVerify />} />
+          }
 
+          <Route path="/emailVerify" element={<EmailVerify />} />
+         
           {/* Admin-only routes */}
           <Route
             path="/admin"
