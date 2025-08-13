@@ -14,6 +14,9 @@ import {
   Filter,
   Search,
   Wallet,
+  TrendingUp,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 
 import { AppContent } from "../context/Context";
@@ -21,32 +24,50 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export default function ClassPaymentUpdate() {
-  const { backend_url, allSchedule } = useContext(AppContent);
-  
+  const { backend_url, allSchedule, allUserData } = useContext(AppContent);
+  console.log(allUserData, "data");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedClasses, setSelectedClasses] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const [paymentFilter, setPaymentFilter] = useState("all"); 
+  const [paymentFilter, setPaymentFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
   // Generate months for the dropdown
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   // Get available years from the schedule data
   const getAvailableYears = () => {
-    if (!allSchedule || !Array.isArray(allSchedule)) return [new Date().getFullYear()];
-    
+    if (!allSchedule || !Array.isArray(allSchedule))
+      return [new Date().getFullYear()];
+
     const years = new Set();
-    allSchedule.forEach(classItem => {
+    allSchedule.forEach((classItem) => {
       const year = new Date(classItem.classDate).getFullYear();
       years.add(year);
     });
-    
+
     return Array.from(years).sort((a, b) => b - a);
+  };
+
+  const getStudentDetails = (studentId) => {
+    if (!allUserData || !Array.isArray(allUserData.data)) return null;
+
+    const student = allUserData.data.find((user) => user._id === studentId);
+    return student ? { name: student.name, email: student.email } : null;
   };
 
   // Filter classes by selected month and year
@@ -54,21 +75,24 @@ export default function ClassPaymentUpdate() {
     if (!allSchedule || !Array.isArray(allSchedule)) return [];
 
     return allSchedule
-      .filter(classItem => {
+      .filter((classItem) => {
         const classDate = new Date(classItem.classDate);
         const monthMatch = classDate.getMonth() === selectedMonth;
         const yearMatch = classDate.getFullYear() === selectedYear;
-        
+
         // Payment filter
         let paymentMatch = true;
         if (paymentFilter === "paid") paymentMatch = classItem.paid === true;
         if (paymentFilter === "unpaid") paymentMatch = classItem.paid === false;
-        
+
         // Search filter
-        const searchMatch = searchTerm === "" || 
-          classItem.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const searchMatch =
+          searchTerm === "" ||
+          classItem.className
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
           classItem.attendance.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
         return monthMatch && yearMatch && paymentMatch && searchMatch;
       })
       .sort((a, b) => new Date(a.classDate) - new Date(b.classDate));
@@ -76,16 +100,91 @@ export default function ClassPaymentUpdate() {
 
   const filteredClasses = getFilteredClasses();
 
-  // Calculate totals
+  // Calculate totals including attendance-based collections
   const getTotals = () => {
     const total = filteredClasses.length;
-    const paid = filteredClasses.filter(c => c.paid).length;
+    const paid = filteredClasses.filter((c) => c.paid).length;
     const unpaid = total - paid;
-    const totalAmount = filteredClasses.reduce((sum, c) => sum + (c.classRate || 0), 0);
-    const paidAmount = filteredClasses.filter(c => c.paid).reduce((sum, c) => sum + (c.classRate || 0), 0);
+
+    // Basic totals
+    const totalAmount = filteredClasses.reduce(
+      (sum, c) => sum + (c.classRate || 0),
+      0
+    );
+    const paidAmount = filteredClasses
+      .filter((c) => c.paid)
+      .reduce((sum, c) => sum + (c.classRate || 0), 0);
     const unpaidAmount = totalAmount - paidAmount;
-    
-    return { total, paid, unpaid, totalAmount, paidAmount, unpaidAmount };
+
+    // Attendance-based calculations
+    const presentClasses = filteredClasses.filter(
+      (c) => c.attendance !== "Absent"
+    );
+    const absentClasses = filteredClasses.filter(
+      (c) => c.attendance === "Absent"
+    );
+
+    // Collectible amount (classes where attendance is not "Absent")
+    const collectibleAmount = presentClasses.reduce(
+      (sum, c) => sum + (c.classRate || 0),
+      0
+    );
+    const collectiblePaid = presentClasses
+      .filter((c) => c.paid)
+      .reduce((sum, c) => sum + (c.classRate || 0), 0);
+    const collectiblePending = collectibleAmount - collectiblePaid;
+
+    // Non-collectible amount (absent classes)
+    const nonCollectibleAmount = absentClasses.reduce(
+      (sum, c) => sum + (c.classRate || 0),
+      0
+    );
+
+    // Student-wise breakdown for present classes
+    const studentAttendance = {};
+    presentClasses.forEach((classItem) => {
+      if (
+        classItem.studentsEnrolled &&
+        Array.isArray(classItem.studentsEnrolled)
+      ) {
+        classItem.studentsEnrolled.forEach((studentId) => {
+          if (!studentAttendance[studentId]) {
+            studentAttendance[studentId] = {
+              totalClasses: 0,
+              totalAmount: 0,
+              paidAmount: 0,
+              pendingAmount: 0,
+            };
+          }
+
+          studentAttendance[studentId].totalClasses += 1;
+          studentAttendance[studentId].totalAmount += classItem.classRate || 0;
+
+          if (classItem.paid) {
+            studentAttendance[studentId].paidAmount += classItem.classRate || 0;
+          } else {
+            studentAttendance[studentId].pendingAmount +=
+              classItem.classRate || 0;
+          }
+        });
+      }
+    });
+
+    return {
+      total,
+      paid,
+      unpaid,
+      totalAmount,
+      paidAmount,
+      unpaidAmount,
+      presentClasses: presentClasses.length,
+      absentClasses: absentClasses.length,
+      collectibleAmount,
+      collectiblePaid,
+      collectiblePending,
+      nonCollectibleAmount,
+      studentAttendance,
+    };
   };
 
   const totals = getTotals();
@@ -124,7 +223,7 @@ export default function ClassPaymentUpdate() {
     if (selectedClasses.size === filteredClasses.length) {
       setSelectedClasses(new Set());
     } else {
-      setSelectedClasses(new Set(filteredClasses.map(c => c._id)));
+      setSelectedClasses(new Set(filteredClasses.map((c) => c._id)));
     }
   };
 
@@ -168,7 +267,6 @@ export default function ClassPaymentUpdate() {
       if (errorCount > 0) {
         toast.error(`Failed to update ${errorCount} class(es)`);
       }
-
     } catch (error) {
       console.error("Error in batch payment update:", error);
       toast.error("Error updating payment status");
@@ -205,7 +303,9 @@ export default function ClassPaymentUpdate() {
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
             Class Payment Manager
           </h1>
-          <p className="text-gray-300">Manage and track class payments</p>
+          <p className="text-gray-300">
+            Manage and track class payments with attendance-based collections
+          </p>
         </div>
 
         {/* Month Navigation */}
@@ -217,7 +317,7 @@ export default function ClassPaymentUpdate() {
             >
               <ChevronLeft size={20} />
             </button>
-            
+
             <div className="flex items-center space-x-4">
               <select
                 value={selectedMonth}
@@ -225,19 +325,27 @@ export default function ClassPaymentUpdate() {
                 className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white backdrop-blur-sm focus:ring-2 ring-emerald-400 outline-none"
               >
                 {months.map((month, index) => (
-                  <option key={index} value={index} className="bg-gray-800 text-white">
+                  <option
+                    key={index}
+                    value={index}
+                    className="bg-gray-800 text-white"
+                  >
                     {month}
                   </option>
                 ))}
               </select>
-              
+
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                 className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white backdrop-blur-sm focus:ring-2 ring-emerald-400 outline-none"
               >
                 {getAvailableYears().map((year) => (
-                  <option key={year} value={year} className="bg-gray-800 text-white">
+                  <option
+                    key={year}
+                    value={year}
+                    className="bg-gray-800 text-white"
+                  >
                     {year}
                   </option>
                 ))}
@@ -252,72 +360,195 @@ export default function ClassPaymentUpdate() {
             </button>
           </div>
 
-          {/* Totals Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Basic Totals Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 p-4 rounded-2xl border border-blue-400/30">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-200 text-sm">Total Classes</p>
-                  <p className="text-2xl font-bold text-white">{totals.total}</p>
+                  <p className="text-2xl font-bold text-white">
+                    {totals.total}
+                  </p>
                 </div>
                 <BookOpen className="text-blue-300" size={24} />
               </div>
             </div>
-            
+
             <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 p-4 rounded-2xl border border-green-400/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-200 text-sm">Paid Classes</p>
-                  <p className="text-2xl font-bold text-white">{totals.paid}</p>
+                  <p className="text-green-200 text-sm">Present Classes</p>
+                  <p className="text-2xl font-bold text-white">
+                    {totals.presentClasses}
+                  </p>
                 </div>
-                <CheckCircle2 className="text-green-300" size={24} />
+                <UserCheck className="text-green-300" size={24} />
               </div>
             </div>
-            
+
             <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 p-4 rounded-2xl border border-red-400/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-red-200 text-sm">Unpaid Classes</p>
-                  <p className="text-2xl font-bold text-white">{totals.unpaid}</p>
+                  <p className="text-red-200 text-sm">Absent Classes</p>
+                  <p className="text-2xl font-bold text-white">
+                    {totals.absentClasses}
+                  </p>
                 </div>
-                <XCircle className="text-red-300" size={24} />
+                <UserX className="text-red-300" size={24} />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 p-4 rounded-2xl border border-yellow-400/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-yellow-200 text-sm">Paid Classes</p>
+                  <p className="text-2xl font-bold text-white">{totals.paid}</p>
+                </div>
+                <CheckCircle2 className="text-yellow-300" size={24} />
               </div>
             </div>
           </div>
 
-          {/* Amount Totals */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Collectible Amount Section */}
+          <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 p-6 rounded-2xl border border-emerald-400/30 mb-6">
+            <h3 className="text-xl font-bold text-emerald-300 mb-4 flex items-center gap-2">
+              <TrendingUp size={20} />
+              Collectible Revenue (Non-Absent Classes)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/5 p-4 rounded-xl">
+                <p className="text-emerald-200 text-sm">Total Collectible</p>
+                <p className="text-2xl font-bold text-white">
+                  ₹{totals.collectibleAmount}
+                </p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl">
+                <p className="text-green-200 text-sm">Collected</p>
+                <p className="text-2xl font-bold text-white">
+                  ₹{totals.collectiblePaid}
+                </p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl">
+                <p className="text-orange-200 text-sm">Pending Collection</p>
+                <p className="text-2xl font-bold text-white">
+                  ₹{totals.collectiblePending}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* All Amount Totals */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gradient-to-r from-purple-500/20 to-violet-500/20 p-4 rounded-2xl border border-purple-400/30">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-purple-200 text-sm">Total Amount</p>
-                  <p className="text-xl font-bold text-white">₹{totals.totalAmount}</p>
+                  <p className="text-xl font-bold text-white">
+                    ₹{totals.totalAmount}
+                  </p>
                 </div>
                 <Wallet className="text-purple-300" size={24} />
               </div>
             </div>
-            
+
             <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 p-4 rounded-2xl border border-green-400/30">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-200 text-sm">Paid Amount</p>
-                  <p className="text-xl font-bold text-white">₹{totals.paidAmount}</p>
+                  <p className="text-xl font-bold text-white">
+                    ₹{totals.paidAmount}
+                  </p>
                 </div>
                 <DollarSign className="text-green-300" size={24} />
               </div>
             </div>
-            
+
             <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 p-4 rounded-2xl border border-orange-400/30">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-orange-200 text-sm">Pending Amount</p>
-                  <p className="text-xl font-bold text-white">₹{totals.unpaidAmount}</p>
+                  <p className="text-xl font-bold text-white">
+                    ₹{totals.unpaidAmount}
+                  </p>
                 </div>
                 <CreditCard className="text-orange-300" size={24} />
               </div>
             </div>
+
+            <div className="bg-gradient-to-r from-gray-500/20 to-slate-500/20 p-4 rounded-2xl border border-gray-400/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-200 text-sm">Non-Collectible</p>
+                  <p className="text-xl font-bold text-white">
+                    ₹{totals.nonCollectibleAmount}
+                  </p>
+                </div>
+                <XCircle className="text-gray-300" size={24} />
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Student-wise Breakdown */}
+        {Object.keys(totals.studentAttendance).length > 0 && (
+          <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20 shadow-2xl mb-8">
+            <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <Users size={24} className="text-cyan-300" />
+              Student-wise Collections (Present Classes Only)
+            </h3>
+            <div className="grid gap-4">
+              {Object.entries(totals.studentAttendance).map(
+                ([studentId, data]) => {
+                  const studentDetails = getStudentDetails(studentId);
+                  return (
+                    <div
+                      key={studentId}
+                      className="bg-white/5 p-4 rounded-2xl border border-white/10"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-semibold">
+                            {studentDetails
+                              ? studentDetails.name
+                              : `Student ID: ${studentId}`}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            {studentDetails
+                              ? studentDetails.email
+                              : "Email not found"}
+                          </p>
+                          <p className="text-gray-300 text-sm">
+                            Classes Attended: {data.totalClasses}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 text-right">
+                          <div>
+                            <p className="text-xs text-gray-400">Total</p>
+                            <p className="font-bold text-white">
+                              ₹{data.totalAmount}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-green-400">Paid</p>
+                            <p className="font-bold text-green-300">
+                              ₹{data.paidAmount}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-orange-400">Pending</p>
+                            <p className="font-bold text-orange-300">
+                              ₹{data.pendingAmount}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Filters and Search */}
         <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20 shadow-2xl mb-8">
@@ -333,15 +564,21 @@ export default function ClassPaymentUpdate() {
                   className="bg-transparent text-white outline-none placeholder:text-gray-400 text-sm"
                 />
               </div>
-              
+
               <select
                 value={paymentFilter}
                 onChange={(e) => setPaymentFilter(e.target.value)}
                 className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white backdrop-blur-sm focus:ring-2 ring-emerald-400 outline-none"
               >
-                <option value="all" className="bg-gray-800">All Classes</option>
-                <option value="paid" className="bg-gray-800">Paid Only</option>
-                <option value="unpaid" className="bg-gray-800">Unpaid Only</option>
+                <option value="all" className="bg-gray-800">
+                  All Classes
+                </option>
+                <option value="paid" className="bg-gray-800">
+                  Paid Only
+                </option>
+                <option value="unpaid" className="bg-gray-800">
+                  Unpaid Only
+                </option>
               </select>
             </div>
 
@@ -350,9 +587,11 @@ export default function ClassPaymentUpdate() {
                 onClick={handleSelectAll}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-300 text-sm font-medium"
               >
-                {selectedClasses.size === filteredClasses.length ? "Deselect All" : "Select All"}
+                {selectedClasses.size === filteredClasses.length
+                  ? "Deselect All"
+                  : "Select All"}
               </button>
-              
+
               {selectedClasses.size > 0 && (
                 <button
                   onClick={markAsPaid}
@@ -382,7 +621,9 @@ export default function ClassPaymentUpdate() {
             <div className="text-center py-12">
               <BookOpen size={64} className="mx-auto mb-4 text-gray-400" />
               <h3 className="text-xl font-semibold mb-2">No Classes Found</h3>
-              <p className="text-gray-400">No classes match your current filters.</p>
+              <p className="text-gray-400">
+                No classes match your current filters.
+              </p>
             </div>
           ) : (
             <div className="grid gap-4">
@@ -393,7 +634,7 @@ export default function ClassPaymentUpdate() {
                     selectedClasses.has(classItem._id)
                       ? "border-emerald-400 ring-2 ring-emerald-400/50"
                       : "border-white/20"
-                  }`}
+                  } ${classItem.attendance === "Absent" ? "opacity-60" : ""}`}
                 >
                   <div className="p-6">
                     <div className="flex items-center justify-between">
@@ -404,11 +645,17 @@ export default function ClassPaymentUpdate() {
                           onChange={() => handleClassSelect(classItem._id)}
                           className="w-5 h-5 text-emerald-600 bg-white/10 border-white/30 rounded focus:ring-emerald-500 focus:ring-2"
                         />
-                        
-                        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+
+                        <div
+                          className={`w-12 h-12 bg-gradient-to-r rounded-xl flex items-center justify-center ${
+                            classItem.attendance === "Absent"
+                              ? "from-gray-500 to-gray-600"
+                              : "from-blue-500 to-purple-500"
+                          }`}
+                        >
                           <BookOpen size={20} className="text-white" />
                         </div>
-                        
+
                         <div>
                           <h3 className="font-semibold text-lg text-white">
                             {classItem.className}
@@ -437,11 +684,13 @@ export default function ClassPaymentUpdate() {
                             ₹{classItem.classRate}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              classItem.paid
-                                ? "bg-green-500/20 text-green-300 border border-green-500/30"
-                                : "bg-red-500/20 text-red-300 border border-red-500/30"
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                classItem.paid
+                                  ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                                  : "bg-red-500/20 text-red-300 border border-red-500/30"
+                              }`}
+                            >
                               {classItem.paid ? (
                                 <>
                                   <CheckCircle2 size={10} className="mr-1" />
@@ -454,14 +703,25 @@ export default function ClassPaymentUpdate() {
                                 </>
                               )}
                             </span>
-                            
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              classItem.attendance === "Present"
-                                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                                : "bg-gray-500/20 text-gray-300 border border-gray-500/30"
-                            }`}>
+
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                classItem.attendance === "Present"
+                                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                  : classItem.attendance === "Absent"
+                                    ? "bg-gray-500/20 text-gray-300 border border-gray-500/30"
+                                    : "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                              }`}
+                            >
                               {classItem.attendance}
                             </span>
+
+                            {classItem.attendance !== "Absent" && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                <TrendingUp size={10} className="mr-1" />
+                                Collectible
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -483,8 +743,12 @@ export default function ClassPaymentUpdate() {
                       <div className="mt-4 pt-4 border-t border-white/10">
                         {classItem.topicCovered && (
                           <div className="mb-2">
-                            <p className="text-sm text-gray-400">Topics Covered:</p>
-                            <p className="text-white">{classItem.topicCovered}</p>
+                            <p className="text-sm text-gray-400">
+                              Topics Covered:
+                            </p>
+                            <p className="text-white">
+                              {classItem.topicCovered}
+                            </p>
                           </div>
                         )}
                         {classItem.notes && (

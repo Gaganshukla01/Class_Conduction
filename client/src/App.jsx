@@ -87,7 +87,9 @@ function App() {
                 <ResetPassword />
               </PublicRoute>
           }
-            />
+
+          />
+
 
           <Route path="/emailVerify" element={<EmailVerify />} />
          

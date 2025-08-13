@@ -11,11 +11,10 @@ import { noteRouter } from "./router/noteRouter.js";
 import { homeworkRouter } from "./router/homeworkRouter.js";
 import { codeSaveRouter } from "./router/codeSave.js";
 
+const app = express();
+const port = process.env.PORT || 4000;
 
-const app=express()
-const port=process.env.PORT||4000
-
-app.use(express.json())
+app.use(express.json());
 
 // Define allowed origins and patterns
 const allowedOrigins = [
@@ -27,54 +26,48 @@ const allowedOrigins = [
   "https://class-conduction-hdq6.vercel.app",
 ];
 
-
 const allowedOriginPatterns = [
-  /^https:\/\/class-conduction-.*\.vercel\.app$/, 
-  /^https:\/\/.*-gaganshukla01s-projects\.vercel\.app$/, 
+  /^https:\/\/class-conduction-.*\.vercel\.app$/,
+  /^https:\/\/.*-gaganshukla01s-projects\.vercel\.app$/,
 ];
 
-
 const validOrigins = allowedOrigins.filter(Boolean);
+
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) {
-      console.log('Request with no origin - allowing')
-      return callback(null, true)
+      return callback(null, true);
     }
-    
-    console.log('Request origin:', origin)
-    
+
     // Check exact matches
     if (validOrigins.includes(origin)) {
-      console.log('✅ Origin allowed (exact match):', origin)
-      return callback(null, true)
+      return callback(null, true);
     }
-    
+
     // Check pattern matches
-    const matchesPattern = allowedOriginPatterns.some(pattern => pattern.test(origin))
+    const matchesPattern = allowedOriginPatterns.some((pattern) =>
+      pattern.test(origin)
+    );
     if (matchesPattern) {
-      console.log('✅ Origin allowed (pattern match):', origin)
-      return callback(null, true)
+      return callback(null, true);
     }
-    
-    console.log('❌ Origin blocked:', origin)
-    callback(new Error(`CORS blocked: Origin ${origin} not allowed`))
+
+    callback(new Error(`CORS blocked: Origin ${origin} not allowed`));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
-    'Origin',
-    'X-Requested-With', 
-    'Content-Type', 
-    'Accept',
-    'Authorization', 
-    'Cookie',
-    'Set-Cookie'
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+    "Cookie",
+    "Set-Cookie",
   ],
-  exposedHeaders: ['Set-Cookie'],
-  optionsSuccessStatus: 200
-}
-
+  exposedHeaders: ["Set-Cookie"],
+  optionsSuccessStatus: 200,
+};
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
@@ -93,19 +86,16 @@ app.use("/api/homework", homeworkRouter);
 app.use("/api/codesave", codeSaveRouter);
 
 app.use((err, req, res, next) => {
-
-  console.error('Error:', err.message)
-  if (err.message.includes('CORS')) {
-    res.status(403).json({ 
-      error: 'CORS Error', 
+  if (err.message.includes("CORS")) {
+    res.status(403).json({
+      error: "CORS Error",
       message: err.message,
       allowedOrigins: validOrigins,
-      allowedPatterns: allowedOriginPatterns.map(p => p.toString())
-    })
+      allowedPatterns: allowedOriginPatterns.map((p) => p.toString()),
+    });
   } else {
-    res.status(500).json({ error: 'Internal server error' })
+    res.status(500).json({ error: "Internal server error" });
   }
-})
-
+});
 
 app.listen(port, () => console.log(`Server is running on port ${port}`));
