@@ -23,6 +23,7 @@ import {
   Eye,
   EyeOff,
   IndianRupeeIcon,
+  Timer,
 } from "lucide-react";
 import {
   getNoteById,
@@ -35,6 +36,7 @@ import {
 import { AppContent } from "../context/Context";
 import axios from "axios";
 import PaymentTab from "../components/PaymentBoard";
+import TimezoneConverter from "../components/TimeZone";
 
 const ProgressTab = ({
   activeTab,
@@ -1029,6 +1031,7 @@ export default function StudentDashboard() {
             { id: "homework", label: "Homework", icon: Target },
             { id: "progress", label: "Progress", icon: TrendingUp },
             { id: "payment", label: "Payments", icon: IndianRupeeIcon },
+            { id: "timezone", label: "TimeZone", icon: Timer },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -3051,6 +3054,9 @@ export default function StudentDashboard() {
         )}
         {activeTab === "payment" && (
           <PaymentTab/>
+        )}
+        {activeTab === "timezone" && (
+          <TimezoneConverter/>
         )}
       </div>
     </div>
