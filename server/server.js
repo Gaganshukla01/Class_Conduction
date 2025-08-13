@@ -22,6 +22,8 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:5174",
+  "https://class-conduction.vercel.app",
+  "https://class-conduction-hdq6.vercel.app",
 ];
 
 const allowedOriginPatterns = [
@@ -30,7 +32,6 @@ const allowedOriginPatterns = [
 ];
 
 const validOrigins = allowedOrigins.filter(Boolean);
-// Regex patterns for dynamic origins (like Vercel deployments)
 
 const corsOptions = {
   origin: function (origin, callback) {
