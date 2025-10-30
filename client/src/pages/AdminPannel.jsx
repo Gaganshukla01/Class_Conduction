@@ -25,6 +25,7 @@ import {
   Check,
   DollarSign as IndianRupeeIcon,
   Menu,
+  Contact,
 } from "lucide-react";
 
 import { AppContent } from "../context/Context";
@@ -36,6 +37,7 @@ import ClassPaymentUpdate from "../components/PaymentStatusUpdate";
 import DashboardHome from "../components/DasboardHomeAdmin";
 import axios from "axios";
 import { toast } from "react-toastify";
+import ContactInquiriesAdmin from "../components/ContactResultForm";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -50,12 +52,13 @@ export default function AdminDashboard() {
     { id: "classAttendence", label: "Class Attendence", icon: Check },
     { id: "homeWorkAssign", label: "Home Work", icon: Book },
     { id: "paymentUpdate", label: "Payment Update", icon: IndianRupeeIcon },
+    { id: "contactUs", label: "Contact Us Res", icon: Contact },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);
-    setSidebarOpen(false); // Close sidebar on mobile after selection
+    setSidebarOpen(false); 
   };
 
   const renderContent = () => {
@@ -76,6 +79,8 @@ export default function AdminDashboard() {
         return <StudentHomeworkAssignment />;
       case "paymentUpdate":
         return <ClassPaymentUpdate />;
+      case "contactUs":
+        return <ContactInquiriesAdmin />;
       default:
         return <DashboardHome />;
     }

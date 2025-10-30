@@ -12,6 +12,8 @@ import { ToastContainer } from "react-toastify";
 import CourseDetails from "./components/CourseDetails";
 import SeeHowItWorks from "./pages/SeeHowItWork";
 import { AppContent } from "./context/Context";
+import ContactUs from "./pages/ContactUs";
+import ContactInquiriesAdmin from "./components/ContactResultForm";
 
 
 const ProtectedRoute = ({
@@ -134,6 +136,18 @@ function App() {
             }
           />
           <Route
+            path="/contactus"
+            element={
+              <ProtectedRoute
+                allowedUserTypes={["admin", "student"]}
+                userType={userType}
+                isLoggedIn={isLoggedIn}
+              >
+                <ContactUs/>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/coursedetails"
             element={
               <ProtectedRoute
@@ -142,6 +156,18 @@ function App() {
                 isLoggedIn={isLoggedIn}
               >
                 <CourseDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contactdetails"
+            element={
+              <ProtectedRoute
+                allowedUserTypes={["admin","student"]}
+                userType={userType}
+                isLoggedIn={isLoggedIn}
+              >
+                <ContactInquiriesAdmin />
               </ProtectedRoute>
             }
           />

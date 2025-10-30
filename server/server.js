@@ -10,6 +10,7 @@ import { classScheduleRouter } from "./router/classScheduleRouter.js";
 import { noteRouter } from "./router/noteRouter.js";
 import { homeworkRouter } from "./router/homeworkRouter.js";
 import { codeSaveRouter } from "./router/codeSave.js";
+import {contactRouter}  from "./router/contactRouter.js"
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -84,6 +85,7 @@ app.use("/api/classschedule", classScheduleRouter);
 app.use("/api/notes", noteRouter);
 app.use("/api/homework", homeworkRouter);
 app.use("/api/codesave", codeSaveRouter);
+app.use("/api/contactus", contactRouter);
 
 app.use((err, req, res, next) => {
   if (err.message.includes("CORS")) {
