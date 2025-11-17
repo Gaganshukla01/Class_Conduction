@@ -3,7 +3,7 @@ const chatSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "user",
       required: true,
       index: true,
     },
@@ -25,7 +25,7 @@ const chatSchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "user",
       required: false,
     },
     isRead: {

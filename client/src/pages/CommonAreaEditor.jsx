@@ -20,7 +20,9 @@ import {
   Sparkles,
   Loader2,
   Heading,
+  Folder,
 } from "lucide-react";
+import ConversationChatModal from "../components/ConversationModal";
 
 export default function CommonAreaEditor() {
   const { allUserData, backend_url } = useContext(AppContent);
@@ -31,6 +33,7 @@ export default function CommonAreaEditor() {
   const [savedNotification, setSavedNotification] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [students, setStudents] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const editorRef = useRef(null);
 
   // Filter students from allUserData
@@ -122,6 +125,9 @@ export default function CommonAreaEditor() {
     { icon: Redo, command: "redo", tooltip: "Redo (Ctrl+Y)" },
   ];
 
+  const handleOpenModal = () => {
+    setIsModalOpen(true)
+  };
   const fontSizes = [
     "12px",
     "14px",
@@ -171,6 +177,15 @@ export default function CommonAreaEditor() {
             <Sparkles className="mr-2 text-yellow-400" size={16} />
             <span className="text-sm">Student Conversation System</span>
           </div>
+          <center>
+            <button
+              onClick={handleOpenModal}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+            >
+              <Folder size={18} />
+              <span>Open Conversations</span>
+            </button>
+          </center>
           <h1 className="text-5xl font-bold mb-3">
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Write Student Conversation
@@ -262,7 +277,7 @@ export default function CommonAreaEditor() {
           <div className="p-6 border-b border-white/10 bg-white/5">
             <label className="text-sm font-semibold mb-3 flex items-center">
               <Heading className="mr-2 text-blue-400" size={18} />
-               Heading
+              Heading
             </label>
             <input
               type="text"
@@ -387,6 +402,12 @@ export default function CommonAreaEditor() {
           </div>
         )}
       </div>
+
+       <ConversationChatModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        userId={allUserData.userId}
+      />
     </div>
   );
 }

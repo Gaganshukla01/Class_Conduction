@@ -1,5 +1,5 @@
-import chatModel from "../model/CommonEditor.js";
 import userModel from "../model/userModel.js";
+import chatModel from "../model/CommonEditor.js";
 
 // Create a new Chat
 export const createChat = async (req, res) => {
@@ -148,7 +148,7 @@ export const markAsRead = async (req, res) => {
 export const updateChat = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { chat } = req.body;
+    const { chat,heading } = req.body;
 
     if (!chat) {
       return res.json({
@@ -159,7 +159,7 @@ export const updateChat = async (req, res) => {
 
     const updatedChat = await chatModel.findByIdAndUpdate(
       chatId,
-      { chat },
+      { chat,heading },
       { new: true, runValidators: true }
     );
 
