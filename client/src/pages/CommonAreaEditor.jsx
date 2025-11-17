@@ -187,7 +187,7 @@ export default function CommonAreaEditor() {
         <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
           {/* Student Selector */}
           <div className="p-6 border-b border-white/10 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
-            <label className="block text-sm font-semibold mb-3 flex items-center">
+            <label className="text-sm font-semibold mb-3 flex items-center">
               <User className="mr-2 text-blue-400" size={18} />
               Select Student
             </label>

@@ -310,7 +310,7 @@ export default function StudentChatViewer() {
             <div className="p-6">
               {/* Heading Input */}
               <div className="mb-4">
-                <label className="block text-sm font-semibold mb-2 flex items-center">
+                <label className="text-sm font-semibold mb-2 flex items-center">
                   <Heading className="mr-2 text-blue-400" size={18} />
                   Chat Heading
                 </label>
@@ -479,7 +479,7 @@ export default function StudentChatViewer() {
                     <>
                       {/* Edit Heading Input */}
                       <div className="mb-4">
-                        <label className="block text-sm font-semibold mb-2 flex items-center">
+                        <label className="text-sm font-semibold mb-2 flex items-center">
                           <Heading className="mr-2 text-blue-400" size={18} />
                           Chat Heading
                         </label>
