@@ -10,22 +10,33 @@ export const AppContextProvider = (props) => {
   const [allUserData, setAllUserData] = useState(false);
   const [allCourse, setAllCourseData] = useState(false);
   const [allSchedule, setAllScheduleeData] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refreshData = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   const getAuthState = async () => {
     axios.defaults.withCredentials = true;
     try {
+      setIsDataLoading(true);
       const { data } = await axios.get(
         `${backend_url}/api/auth/isAuthenticate`
       );
       if (data.sucess) {
         setIsLoggedin(true);
-        getUserData();
-        getAllUserData();
-        getAllCourse();
-        getAllSchedule();
+        await Promise.all([
+          getUserData(),
+          getAllUserData(),
+          getAllCourse(),
+          getAllSchedule(),
+        ]);
       }
     } catch (error) {
       console.log(error.response?.data?.message || "An error occurred");
+    } finally {
+      setIsDataLoading(false);
     }
   };
 
@@ -34,13 +45,13 @@ export const AppContextProvider = (props) => {
       const { data } = await axios.get(`${backend_url}/api/user/data`);
       data.sucess ? setUserData(data.message) : toast.error(data.message);
     } catch (error) {
-      toast.error(data.message);
+      toast.error(error.response?.data?.message || "Error fetching user data");
     }
   };
 
   useEffect(() => {
     getAuthState();
-  }, []);
+  }, [refreshTrigger]);
 
   const getAllUserData = async () => {
     axios.defaults.withCredentials = true;
@@ -48,26 +59,29 @@ export const AppContextProvider = (props) => {
       const { data } = await axios.get(`${backend_url}/api/user/getalluser`);
       data.success ? setAllUserData(data) : toast.error(data.message);
     } catch (error) {
-      toast.error(data.message);
+      toast.error(error.response?.data?.message || "Error fetching users");
     }
   };
+
   const getAllCourse = async () => {
     axios.defaults.withCredentials = true;
     try {
       const res = await axios.get(`${backend_url}/api/course/`);
       res.data ? setAllCourseData(res.data) : toast.error(res.message);
     } catch (error) {
-      toast.error(data.message);
+      toast.error(error.response?.data?.message || "Error fetching courses");
     }
   };
 
   const getAllSchedule = async () => {
     axios.defaults.withCredentials = true;
     try {
-      const res = await axios.get(`${backend_url}/api/classschedule/getallclasses`);
+      const res = await axios.get(
+        `${backend_url}/api/classschedule/getallclasses`
+      );
       res.data ? setAllScheduleeData(res.data.data) : toast.error(res.message);
     } catch (error) {
-      toast.error(data.message);
+      toast.error(error.response?.data?.message || "Error fetching schedules");
     }
   };
 
@@ -83,7 +97,9 @@ export const AppContextProvider = (props) => {
     getAllCourse,
     allCourse,
     allSchedule,
-    getAllSchedule
+    getAllSchedule,
+    isDataLoading,
+    refreshData,
   };
 
   return (

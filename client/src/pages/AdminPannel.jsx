@@ -15,8 +15,8 @@ import {
   Book,
   DollarSign,
   CheckCircle,
-  TrendingUp ,
-  GraduationCap, 
+  TrendingUp,
+  GraduationCap,
   Clock,
   User,
   ExternalLink,
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
 
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);
-    setSidebarOpen(false); 
+    setSidebarOpen(false);
   };
 
   const renderContent = () => {
@@ -109,10 +109,12 @@ export default function AdminDashboard() {
         </div>
 
         {/* Sidebar Navigation */}
-        <div className={`
+        <div
+          className={`
           fixed lg:relative inset-y-0 left-0 z-40 w-64 bg-white/10 backdrop-blur-sm border-r border-white/10 p-6 transform transition-transform duration-300 ease-in-out lg:transform-none
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        `}
+        >
           <h1 className="text-2xl font-bold mb-8 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent hidden lg:block">
             Admin Panel
           </h1>
@@ -140,7 +142,7 @@ export default function AdminDashboard() {
 
         {/* Mobile Overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-30 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           ></div>
@@ -155,11 +157,9 @@ export default function AdminDashboard() {
   );
 }
 
-
-
 // Update user type
 function UpdateUserType() {
-  const { getAllUserData, getUserData, allUserData, backend_url } =
+  const { getAllUserData, getUserData, allUserData, backend_url, refreshData } =
     useContext(AppContent);
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
@@ -560,7 +560,7 @@ function ManageClasses() {
   console.log(allSchedule, "test1");
   console.log(allUserData, "test2");
 
-  const classes = allSchedule|| [];
+  const classes = allSchedule || [];
   const users = allUserData?.data || [];
 
   const handleJoinClass = (classLink) => {
@@ -612,27 +612,28 @@ function ManageClasses() {
 
   // Get filtered classes for each student (3 classes max)
   const getFilteredClassesForStudent = (studentId) => {
-    const today = new Date().toISOString().split('T')[0];
-    
+    const today = new Date().toISOString().split("T")[0];
+
     // Get all classes where this student is enrolled, sorted by date
     const studentClasses = classes
-      .filter(classItem => 
-        classItem.studentsEnrolled && 
-        classItem.studentsEnrolled.includes(studentId)
+      .filter(
+        (classItem) =>
+          classItem.studentsEnrolled &&
+          classItem.studentsEnrolled.includes(studentId)
       )
       .sort((a, b) => new Date(a.classDate) - new Date(b.classDate));
 
     // Separate classes into today's, past, and future
-    const todayClasses = studentClasses.filter(c => c.classDate === today);
-    const futureClasses = studentClasses.filter(c => c.classDate > today);
-    
+    const todayClasses = studentClasses.filter((c) => c.classDate === today);
+    const futureClasses = studentClasses.filter((c) => c.classDate > today);
+
     let selectedClasses = [];
-    
+
     if (todayClasses.length > 0) {
       // If there's a class today, include it + 2 upcoming
       selectedClasses = [
         ...todayClasses.slice(0, 1), // Only first class of today
-        ...futureClasses.slice(0, 2)  // Next 2 upcoming classes
+        ...futureClasses.slice(0, 2), // Next 2 upcoming classes
       ];
     } else {
       // If no class today, show next 3 upcoming classes
@@ -640,18 +641,20 @@ function ManageClasses() {
     }
 
     // Add labels to classes
-    return selectedClasses.map(classItem => ({
+    return selectedClasses.map((classItem) => ({
       ...classItem,
-      label: classItem.classDate === today ? 'Today' : 'Upcoming'
+      label: classItem.classDate === today ? "Today" : "Upcoming",
     }));
   };
 
-
   const getAllEnrolledStudents = () => {
     const studentSet = new Set();
-    classes.forEach(classItem => {
-      if (classItem.studentsEnrolled && Array.isArray(classItem.studentsEnrolled)) {
-        classItem.studentsEnrolled.forEach(studentId => {
+    classes.forEach((classItem) => {
+      if (
+        classItem.studentsEnrolled &&
+        Array.isArray(classItem.studentsEnrolled)
+      ) {
+        classItem.studentsEnrolled.forEach((studentId) => {
           studentSet.add(studentId);
         });
       }
@@ -659,18 +662,21 @@ function ManageClasses() {
     return Array.from(studentSet);
   };
 
-
   const getStudentDetails = (studentId) => {
-    const student = users.find(user => user._id === studentId || user.name === studentId);
-    return student ? {
-      id: student._id,
-      name: student.name,
-      email: student.email
-    } : {
-      id: studentId,
-      name: studentId,
-      email: 'N/A'
-    };
+    const student = users.find(
+      (user) => user._id === studentId || user.name === studentId
+    );
+    return student
+      ? {
+          id: student._id,
+          name: student.name,
+          email: student.email,
+        }
+      : {
+          id: studentId,
+          name: studentId,
+          email: "N/A",
+        };
   };
 
   if (!allSchedule || !allUserData) {
@@ -712,10 +718,13 @@ function ManageClasses() {
                     <User size={20} />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold">{studentDetails.name}</h3>
+                    <h3 className="text-2xl font-bold">
+                      {studentDetails.name}
+                    </h3>
                     <p className="text-gray-300">{studentDetails.email}</p>
                     <p className="text-sm text-gray-400">
-                      Showing {studentClasses.length} of {studentClasses.length} upcoming classes
+                      Showing {studentClasses.length} of {studentClasses.length}{" "}
+                      upcoming classes
                     </p>
                   </div>
                 </div>
@@ -724,7 +733,9 @@ function ManageClasses() {
                 <div className="space-y-4">
                   {studentClasses.length === 0 ? (
                     <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <p className="text-gray-400">No upcoming classes for this student</p>
+                      <p className="text-gray-400">
+                        No upcoming classes for this student
+                      </p>
                     </div>
                   ) : (
                     studentClasses.map((classItem) => (
@@ -735,16 +746,22 @@ function ManageClasses() {
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center space-x-3 mb-2">
-                              <h4 className="text-xl font-bold">{classItem.className}</h4>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                classItem.label === 'Today' 
-                                  ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
-                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                              }`}>
+                              <h4 className="text-xl font-bold">
+                                {classItem.className}
+                              </h4>
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                  classItem.label === "Today"
+                                    ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                                    : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                }`}
+                              >
                                 {classItem.label}
                               </span>
                             </div>
-                            <p className="text-gray-300 mb-3">{classItem.classDescription}</p>
+                            <p className="text-gray-300 mb-3">
+                              {classItem.classDescription}
+                            </p>
                             <div className="flex items-center space-x-4 text-gray-300 text-sm">
                               <span className="flex items-center">
                                 <User size={14} className="mr-1" />
@@ -752,18 +769,20 @@ function ManageClasses() {
                               </span>
                               <span className="flex items-center">
                                 <Clock size={14} className="mr-1" />
-                                {classItem.classTime} ({classItem.classDuration})
+                                {classItem.classTime} ({classItem.classDuration}
+                                )
                               </span>
                               <span className="flex items-center">
                                 <Calendar size={14} className="mr-1" />
                                 {formatDate(classItem.classDate)}
                               </span>
                             </div>
-
                           </div>
                           <div className="ml-4">
                             <button
-                              onClick={() => handleJoinClass(classItem.classLink)}
+                              onClick={() =>
+                                handleJoinClass(classItem.classLink)
+                              }
                               className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105"
                             >
                               Join Class

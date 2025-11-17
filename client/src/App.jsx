@@ -14,7 +14,8 @@ import SeeHowItWorks from "./pages/SeeHowItWork";
 import { AppContent } from "./context/Context";
 import ContactUs from "./pages/ContactUs";
 import ContactInquiriesAdmin from "./components/ContactResultForm";
-
+import CommonAreaEditor from "./pages/CommonAreaEditor";
+import StudentChatViewer from "./pages/CommonEditorStudent";
 
 const ProtectedRoute = ({
   children,
@@ -88,13 +89,11 @@ function App() {
               <PublicRoute isLoggedIn={isLoggedIn} userType={userType}>
                 <ResetPassword />
               </PublicRoute>
-          }
-
+            }
           />
 
-
           <Route path="/emailVerify" element={<EmailVerify />} />
-         
+
           {/* Admin-only routes */}
           <Route
             path="/admin"
@@ -105,6 +104,18 @@ function App() {
                 isLoggedIn={isLoggedIn}
               >
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/commoneditor"
+            element={
+              <ProtectedRoute
+                allowedUserTypes={["admin"]}
+                userType={userType}
+                isLoggedIn={isLoggedIn}
+              >
+                <CommonAreaEditor />
               </ProtectedRoute>
             }
           />
@@ -119,6 +130,18 @@ function App() {
                 isLoggedIn={isLoggedIn}
               >
                 <StudentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/studentchatview"
+            element={
+              <ProtectedRoute
+                allowedUserTypes={["student"]}
+                userType={userType}
+                isLoggedIn={isLoggedIn}
+              >
+                <StudentChatViewer />
               </ProtectedRoute>
             }
           />
@@ -143,7 +166,7 @@ function App() {
                 userType={userType}
                 isLoggedIn={isLoggedIn}
               >
-                <ContactUs/>
+                <ContactUs />
               </ProtectedRoute>
             }
           />
@@ -163,7 +186,7 @@ function App() {
             path="/contactdetails"
             element={
               <ProtectedRoute
-                allowedUserTypes={["admin","student"]}
+                allowedUserTypes={["admin", "student"]}
                 userType={userType}
                 isLoggedIn={isLoggedIn}
               >
