@@ -360,7 +360,7 @@ function Navbar() {
               >
                 <User size={16} className="text-white sm:w-4 sm:h-4" />
                 <span className="hidden xs:inline">Sign In</span>
-                <span className="xs:hidden">Login</span>
+                <span className="xs:hidden">Login/Signup</span>
               </button>
             )}
           </div>

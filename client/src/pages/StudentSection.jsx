@@ -643,8 +643,6 @@ export default function StudentDashboard() {
       (cls) => new Date(cls.classDate).toDateString() === today
     );
 
-    console.log("Today's classes:", todayClasses);
-
     // Filter upcoming classes (future dates)
     const upcomingClasses = schedules
       .filter((cls) => new Date(cls.classDate) > now)
@@ -2165,7 +2163,6 @@ export default function StudentDashboard() {
             {/* Classes List */}
             {(() => {
               if (!classesData || !userData?.userId) return [];
-              console.log("Classes Data:", classesData);
               return classesData.filter(
                 (classItem) =>
                   classItem.studentsEnrolled &&

@@ -23,7 +23,6 @@ import { toast } from "react-toastify";
 export default function AddClassSchedule() {
   const { getAllUserData, allUserData, backend_url, allCourse } =
     useContext(AppContent);
-  console.log(allCourse);
   const [instructors, setInstructors] = useState([]);
   const [students, setStudents] = useState([]);
 

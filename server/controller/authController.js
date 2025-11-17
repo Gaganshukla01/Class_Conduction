@@ -95,8 +95,6 @@ export const googleAuth = async (req, res) => {
 // for login user
 export const login = async (req, res) => {
   const { email, password } = req.body;
-   console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET)
-console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length)
   if (!email || !password) {
     return res.json({ sucess: false, message: "Fill email and password.." });
   }

@@ -23,9 +23,6 @@ function Login() {
       const provider = new GoogleAuthProvider();
       const auth = getAuth(app);
       const result = await signInWithPopup(auth, provider);
-      console.log(result.user.displayName);
-      console.log(result.user.email);
-
       axios.defaults.withCredentials = true;
       const { data } = await axios.post(backend_url + "/api/auth/googleauth", {
         name: result.user.displayName,

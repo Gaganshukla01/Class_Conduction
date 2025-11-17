@@ -45,15 +45,12 @@ const PaymentTab = () => {
   useEffect(() => {
     if (allSchedule && userData?.userId) {
       // Filter classes for current user and only "Present" attendance for payable classes
-      console.log("All Schedule Data:", allSchedule);
       const userClasses = allSchedule.filter(classItem => 
         classItem.studentsEnrolled && 
         classItem.studentsEnrolled.includes(userData.userId) &&
         classItem.attendance === "Present" // Only present classes are payable
       );
       setData(userClasses);
-      console.log("User ID:", userData.userId);
-      console.log("Filtered Present Classes for Payment:", userClasses);
     }
   }, [allSchedule, userData]);
 

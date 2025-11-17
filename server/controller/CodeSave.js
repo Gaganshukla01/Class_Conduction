@@ -25,11 +25,7 @@ export const saveCodeProject = async (req, res) => {
       _id.toString().trim() !== "" &&
       _id.toString().match(/^[0-9a-fA-F]{24}$/);
 
-    console.log("Has valid ID:", hasValidId);
-
     if (hasValidId) {
-      console.log("Attempting to update existing project with _id:", _id);
-
       // Try to find and update existing project
       const updatedProject = await codeModel.findByIdAndUpdate(
         _id.toString().trim(),
@@ -64,9 +60,6 @@ export const saveCodeProject = async (req, res) => {
     } else {
       console.log("No valid _id provided, creating new project");
     }
-
-    // Create new project
-    console.log("Creating new project...");
     const newProject = new codeModel({
       userId,
       code,
@@ -77,8 +70,6 @@ export const saveCodeProject = async (req, res) => {
     });
 
     const savedProject = await newProject.save();
-    console.log("New project created with _id:", savedProject._id);
-
     res.status(201).json({
       success: true,
       message: "Project created successfully",
@@ -114,7 +105,6 @@ export const saveCodeProject = async (req, res) => {
   }
 };
 export const getUserCodeProjects = async (req, res) => {
-  console.log("Fetching user code projects for userId:", req.params.userId);
   try {
     const { userId } = req.params;
     const {

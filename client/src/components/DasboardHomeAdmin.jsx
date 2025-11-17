@@ -37,12 +37,10 @@ import { AppContent } from '../context/Context';
 function DashboardHome() {
   const { allSchedule, allUserData, allCourse } = useContext(AppContent);
   const [hoveredStat, setHoveredStat] = useState(null);
- console.log("All Schedule Data:", allSchedule);
   // Extract data arrays from backend response
   const classes = allSchedule || [];
   const users = allUserData?.data || [];
   const courses = allCourse?.data || allCourse || [];
-  console.log("Classes Data1:", classes);
   // Calculate statistics from real data
   const totalCourses = courses.length;
   
@@ -64,8 +62,6 @@ function DashboardHome() {
     return classDate >= currentDate;
   }).length;
 
-  // Calculate revenue from PAID classes only
-  console.log("Classes Data:", classes);
   const totalRevenue = classes.reduce((total, classItem) => {
     return total + (classItem.paid ? (classItem.classRate || 0) : 0);
   }, 0);

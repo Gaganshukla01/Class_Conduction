@@ -48,7 +48,6 @@ function ResetPassword() {
      const otp=otpArray.join("")
      setPasswordOtp(otp)
      setIsOtpClicked(true)
-     console.log(otp)
      toast.success("OTP Added") 
     } catch (error) {
       toast.error(error.message)
@@ -61,7 +60,6 @@ const otpsendemail=async (e)=>{
   
     try {
       e.preventDefault()
-      console.log(email)
       const {data}=await axios.post(backend_url+"/api/auth/resetotp",{email})
       if(data){
         toast.success(data.message)

@@ -62,7 +62,6 @@ function EmailVerify() {
   
   // if user is verified so make sure user unable to go on verify page
   useEffect(()=>{
-   console.log(userData)
     isLoggedIn && userData && userData.isAccountVerified && navigate("/")
   },[isLoggedIn,userData])
 

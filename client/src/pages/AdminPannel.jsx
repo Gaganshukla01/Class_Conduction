@@ -557,9 +557,6 @@ function Input({ label, name, value, onChange, type = "text", Icon }) {
 // Manage Classes Component
 function ManageClasses() {
   const { allSchedule, allUserData } = useContext(AppContent);
-  console.log(allSchedule, "test1");
-  console.log(allUserData, "test2");
-
   const classes = allSchedule || [];
   const users = allUserData?.data || [];
 
@@ -568,7 +565,6 @@ function ManageClasses() {
       // Open the class link in a new tab
       window.open(classLink, "_blank", "noopener,noreferrer");
     } else {
-      console.log("No class link available");
       alert("Class link is not available");
     }
   };

@@ -106,7 +106,7 @@ export const EMAIL_VERIFY_TEMPLATE = `
 </body>
 </html>
 
-`
+`;
 
 export const PASSWORD_RESET_TEMPLATE = `
 
@@ -216,9 +216,9 @@ export const PASSWORD_RESET_TEMPLATE = `
   </table>
 </body>
 </html>
-`
+`;
 
-export const USER_REGISTER_TEMPLATE=`<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+export const USER_REGISTER_TEMPLATE = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en">
  <head>
   <meta charset="UTF-8">
@@ -494,7 +494,7 @@ a[x-apple-data-detectors],
    </table>
   </div>
  </body>
-</html>`
+</html>`;
 
 export const Class_Scheulde_Template = `<!DOCTYPE html>
 <html lang="en">
@@ -941,8 +941,7 @@ export const Class_Scheulde_Template = `<!DOCTYPE html>
         </div>
     </div>
 </body>
-</html>`
-
+</html>`;
 
 export const Home_Work_Template = `<!DOCTYPE html>
 <html lang="en">
@@ -1627,9 +1626,9 @@ export const Home_Work_Template = `<!DOCTYPE html>
         </div>
     </div>
 </body>
-</html>`
+</html>`;
 
-export const Payment_Reminder_Template=`<!DOCTYPE html>
+export const Payment_Reminder_Template = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -2392,9 +2391,9 @@ export const Payment_Reminder_Template=`<!DOCTYPE html>
         </div>
     </div>
 </body>
-</html>`
+</html>`;
 
-export const ClassAttendence_Template=`<!DOCTYPE html>
+export const ClassAttendence_Template = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -3208,4 +3207,4 @@ export const ClassAttendence_Template=`<!DOCTYPE html>
         </div>
     </div>
 </body>
-</html>`
+</html>`;

@@ -25,7 +25,6 @@ import { toast } from "react-toastify";
 
 export default function ClassPaymentUpdate() {
   const { backend_url, allSchedule, allUserData } = useContext(AppContent);
-  console.log(allUserData, "data");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedClasses, setSelectedClasses] = useState(new Set());

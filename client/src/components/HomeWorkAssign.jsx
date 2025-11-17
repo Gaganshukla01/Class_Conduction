@@ -485,7 +485,6 @@ export default function StudentHomeworkAssignment() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {studentsData.map((student) => {
-                console.log("Student:", homeworkList);
                 const studentHomework = homeworkList.filter(
                   (hw) => hw.studentId === student.id
                 );

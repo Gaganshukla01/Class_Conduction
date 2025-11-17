@@ -84,8 +84,6 @@ export default function CommonAreaEditor() {
       const result = await response.json();
 
       if (result.success) {
-        console.log("Chat saved successfully:", result);
-
         // Clear editor and reset
         editorRef.current.innerHTML = "";
         setSelectedStudent(null);
@@ -171,11 +169,11 @@ export default function CommonAreaEditor() {
         <div className="mb-8 text-center">
           <div className="inline-flex items-center bg-blue-500/20 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-400/30 mb-4">
             <Sparkles className="mr-2 text-yellow-400" size={16} />
-            <span className="text-sm">Student Chat System</span>
+            <span className="text-sm">Student Conversation System</span>
           </div>
           <h1 className="text-5xl font-bold mb-3">
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Write Student Chats
+              Write Student Conversation
             </span>
           </h1>
           <p className="text-gray-400 text-lg">
@@ -264,7 +262,7 @@ export default function CommonAreaEditor() {
           <div className="p-6 border-b border-white/10 bg-white/5">
             <label className="text-sm font-semibold mb-3 flex items-center">
               <Heading className="mr-2 text-blue-400" size={18} />
-              Chat Heading
+               Heading
             </label>
             <input
               type="text"
@@ -374,7 +372,7 @@ export default function CommonAreaEditor() {
               ) : (
                 <>
                   <Save className="mr-2" size={18} />
-                  Save Chat
+                  Save Conversation
                 </>
               )}
             </button>
@@ -385,7 +383,7 @@ export default function CommonAreaEditor() {
         {savedNotification && (
           <div className="fixed bottom-8 right-8 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center z-50">
             <Check className="mr-2" size={20} />
-            Chat saved successfully!
+            Conversation saved successfully!
           </div>
         )}
       </div>
