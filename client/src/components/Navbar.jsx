@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   Home,
+  HomeIcon,
 } from "lucide-react";
 
 function Navbar() {
@@ -240,6 +241,23 @@ function Navbar() {
                               </p>
                               <p className="text-xs text-gray-500">
                                 Open playground
+                              </p>
+                            </div>
+                          </button>
+                          {/* Common Area */}
+                          <button
+                            onClick={goToCommonArea}
+                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-purple-50 transition-colors duration-200 text-left group/item"
+                          >
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center group-hover/item:bg-purple-200 transition-colors">
+                              <HomeIcon size={16} className="text-purple-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800 text-sm">
+                                Common Area
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Open Chat
                               </p>
                             </div>
                           </button>
