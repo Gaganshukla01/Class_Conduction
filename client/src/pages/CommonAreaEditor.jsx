@@ -36,6 +36,18 @@ export default function CommonAreaEditor() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const editorRef = useRef(null);
 
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isModalOpen]);
+
   // Filter students from allUserData
   useEffect(() => {
     if (allUserData.data && allUserData.data.length > 0) {
@@ -126,7 +138,7 @@ export default function CommonAreaEditor() {
   ];
 
   const handleOpenModal = () => {
-    setIsModalOpen(true)
+    setIsModalOpen(true);
   };
   const fontSizes = [
     "12px",
@@ -403,7 +415,7 @@ export default function CommonAreaEditor() {
         )}
       </div>
 
-       <ConversationChatModal
+      <ConversationChatModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         userId={allUserData.userId}

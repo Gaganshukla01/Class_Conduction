@@ -15,6 +15,8 @@ import {
   ExternalLink,
   FileText,
   FolderOpen,
+  CodeSquare,
+  X,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { AppContent } from "../context/Context";
@@ -50,12 +52,25 @@ const CodeEditor = () => {
   });
 
   // modal states
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSavedProject, setSelectedProject] = useState(null);
   const [savedCode, setSavedCode] = useState("");
   const [savedlanguage, setSavedLanguage] = useState("javascript");
   const [savedProjectId, setSavedProjectId] = useState();
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (isSaveModalOpen || isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isSaveModalOpen, isModalOpen]);
 
   const handleSelectProject = (project) => {
     setSelectedProject(project);
@@ -64,7 +79,7 @@ const CodeEditor = () => {
     setSavedProjectId(project.id);
     setFileName(project.title);
   };
-  
+
   // to set selcetd save code and language when modal opens
   useEffect(() => {
     setActiveLanguage(savedlanguage ? savedlanguage : "javascript");
@@ -449,7 +464,6 @@ const CodeEditor = () => {
       );
       setSuggestionPosition(position);
     }
-
     // Handle autocomplete suggestions
     const textBeforeCursor = value.substring(0, cursorPos);
     const lastWordMatch = textBeforeCursor.match(/\b\w+$/);
@@ -498,18 +512,7 @@ const CodeEditor = () => {
       }
     }, 0);
   };
-  // Handle key events
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      setShowSuggestions(false);
-    }
-    if (showSuggestions && (e.key === "Tab" || e.key === "Enter")) {
-      e.preventDefault();
-      if (suggestions.length > 0) {
-        handleSuggestionClick(suggestions[0]);
-      }
-    }
-  };
+
   // Clear current language code
   const clearCode = () => {
     setCodes((prev) => ({
@@ -526,7 +529,12 @@ const CodeEditor = () => {
   // Save code (using memory storage as per restrictions)
   const saveCodeToBackend = async () => {
     if (!currentCode.trim()) {
-      toast.warning(" No code to save. Please write some code first.");
+      toast.warning("No code to save. Please write some code first.");
+      return;
+    }
+
+    if (!fileName.trim()) {
+      toast.warning("Please enter a file name.");
       return;
     }
 
@@ -540,7 +548,7 @@ const CodeEditor = () => {
         title: fileName,
         language: activeLanguage,
         timestamp: new Date().toISOString(),
-        filename: `code_${Date.now()}.${
+        filename: `${fileName}.${
           activeLanguage === "javascript"
             ? "js"
             : activeLanguage === "python"
@@ -566,14 +574,26 @@ const CodeEditor = () => {
         setSavedProjectId("");
         setSavedCode("");
         setSavedLanguage();
-        setFileName("")
+        setFileName("");
         setIsSaving(false);
+        setIsSaveModalOpen(false); // Close the save modal
       }, 1000);
     } catch (error) {
-      toast.error(response.data.message);
+      toast.error(error.response?.data?.message || "Failed to save");
       console.error("Save failed:", error);
       setIsSaving(false);
     }
+  };
+  const getFileExtension = (language) => {
+    const extensions = {
+      javascript: "js",
+      python: "py",
+      html: "html",
+      css: "css",
+      cpp: "cpp",
+      java: "java",
+    };
+    return extensions[language] || "txt";
   };
 
   // Enhanced HTML/CSS preview
@@ -795,6 +815,249 @@ const CodeEditor = () => {
     }, 800);
   };
 
+  // Format code based on language
+  const formatCode = () => {
+    if (!currentCode.trim()) {
+      toast.warning("No code to format!");
+      return;
+    }
+
+    let formattedCode = currentCode;
+
+    try {
+      switch (activeLanguage) {
+        case "javascript":
+          formattedCode = formatJavaScript(currentCode);
+          break;
+
+        case "html":
+          formattedCode = formatHTML(currentCode);
+          break;
+
+        case "css":
+          formattedCode = formatCSS(currentCode);
+          break;
+
+        case "python":
+          formattedCode = formatPython(currentCode);
+          break;
+
+        case "cpp":
+        case "java":
+          formattedCode = formatCLikeLanguage(currentCode);
+          break;
+      }
+
+      setCodes((prev) => ({
+        ...prev,
+        [activeLanguage]: formattedCode,
+      }));
+
+      toast.success("Code formatted successfully!");
+    } catch (error) {
+      toast.error("Failed to format code");
+      console.error("Format error:", error);
+    }
+  };
+
+  // JavaScript formatter
+  const formatJavaScript = (code) => {
+    let formatted = code;
+    let indentLevel = 0;
+    const indentSize = 2;
+
+    // Remove extra whitespace
+    formatted = formatted.replace(/\s+/g, " ").trim();
+
+    // Add spaces around operators
+    formatted = formatted.replace(/([=+\-*/%<>!&|])=/g, " $1= ");
+    formatted = formatted.replace(/([^=!<>])([=]{2,3})([^=])/g, "$1 $2 $3");
+    formatted = formatted.replace(/([+\-*/%])/g, " $1 ");
+
+    // Format function declarations and arrows
+    formatted = formatted.replace(/\s*=>\s*/g, " => ");
+    formatted = formatted.replace(/const\s+/g, "const ");
+    formatted = formatted.replace(/let\s+/g, "let ");
+    formatted = formatted.replace(/var\s+/g, "var ");
+    formatted = formatted.replace(/function\s+/g, "function ");
+
+    // Add newlines and proper spacing
+    formatted = formatted.replace(/\s*{\s*/g, " {\n");
+    formatted = formatted.replace(/\s*}\s*/g, "\n}\n");
+    formatted = formatted.replace(/;\s*/g, ";\n");
+    formatted = formatted.replace(/,\s*/g, ", ");
+
+    // Format if/else
+    formatted = formatted.replace(/\s*\}\s*else\s*\{/g, "\n} else {");
+    formatted = formatted.replace(/if\s*\(/g, "if (");
+    formatted = formatted.replace(/\)\s*{/g, ") {");
+
+    // Split into lines and add proper indentation
+    const lines = formatted.split("\n").filter((line) => line.trim());
+    const result = [];
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+
+      // Decrease indent for closing braces
+      if (trimmed.startsWith("}")) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+
+      // Add indentation
+      if (trimmed) {
+        result.push(" ".repeat(indentLevel * indentSize) + trimmed);
+      }
+
+      // Increase indent after opening braces
+      if (trimmed.endsWith("{")) {
+        indentLevel++;
+      }
+
+      // Handle else blocks
+      if (trimmed.includes("} else {")) {
+        indentLevel = Math.max(0, indentLevel - 1);
+        result[result.length - 1] =
+          " ".repeat(indentLevel * indentSize) + trimmed;
+        indentLevel++;
+      }
+    });
+
+    return result.join("\n");
+  };
+
+  // CSS formatter
+  const formatCSS = (code) => {
+    let formatted = code.replace(/\s+/g, " ").trim();
+
+    // Format selectors and rules
+    formatted = formatted.replace(/\s*{\s*/g, " {\n  ");
+    formatted = formatted.replace(/\s*}\s*/g, "\n}\n\n");
+    formatted = formatted.replace(/;\s*/g, ";\n  ");
+    formatted = formatted.replace(/,\s*/g, ",\n");
+
+    // Clean up extra newlines
+    formatted = formatted.replace(/\n{3,}/g, "\n\n");
+    formatted = formatted.replace(/\n\s*\n\s*}/g, "\n}");
+
+    return formatted.trim();
+  };
+
+  // HTML formatter
+  const formatHTML = (code) => {
+    let indent = 0;
+    const indentSize = 2;
+
+    // Remove extra whitespace between tags
+    let formatted = code.replace(/>\s+</g, "><").trim();
+
+    // Split by tags
+    const tags = formatted.split(/(?=<)/);
+    const result = [];
+
+    tags.forEach((tag) => {
+      const trimmed = tag.trim();
+      if (!trimmed) return;
+
+      // Decrease indent for closing tags
+      if (trimmed.match(/^<\/\w/)) {
+        indent = Math.max(0, indent - 1);
+      }
+
+      // Add indentation
+      result.push(" ".repeat(indent * indentSize) + trimmed);
+
+      // Increase indent for opening tags (but not self-closing)
+      if (trimmed.match(/^<\w[^>]*[^\/]>$/)) {
+        indent++;
+      }
+    });
+
+    return result.join("\n");
+  };
+
+  // Python formatter
+  const formatPython = (code) => {
+    const lines = code.split("\n");
+    const result = [];
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed) {
+        // Preserve Python's significant whitespace
+        result.push(trimmed);
+      }
+    });
+
+    return result.join("\n");
+  };
+
+  // C-like language formatter (C++, Java)
+  const formatCLikeLanguage = (code) => {
+    let formatted = code.replace(/\s+/g, " ").trim();
+    let indentLevel = 0;
+    const indentSize = 2;
+
+    // Add spaces around operators
+    formatted = formatted.replace(/([=+\-*/%<>!&|])=/g, " $1= ");
+
+    // Format braces and statements
+    formatted = formatted.replace(/\s*{\s*/g, " {\n");
+    formatted = formatted.replace(/\s*}\s*/g, "\n}\n");
+    formatted = formatted.replace(/;\s*/g, ";\n");
+
+    // Format if/else, for, while
+    formatted = formatted.replace(/\s*\}\s*else\s*\{/g, "\n} else {");
+    formatted = formatted.replace(/(if|for|while)\s*\(/g, "$1 (");
+
+    // Split into lines and add indentation
+    const lines = formatted.split("\n").filter((line) => line.trim());
+    const result = [];
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith("}")) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+
+      if (trimmed) {
+        result.push(" ".repeat(indentLevel * indentSize) + trimmed);
+      }
+
+      if (trimmed.endsWith("{")) {
+        indentLevel++;
+      }
+
+      if (trimmed.includes("} else {")) {
+        indentLevel = Math.max(0, indentLevel - 1);
+        result[result.length - 1] =
+          " ".repeat(indentLevel * indentSize) + trimmed;
+        indentLevel++;
+      }
+    });
+
+    return result.join("\n");
+  };
+  const handleKeyDown = (e) => {
+    // Format code on Ctrl+F
+    if (e.ctrlKey && e.key === "f") {
+      e.preventDefault();
+      formatCode();
+      return;
+    }
+
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+    if (showSuggestions && (e.key === "Tab" || e.key === "Enter")) {
+      e.preventDefault();
+      if (suggestions.length > 0) {
+        handleSuggestionClick(suggestions[0]);
+      }
+    }
+  };
+
   // Copy code to clipboard
   const copyCode = async () => {
     if (!currentCode.trim()) {
@@ -902,16 +1165,6 @@ const CodeEditor = () => {
                 <span>Preview</span>
               </button>
             )}
-
-            <FileText size={18} className="text-white-500" />
-            <input
-              type="text"
-              value={fileName}
-              onChange={(e) => setFileName(e.target.value)}
-              placeholder="Enter file name..."
-              className="bg-transparent outline-none flex-1 text-white-900 placeholder-white-800"
-            />
-
             <button
               onClick={handleOpenModal}
               className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
@@ -945,7 +1198,7 @@ const CodeEditor = () => {
             </button>
 
             <button
-              onClick={saveCodeToBackend}
+              onClick={() => setIsSaveModalOpen(true)}
               disabled={isSaving}
               className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
               title="Save Code"
@@ -1016,6 +1269,15 @@ const CodeEditor = () => {
               >
                 <Copy className="w-4 h-4" />
               </button>
+
+              <button
+                onClick={formatCode}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                title="Format Code (Ctrl+F)"
+              >
+                <CodeSquare className="w-4 h-4" />
+              </button>
+
               <button
                 onClick={downloadCode}
                 className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
@@ -1158,6 +1420,72 @@ const CodeEditor = () => {
         onSelectProject={handleSelectProject}
         userId={userData.userId}
       />
+
+      {/* Save File Name Modal */}
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+                <Save className="w-5 h-5" />
+                <span>Save Code File</span>
+              </h2>
+              <button
+                onClick={() => setIsSaveModalOpen(false)}
+                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                disabled={isSaving}
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  File Name
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={fileName}
+                    onChange={(e) => setFileName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && fileName.trim()) {
+                        saveCodeToBackend();
+                      }
+                    }}
+                    placeholder="Enter file name..."
+                    className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    autoFocus
+                    disabled={isSaving}
+                  />
+                  <span className="text-gray-400 font-mono">
+                    .{getFileExtension(activeLanguage)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-700">
+                <button
+                  onClick={() => setIsSaveModalOpen(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveCodeToBackend}
+                  disabled={!fileName.trim() || isSaving}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSaving ? "Saving..." : "Save"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

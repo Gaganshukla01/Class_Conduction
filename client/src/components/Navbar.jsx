@@ -256,9 +256,7 @@ function Navbar() {
                               <p className="font-medium text-gray-800 text-sm">
                                 Common Area
                               </p>
-                              <p className="text-xs text-gray-500">
-                                Open Chat
-                              </p>
+                              <p className="text-xs text-gray-500">Open Chat</p>
                             </div>
                           </button>
 

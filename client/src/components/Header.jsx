@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { AppContent } from "../context/Context";
 import {
   Star,
   Play,
@@ -9,10 +10,146 @@ import {
   Rocket,
   Lightbulb,
 } from "lucide-react";
+import { toast } from "react-toastify";
+import axios from "axios";
+import ReviewsSection from "./ReviewDispaly";
+
+const ReviewInputBox = ({ onClose, onSubmit }) => {
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { userData, backend_url } = useContext(AppContent);
+
+  const handleSubmit = async () => {
+    if (rating === 0) {
+      toast.warning("Please select a rating");
+      return;
+    }
+
+    if (!comment.trim()) {
+      toast.warning("Please write a comment");
+      return;
+    }
+
+    setIsSubmitting(true);
+    axios.defaults.withCredentials = true;
+    const res = await axios.post(`${backend_url}/api/rating`, {
+      userId: userData.userId,
+      rating,
+      comment,
+    });
+
+    onSubmit({ rating, comment });
+
+    setRating(0);
+    setComment("");
+    setIsSubmitting(false);
+
+    toast.success("Thank you for your review! ⭐");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-700">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+            <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
+            <span>Leave a Review</span>
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            disabled={isSubmitting}
+          >
+            <span className="text-2xl text-gray-400">×</span>
+          </button>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-300 mb-3">
+            How would you rate your experience?
+          </label>
+          <div className="flex items-center justify-center space-x-2 py-4">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setRating(star)}
+                onMouseEnter={() => setHoveredRating(star)}
+                onMouseLeave={() => setHoveredRating(0)}
+                className="transform transition-all duration-200 hover:scale-125 focus:outline-none"
+                disabled={isSubmitting}
+              >
+                <Star
+                  className={`w-10 h-10 transition-all duration-200 ${
+                    star <= (hoveredRating || rating)
+                      ? "text-yellow-400 fill-yellow-400"
+                      : "text-gray-600"
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+          {rating > 0 && (
+            <p className="text-center text-sm text-gray-400 mt-2">
+              {rating === 1 && "😞 Poor"}
+              {rating === 2 && "😐 Fair"}
+              {rating === 3 && "🙂 Good"}
+              {rating === 4 && "😊 Very Good"}
+              {rating === 5 && "🤩 Excellent"}
+            </p>
+          )}
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Share your thoughts
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Tell us about your experience..."
+            className="w-full px-4 py-3 bg-gray-800 text-white rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none border border-gray-700 placeholder-gray-500"
+            rows="4"
+            disabled={isSubmitting}
+          />
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-gray-500">
+              {comment.length} characters
+            </span>
+            {comment.length > 0 && (
+              <span className="text-xs text-green-400">✓ Looking good!</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all font-medium"
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={rating === 0 || !comment.trim() || isSubmitting}
+            className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            <span>{isSubmitting ? "Submitting..." : "Submit Review"}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ClassWaveLanding() {
   const [isVisible, setIsVisible] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const { userData, backend_url } = useContext(AppContent);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -95,16 +232,20 @@ export default function ClassWaveLanding() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <button className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-xl"
-              onClick={() => navigate('/coursedetails')}>
+              <button
+                className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-xl"
+                onClick={() => navigate("/coursedetails")}
+              >
                 Start Learning Now
                 <ChevronRight
                   className="inline ml-2 group-hover:translate-x-1 transition-transform"
                   size={20}
                 />
               </button>
-              <button className="group flex items-center justify-center px-8 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300"
-                onClick={() => navigate('/seehowitworks')}>
+              <button
+                className="group flex items-center justify-center px-8 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300"
+                onClick={() => navigate("/seehowitworks")}
+              >
                 <Play className="mr-2" size={20} />
                 See How It Works
               </button>
@@ -192,38 +333,8 @@ export default function ClassWaveLanding() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="relative z-10 px-8 py-16">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/20">
-            <div className="flex justify-center mb-6">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  size={20}
-                  className="text-yellow-400 fill-current"
-                />
-              ))}
-            </div>
-            <blockquote className="text-xl mb-6 text-gray-200 italic">
-              "ClassWave helped me transition from marketing to tech in just 6
-              months. The courses are practical and the instructors are
-              world-class!"
-            </blockquote>
-            <div className="flex items-center justify-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                <span className="font-bold">AK</span>
-              </div>
-              <div className="text-left">
-                <div className="font-semibold">Alex Kim</div>
-                <div className="text-gray-400 text-sm">
-                  Software Engineer at Google
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Review*/}
+      <ReviewsSection />
 
       {/* CTA */}
       <section className="relative z-10 px-8 py-20">
@@ -239,8 +350,10 @@ export default function ClassWaveLanding() {
               <button className="px-10 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:scale-105 transition-transform shadow-xl">
                 Get Started Free
               </button>
-              <button className="px-10 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all"
-              onClick={() => navigate('/coursedetails')}>
+              <button
+                className="px-10 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all"
+                onClick={() => navigate("/coursedetails")}
+              >
                 Browse Courses
               </button>
             </div>
@@ -351,11 +464,31 @@ export default function ClassWaveLanding() {
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-8 mt-8 text-gray-400">
-            <p>&copy; 2025 ClassWave. All rights reserved.</p>
+          <div className="border-t border-white/10 pt-8 mt-8">
+            {userData && (
+              <button
+                onClick={() => setShowReviewModal(true)}
+                className="mb-6 px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white rounded-full font-semibold shadow-lg transition-all transform hover:scale-105 inline-flex items-center space-x-2"
+              >
+                <Star className="w-5 h-5 fill-current" />
+                <span>Leave a Review</span>
+              </button>
+            )}
+            <p className="text-gray-400">
+              &copy; 2025 ClassWave. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
+      {/* Review Modal */}
+      {showReviewModal && (
+        <ReviewInputBox
+          onClose={() => setShowReviewModal(false)}
+          onSubmit={(reviewData) => {
+            setShowReviewModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

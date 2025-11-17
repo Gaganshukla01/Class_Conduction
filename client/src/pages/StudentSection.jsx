@@ -44,13 +44,10 @@ const ProgressTab = ({
   homeWorkData = [],
   userData = {},
 }) => {
-
-
-  if(!allSchedule)
-  {
-   return <div className="text-white">Enroll the course</div>;
+  if (!allSchedule) {
+    return <div className="text-white">Enroll the course</div>;
   }
-  
+
   const progressData = useMemo(() => {
     const userSchedule = allSchedule.filter(
       (schedule) =>
@@ -574,7 +571,6 @@ export default function StudentDashboard() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [classesData, setClassesData] = useState([]);
   const [homeWorkData, setHomeworkData] = useState([]);
-  
 
   const [notes, setNotes] = useState([
     {
@@ -600,7 +596,7 @@ export default function StudentDashboard() {
   ]);
 
   const { userData, allSchedule, backend_url } = useContext(AppContent);
-  
+
   // for loading the data from the server
   useEffect(() => {
     const loadNotes = async () => {
@@ -635,8 +631,6 @@ export default function StudentDashboard() {
   const processClassSchedules = (schedules) => {
     const now = new Date();
     const today = now.toDateString();
-
-  
 
     // Filter classes for today
     const todayClasses = schedules.filter(
@@ -851,13 +845,25 @@ export default function StudentDashboard() {
   const [editingNote, setEditingNote] = useState(null);
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [searchNotesQuery, setSearchNotesQuery] = useState("");
-
   const [showHomeworkModal, setShowHomeworkModal] = useState(false);
   const [selectedHomework, setSelectedHomework] = useState(null);
   const [submissionForm, setSubmissionForm] = useState({
     notes: "",
     attachments: [],
   });
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (showNoteForm || showHomeworkModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showHomeworkModal, showNoteForm]);
 
   // Homework Functions
   const handleHomeworkSubmit = async (homeworkId) => {
@@ -893,8 +899,6 @@ export default function StudentDashboard() {
     setSelectedClass(classInfo);
     setShowClassInfo(true);
   };
-
-
 
   // Notes Functions
   const handleNoteSubmit = async (e) => {
@@ -949,7 +953,6 @@ export default function StudentDashboard() {
 
   const handleDeleteNote = async (noteId) => {
     if (window.confirm("Are you sure you want to delete this note?")) {
-
       try {
         const response = await deleteNote(noteId);
         if (response.success) {
@@ -3049,12 +3052,8 @@ export default function StudentDashboard() {
             userData={userData}
           />
         )}
-        {activeTab === "payment" && (
-          <PaymentTab/>
-        )}
-        {activeTab === "timezone" && (
-          <TimezoneConverter/>
-        )}
+        {activeTab === "payment" && <PaymentTab />}
+        {activeTab === "timezone" && <TimezoneConverter />}
       </div>
     </div>
   );
