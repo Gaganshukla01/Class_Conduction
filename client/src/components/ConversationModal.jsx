@@ -52,7 +52,6 @@ const ConversationChatModal = ({ isOpen, onClose, userId }) => {
     try {
       const response = await fetch(`${backend_url}/api/chateditor/chats`);
       const data = await response.json();
-      console.log(data, "datachat");
       if (data.success) {
         setChats(data.data);
         setFilteredChats(data.data);

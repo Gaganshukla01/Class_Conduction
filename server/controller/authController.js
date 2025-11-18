@@ -262,7 +262,6 @@ export const resetPassword = async (req, res) => {
   try {
     const user = await userModel.findOne({ email: email });
     if (user.resetOtp === "" || user.resetOtp != otp) {
-      console.log(user.resetOtp);
       return res.json({ sucess: false, message: "Otp does not match" });
     }
     if (user.resetOtpExpireAt < Date.now()) {

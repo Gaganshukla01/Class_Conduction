@@ -831,8 +831,6 @@ export default function StudentDashboard() {
         );
       }
     }
-
-    console.log("Final result:", result);
     return result;
   };
 
@@ -960,7 +958,6 @@ export default function StudentDashboard() {
           setNotes(
             notes.filter((note) => note._id !== noteId && note.id !== noteId)
           );
-          console.log("Note deleted successfully"); // Debug log
         } else {
           console.error("Delete failed:", response.message);
           alert(

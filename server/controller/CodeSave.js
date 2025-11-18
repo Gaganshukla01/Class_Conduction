@@ -44,7 +44,6 @@ export const saveCodeProject = async (req, res) => {
       );
 
       if (updatedProject) {
-        console.log("Project updated successfully");
         return res.status(200).json({
           success: true,
           message: "Project updated successfully",
