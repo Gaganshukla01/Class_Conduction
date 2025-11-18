@@ -36,6 +36,9 @@ export default function CommonAreaEditor() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const editorRef = useRef(null);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   // Lock body scroll when any modal is open
   useEffect(() => {
     if (isModalOpen) {
@@ -192,9 +195,9 @@ export default function CommonAreaEditor() {
           <center>
             <button
               onClick={handleOpenModal}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+              className="inline-flex items-center bg-blue-500/20 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-400/30 mb-4 hover:cursor-pointer"
             >
-              <Folder size={18} />
+              <Folder size={18} className="mr-3" />
               <span>Open Conversations</span>
             </button>
           </center>

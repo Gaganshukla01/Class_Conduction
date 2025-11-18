@@ -160,6 +160,10 @@ export default function ClassWaveLanding() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const features = [
     {
       icon: Lightbulb,
@@ -233,7 +237,7 @@ export default function ClassWaveLanding() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <button
-                className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-xl"
+                className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-xl hover:cursor-pointer"
                 onClick={() => navigate("/coursedetails")}
               >
                 Start Learning Now
@@ -243,7 +247,7 @@ export default function ClassWaveLanding() {
                 />
               </button>
               <button
-                className="group flex items-center justify-center px-8 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300"
+                className="group flex items-center justify-center px-8 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300 hover:cursor-pointer"
                 onClick={() => navigate("/seehowitworks")}
               >
                 <Play className="mr-2" size={20} />
@@ -275,24 +279,26 @@ export default function ClassWaveLanding() {
         </div>
       </section>
 
-      {/* Stats
+      {/* Stats */}
       <section className="relative z-10 px-8 py-12">
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { number: "2M+", label: "Students" },
-              { number: "10K+", label: "Courses" },
-              { number: "500+", label: "Experts" },
-              { number: "4.9★", label: "Rating" }
+              { number: "200+", label: "Students" },
+              { number: "20+", label: "Courses" },
+              { number: "50+", label: "Experts" },
+              { number: "4.9★", label: "Rating" },
             ].map((stat, index) => (
               <div key={index}>
-                <div className="text-3xl md:text-4xl font-bold text-blue-400 mb-1">{stat.number}</div>
+                <div className="text-3xl md:text-4xl font-bold text-blue-400 mb-1">
+                  {stat.number}
+                </div>
                 <div className="text-gray-400">{stat.label}</div>
               </div>
             ))}
           </div>
         </div>
-      </section> */}
+      </section>
 
       {/* Categories */}
       <section className="relative z-10 px-8 py-16">
@@ -347,11 +353,14 @@ export default function ClassWaveLanding() {
               Join millions of students already learning on ClassWave
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-              <button className="px-10 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:scale-105 transition-transform shadow-xl">
+              <button
+                onClick={() => navigate("/contactus")}
+                className="px-10 hover:cursor-pointer py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:scale-105 transition-transform shadow-xl"
+              >
                 Get Started Free
               </button>
               <button
-                className="px-10 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all"
+                className="px-10 py-4 hover:cursor-pointer border  border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all"
                 onClick={() => navigate("/coursedetails")}
               >
                 Browse Courses
@@ -468,7 +477,7 @@ export default function ClassWaveLanding() {
             {userData && (
               <button
                 onClick={() => setShowReviewModal(true)}
-                className="mb-6 px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white rounded-full font-semibold shadow-lg transition-all transform hover:scale-105 inline-flex items-center space-x-2"
+                className="mb-6 hover:cursor-pointer px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white rounded-full font-semibold shadow-lg transition-all transform hover:scale-105 inline-flex items-center space-x-2"
               >
                 <Star className="w-5 h-5 fill-current" />
                 <span>Leave a Review</span>

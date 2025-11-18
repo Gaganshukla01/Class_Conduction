@@ -289,7 +289,7 @@ export default function StudentChatViewer() {
           {!showCreateForm && (
             <button
               onClick={() => setShowCreateForm(true)}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold hover:scale-105 transition-all shadow-lg flex items-center whitespace-nowrap"
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold hover:scale-105 cursor-pointer transition-all shadow-lg flex items-center whitespace-nowrap"
             >
               <Plus className="mr-2" size={20} />
               Create New
@@ -419,7 +419,7 @@ export default function StudentChatViewer() {
             {!searchQuery && (
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold hover:scale-105 transition-all shadow-lg inline-flex items-center"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold hover:scale-105 cursor-pointer transition-all shadow-lg inline-flex items-center"
               >
                 <Plus className="mr-2" size={20} />
                 Create Your First Chat

@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Clock,
@@ -31,6 +31,10 @@ export default function CourseDetails() {
       document.body.style.overflow = "unset";
     };
   }, [selectedCourse]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const courses = [
     {

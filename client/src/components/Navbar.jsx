@@ -115,7 +115,7 @@ function Navbar() {
             {window.location.pathname !== "/" && (
               <button
                 onClick={goBack}
-                className="w-9 h-9 sm:w-11 sm:h-11 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 flex-shrink-0 border border-white/20"
+                className="w-9 h-9 sm:w-11 sm:h-11 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 flex-shrink-0 border border-white/20 hover:cursor-pointer"
               >
                 <ArrowLeft size={18} className="text-white sm:w-5 sm:h-5" />
               </button>
@@ -142,7 +142,7 @@ function Navbar() {
             <div className="hidden lg:flex items-center space-x-3 mx-4">
               <button
                 onClick={goToCommonArea}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
+                className="flex items-center  gap-2 bg-white/10 hover:bg-white/20 cursor-pointer backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
               >
                 <Home size={18} />
                 <span>Common Area</span>
@@ -150,7 +150,7 @@ function Navbar() {
 
               <button
                 onClick={goToDashboard}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
+                className="flex items-center gap-2  bg-white/10 hover:bg-white/20 cursor-pointer backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
               >
                 <LayoutDashboard size={18} />
                 <span>Dashboard</span>
@@ -158,7 +158,7 @@ function Navbar() {
 
               <button
                 onClick={goToCodeEditor}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
+                className="flex items-center gap-2 bg-white/10  hover:bg-white/20 cursor-pointer backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
               >
                 <Code size={18} />
                 <span>Code Editor</span>
@@ -209,16 +209,16 @@ function Navbar() {
                           {/* Dashboard Button */}
                           <button
                             onClick={goToDashboard}
-                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-blue-50 transition-colors duration-200 text-left group/item"
+                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors duration-200 text-left group/item"
                           >
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover/item:bg-blue-200 transition-colors">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover/item:bg-blue-200 cursor-pointer transition-colors">
                               <LayoutDashboard
                                 size={16}
                                 className="text-blue-600"
                               />
                             </div>
                             <div>
-                              <p className="font-medium text-gray-800 text-sm">
+                              <p className="font-medium text-gray-800 text-sm ">
                                 Dashboard
                               </p>
                               <p className="text-xs text-gray-500">
@@ -230,9 +230,9 @@ function Navbar() {
                           {/* Code Editor Button */}
                           <button
                             onClick={goToCodeEditor}
-                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-purple-50 transition-colors duration-200 text-left group/item"
+                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-purple-50 cursor-pointer transition-colors duration-200 text-left group/item"
                           >
-                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center group-hover/item:bg-purple-200 transition-colors">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center group-hover/item:bg-purple-200 cursor-pointer transition-colors">
                               <Code size={16} className="text-purple-600" />
                             </div>
                             <div>
@@ -247,7 +247,7 @@ function Navbar() {
                           {/* Common Area */}
                           <button
                             onClick={goToCommonArea}
-                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-purple-50 transition-colors duration-200 text-left group/item"
+                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-purple-50 cursor-pointer transition-colors duration-200 text-left group/item"
                           >
                             <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center group-hover/item:bg-purple-200 transition-colors">
                               <HomeIcon size={16} className="text-purple-600" />
@@ -265,7 +265,7 @@ function Navbar() {
                               onClick={sendVerificationMail}
                               className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-blue-50 transition-colors duration-200 text-left group/item"
                             >
-                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover/item:bg-blue-200 transition-colors">
+                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover/item:bg-blue-200 cursor-pointer transition-colors">
                                 <Mail size={16} className="text-blue-600" />
                               </div>
                               <div>
@@ -281,7 +281,7 @@ function Navbar() {
 
                           <button
                             onClick={logout}
-                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 text-left group/item"
+                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-red-50 cursor-pointer transition-colors duration-200 text-left group/item"
                           >
                             <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center group-hover/item:bg-red-200 transition-colors">
                               <LogOut size={16} className="text-red-600" />

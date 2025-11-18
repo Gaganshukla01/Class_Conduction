@@ -1037,7 +1037,7 @@ export default function StudentDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition ${
+              className={`flex items-center hover:cursor-pointer space-x-2 px-6 py-3 rounded-xl font-medium transition ${
                 activeTab === tab.id
                   ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white"
                   : "bg-white/10 text-gray-300 hover:bg-white/20"
@@ -1058,7 +1058,7 @@ export default function StudentDashboard() {
                 <h2 className="text-xl font-bold text-white">My Notes</h2>
                 <button
                   onClick={() => setShowNoteForm(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 transition"
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 cursor-pointer transition"
                 >
                   <Plus size={18} />
                   <span>Add Note</span>

@@ -1158,7 +1158,7 @@ const CodeEditor = () => {
             {(activeLanguage === "html" || activeLanguage === "css") && (
               <button
                 onClick={openPreviewInNewWindow}
-                className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition-colors shadow-lg"
+                className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 cursor-pointer text-white rounded-lg transition-colors shadow-lg"
                 title="Open Preview in New Window"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -1167,7 +1167,7 @@ const CodeEditor = () => {
             )}
             <button
               onClick={handleOpenModal}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 cursor-pointer px-4 py-2 rounded-lg transition-colors"
             >
               <FolderOpen size={18} />
               <span>Open Project</span>
@@ -1175,7 +1175,7 @@ const CodeEditor = () => {
 
             <button
               onClick={toggleOutput}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2 rounded-lg transition-colors hover:cursor-pointer ${
                 showOutput
                   ? "bg-blue-500 text-white"
                   : `${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"}`
@@ -1191,7 +1191,7 @@ const CodeEditor = () => {
 
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-lg ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+              className={`p-2 rounded-lg ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors hover:cursor-pointer`}
               title="Toggle Theme"
             >
               <Palette className="w-5 h-5" />
@@ -1200,7 +1200,7 @@ const CodeEditor = () => {
             <button
               onClick={() => setIsSaveModalOpen(true)}
               disabled={isSaving}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 cursor-pointer text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
               title="Save Code"
             >
               <Save className="w-4 h-4" />
@@ -1210,7 +1210,7 @@ const CodeEditor = () => {
             <button
               onClick={runCode}
               disabled={isRunning}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 cursor-pointer text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
               title="Run Code"
             >
               <Play className="w-4 h-4" />
@@ -1220,7 +1220,7 @@ const CodeEditor = () => {
         </div>
 
         {/* Language Tabs */}
-        <div className="flex space-x-1 mt-4 overflow-x-auto">
+        <div className="flex space-x-1 mt-4 overflow-x-auto ">
           {Object.entries(languages).map(([key, lang]) => (
             <button
               key={key}
@@ -1231,7 +1231,7 @@ const CodeEditor = () => {
                   setShowPreview(false);
                 }
               }}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg hover:cursor-pointer whitespace-nowrap transition-all ${
                 activeLanguage === key
                   ? `${lang.color} text-white shadow-lg`
                   : `${theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-200 hover:bg-gray-300"}`
@@ -1264,7 +1264,7 @@ const CodeEditor = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={copyCode}
-                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} hover:cursor-pointer transition-colors`}
                 title="Copy Code"
               >
                 <Copy className="w-4 h-4" />
@@ -1272,7 +1272,7 @@ const CodeEditor = () => {
 
               <button
                 onClick={formatCode}
-                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} hover:cursor-pointer transition-colors`}
                 title="Format Code (Ctrl+F)"
               >
                 <CodeSquare className="w-4 h-4" />
@@ -1280,14 +1280,14 @@ const CodeEditor = () => {
 
               <button
                 onClick={downloadCode}
-                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} hover:cursor-pointer transition-colors`}
                 title="Download Code"
               >
                 <Download className="w-4 h-4" />
               </button>
               <button
                 onClick={clearCode}
-                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} hover:cursor-pointer transition-colors`}
                 title="Clear Code"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -1372,7 +1372,7 @@ const CodeEditor = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={toggleOutputMaximize}
-                  className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+                  className={`p-2 rounded ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} hover:cursor-pointer transition-colors`}
                   title={
                     isOutputMaximized ? "Minimize Output" : "Maximize Output"
                   }

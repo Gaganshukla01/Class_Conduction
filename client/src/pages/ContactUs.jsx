@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { BookOpen, Mail, User, Phone, MessageSquare } from "lucide-react";
 import { AppContent } from "../context/Context";
 import { toast } from "react-toastify";
@@ -40,6 +40,10 @@ function ContactUs() {
       message: "",
     });
   };
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div

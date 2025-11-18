@@ -320,7 +320,7 @@ export default function StudentAttendanceForm() {
           </p>
           <button
             onClick={() => getAllUserData && getAllUserData()}
-            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 transition font-semibold"
+            className="px-6 hover:cursor-pointer py-3 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 transition font-semibold"
           >
             Refresh Data
           </button>
@@ -714,7 +714,7 @@ export default function StudentAttendanceForm() {
               !formData.selectedClass ||
               !formData.topicCovered.trim()
             }
-            className="w-full mt-6 px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-2xl text-lg font-semibold hover:from-emerald-600 hover:to-cyan-700 transition-all duration-300 shadow-xl hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full hover:cursor-pointer mt-6 px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-2xl text-lg font-semibold hover:from-emerald-600 hover:to-cyan-700 transition-all duration-300 shadow-xl hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             <CheckCircle2 size={20} />
             {formData.selectedClass &&

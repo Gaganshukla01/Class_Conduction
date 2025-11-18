@@ -18,9 +18,11 @@ const ReviewsSection = () => {
       setLoading(true);
       axios.defaults.withCredentials = true;
       const response = await axios.get(`${backend_url}/api/rating`);
-      
+
       if (response.data.success) {
-        const sortedReviews = response.data.data.sort((a, b) => b.rating - a.rating);
+        const sortedReviews = response.data.data.sort(
+          (a, b) => b.rating - a.rating
+        );
         setReviews(sortedReviews);
       }
     } catch (error) {
@@ -33,8 +35,6 @@ const ReviewsSection = () => {
   const handleViewMore = () => {
     setDisplayCount((prev) => prev + 3);
   };
-
-  console.log(reviews,"data")
 
   const displayedReviews = reviews.slice(0, displayCount);
   const hasMore = displayCount < reviews.length;
@@ -75,30 +75,9 @@ const ReviewsSection = () => {
               className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-blue-400/50 transition-all duration-300 hover:scale-105"
             >
               {/* Rating Stars */}
-              <div className="flex items-center mb-4">
-                {[...Array(5)].map((_, index) => (
-                  <Star
-                    key={index}
-                    size={18}
-                    className={`${
-                      index < review.rating
-                        ? "text-yellow-400 fill-yellow-400"
-                        : "text-gray-600"
-                    }`}
-                  />
-                ))}
-                <span className="ml-2 text-sm text-gray-400">
-                  {review.rating}/5
-                </span>
-              </div>
-
-              {/* Comment */}
-              <p className="text-gray-200 mb-4 line-clamp-4">
-                "{review.comment}"
-              </p>
 
               {/* User Info */}
-              <div className="flex items-center space-x-3 pt-4 border-t border-white/10">
+              <div className="flex items-center space-x-3 pt-4">
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
                   <span className="font-bold text-sm">
                     {review.userName
@@ -121,6 +100,27 @@ const ReviewsSection = () => {
                     })}
                   </div>
                 </div>
+              </div>
+              {/* Comment */}
+              <p className="text-gray-200 mt-5 mb-4 line-clamp-4 border-t border-white/10 pt-5">
+                "{review.comment}"
+              </p>
+              {/* stars */}
+              <div className="flex items-center mb-4  border-t border-white/10 p-2">
+                {[...Array(5)].map((_, index) => (
+                  <Star
+                    key={index}
+                    size={18}
+                    className={`${
+                      index < review.rating
+                        ? "text-yellow-400 fill-yellow-400"
+                        : "text-gray-600"
+                    }`}
+                  />
+                ))}
+                <span className="ml-2 text-sm text-gray-400 ">
+                  {review.rating}/5
+                </span>
               </div>
             </div>
           ))}
