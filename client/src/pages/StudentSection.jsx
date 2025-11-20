@@ -567,7 +567,6 @@ const ProgressTab = ({
     </>
   );
 };
-
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("notes");
   const [showClassInfo, setShowClassInfo] = useState(false);
@@ -3063,7 +3062,6 @@ export default function StudentDashboard() {
     </div>
   );
 }
-
 function Input({
   label,
   name,

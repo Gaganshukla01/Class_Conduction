@@ -20,7 +20,7 @@ import {
   Lightbulb,
   BarChart3,
   Repeat,
-  HelpCircle
+  HelpCircle,
 } from "lucide-react";
 
 export default function SeeHowItWorks() {
@@ -44,7 +44,7 @@ export default function SeeHowItWorks() {
       icon: Play,
       color: "from-green-500 to-emerald-400",
       description: "Experience our teaching style",
-      badge: "FREE"
+      badge: "FREE",
     },
     {
       id: 2,
@@ -52,7 +52,7 @@ export default function SeeHowItWorks() {
       subtitle: "Choose Payment Plan",
       icon: BookOpen,
       color: "from-blue-500 to-cyan-400",
-      description: "Select your learning path"
+      description: "Select your learning path",
     },
     {
       id: 3,
@@ -61,7 +61,7 @@ export default function SeeHowItWorks() {
       icon: CreditCard,
       color: "from-purple-500 to-pink-400",
       description: "Full: 15% off | 3-Split: 10% off | 2-Split: 5% off",
-      isPayment: true
+      isPayment: true,
     },
     {
       id: 4,
@@ -69,7 +69,7 @@ export default function SeeHowItWorks() {
       subtitle: "Access Portal",
       icon: LogIn,
       color: "from-orange-500 to-red-400",
-      description: "Get your credentials"
+      description: "Get your credentials",
     },
     {
       id: 5,
@@ -77,7 +77,7 @@ export default function SeeHowItWorks() {
       subtitle: "Full Website Access",
       icon: Settings,
       color: "from-teal-500 to-blue-400",
-      description: "Complete platform access"
+      description: "Complete platform access",
     },
     {
       id: 6,
@@ -85,7 +85,7 @@ export default function SeeHowItWorks() {
       subtitle: "Monitor Progress",
       icon: Users,
       color: "from-indigo-500 to-purple-400",
-      description: "Track your learning journey"
+      description: "Track your learning journey",
     },
     {
       id: 7,
@@ -93,7 +93,7 @@ export default function SeeHowItWorks() {
       subtitle: "Interactive Learning",
       icon: Video,
       color: "from-red-500 to-pink-400",
-      description: "Schedule & reschedule options"
+      description: "Schedule & reschedule options",
     },
     {
       id: 8,
@@ -101,7 +101,7 @@ export default function SeeHowItWorks() {
       subtitle: "Hands-on Practice",
       icon: FileText,
       color: "from-yellow-500 to-orange-400",
-      description: "2 Live + Multiple Mini Projects"
+      description: "2 Live + Multiple Mini Projects",
     },
     {
       id: 9,
@@ -109,7 +109,7 @@ export default function SeeHowItWorks() {
       subtitle: "Expert Support",
       icon: MessageSquare,
       color: "from-green-500 to-teal-400",
-      description: "Specialized doubt clearing"
+      description: "Specialized doubt clearing",
     },
     {
       id: 10,
@@ -117,7 +117,7 @@ export default function SeeHowItWorks() {
       subtitle: "Revision Classes",
       icon: Repeat,
       color: "from-blue-500 to-indigo-400",
-      description: "Strengthen your concepts"
+      description: "Strengthen your concepts",
     },
     {
       id: 11,
@@ -125,7 +125,7 @@ export default function SeeHowItWorks() {
       subtitle: "Achievement Unlocked",
       icon: Award,
       color: "from-purple-500 to-pink-400",
-      description: "Certification awarded"
+      description: "Certification awarded",
     },
     {
       id: 12,
@@ -134,21 +134,36 @@ export default function SeeHowItWorks() {
       icon: HelpCircle,
       color: "from-emerald-500 to-green-400",
       description: "Free doubt sessions after completion",
-      badge: "BONUS"
-    }
+      badge: "BONUS",
+    },
   ];
 
   const paymentOptions = [
-    { type: "Full Payment", discount: "15% OFF", color: "bg-green-500", popular: true },
-    { type: "3 Installments", discount: "10% OFF", color: "bg-blue-500", popular: false },
-    { type: "2 Installments", discount: "5% OFF", color: "bg-purple-500", popular: false }
+    {
+      type: "Full Payment",
+      discount: "15% OFF",
+      color: "bg-green-500",
+      popular: true,
+    },
+    {
+      type: "3 Installments",
+      discount: "10% OFF",
+      color: "bg-blue-500",
+      popular: false,
+    },
+    {
+      type: "2 Installments",
+      discount: "5% OFF",
+      color: "bg-purple-500",
+      popular: false,
+    },
   ];
 
   const features = [
     { icon: BarChart3, text: "Progress Tracking" },
     { icon: Calendar, text: "Class Scheduling" },
     { icon: Target, text: "Goal Setting" },
-    { icon: Clock, text: "Time Management" }
+    { icon: Clock, text: "Time Management" },
   ];
 
   return (
@@ -165,7 +180,9 @@ export default function SeeHowItWorks() {
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             ClassWave Student Journey
           </h1>
-          <p className="text-xl text-gray-300">From Demo to Mastery - Your Complete Learning Path</p>
+          <p className="text-xl text-gray-300">
+            From Demo to Mastery - Your Complete Learning Path
+          </p>
         </div>
 
         {/* Main Flow */}
@@ -174,7 +191,7 @@ export default function SeeHowItWorks() {
             const Icon = step.icon;
             const isActive = activeStep === index;
             const nextStep = flowSteps[index + 1];
-            
+
             return (
               <div key={step.id} className="relative">
                 {/* Step Card */}
@@ -193,27 +210,40 @@ export default function SeeHowItWorks() {
                   )}
 
                   {/* Icon */}
-                  <div className={`w-16 h-16 rounded-xl bg-gradient-to-r ${step.color} flex items-center justify-center mb-4 mx-auto transform transition-transform ${isActive ? 'scale-110 rotate-6' : ''}`}>
+                  <div
+                    className={`w-16 h-16 rounded-xl bg-gradient-to-r ${step.color} flex items-center justify-center mb-4 mx-auto transform transition-transform ${isActive ? "scale-110 rotate-6" : ""}`}
+                  >
                     <Icon size={28} className="text-white" />
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-lg font-bold mb-1 text-center">{step.title}</h3>
-                  <p className="text-sm text-blue-400 mb-3 text-center font-medium">{step.subtitle}</p>
-                  <p className="text-xs text-gray-400 text-center leading-relaxed">{step.description}</p>
+                  <h3 className="text-lg font-bold mb-1 text-center">
+                    {step.title}
+                  </h3>
+                  <p className="text-sm text-blue-400 mb-3 text-center font-medium">
+                    {step.subtitle}
+                  </p>
+                  <p className="text-xs text-gray-400 text-center leading-relaxed">
+                    {step.description}
+                  </p>
 
                   {/* Payment Options */}
                   {step.isPayment && (
                     <div className="mt-4 space-y-2">
                       {paymentOptions.map((option, idx) => (
-                        <div key={idx} className={`${option.color} ${option.popular ? 'ring-2 ring-yellow-400' : ''} p-2 rounded-lg text-xs text-white relative`}>
+                        <div
+                          key={idx}
+                          className={`${option.color} ${option.popular ? "ring-2 ring-yellow-400" : ""} p-2 rounded-lg text-xs text-white relative`}
+                        >
                           {option.popular && (
                             <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold">
                               POPULAR
                             </div>
                           )}
                           <div className="font-semibold">{option.type}</div>
-                          <div className="text-yellow-200">{option.discount}</div>
+                          <div className="text-yellow-200">
+                            {option.discount}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -223,11 +253,11 @@ export default function SeeHowItWorks() {
                 {/* Arrow */}
                 {nextStep && (index + 1) % 4 !== 0 && (
                   <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2">
-                    <ArrowRight 
-                      size={24} 
+                    <ArrowRight
+                      size={24}
                       className={`text-blue-400 transition-all duration-300 ${
-                        animateArrows ? 'translate-x-2 text-purple-400' : ''
-                      }`} 
+                        animateArrows ? "translate-x-2 text-purple-400" : ""
+                      }`}
                     />
                   </div>
                 )}
@@ -235,7 +265,9 @@ export default function SeeHowItWorks() {
                 {/* Down Arrow for mobile/tablet */}
                 {nextStep && index < flowSteps.length - 1 && (
                   <div className="lg:hidden flex justify-center mt-4">
-                    <div className={`w-6 h-6 transform rotate-90 transition-all duration-300 ${animateArrows ? 'translate-y-2 text-purple-400' : 'text-blue-400'}`}>
+                    <div
+                      className={`w-6 h-6 transform rotate-90 transition-all duration-300 ${animateArrows ? "translate-y-2 text-purple-400" : "text-blue-400"}`}
+                    >
                       <ArrowRight size={24} />
                     </div>
                   </div>
@@ -254,7 +286,10 @@ export default function SeeHowItWorks() {
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <div key={index} className="text-center p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all">
+                <div
+                  key={index}
+                  className="text-center p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
+                >
                   <Icon className="mx-auto mb-3 text-blue-400" size={32} />
                   <p className="text-sm font-medium">{feature.text}</p>
                 </div>
@@ -269,19 +304,23 @@ export default function SeeHowItWorks() {
             { icon: Users, number: "2M+", label: "Students Enrolled" },
             { icon: Video, number: "500+", label: "Live Classes Monthly" },
             { icon: Award, number: "95%", label: "Completion Rate" },
-            { icon: CheckCircle, number: "24/7", label: "Support Available" }
+            { icon: CheckCircle, number: "24/7", label: "Support Available" },
           ].map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <div key={index} className="p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+              <div
+                key={index}
+                className="p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
+              >
                 <Icon className="mx-auto mb-3 text-blue-400" size={32} />
-                <div className="text-2xl font-bold text-blue-400 mb-1">{stat.number}</div>
+                <div className="text-2xl font-bold text-blue-400 mb-1">
+                  {stat.number}
+                </div>
                 <div className="text-gray-400 text-sm">{stat.label}</div>
               </div>
             );
           })}
         </div>
-
       </div>
     </div>
   );

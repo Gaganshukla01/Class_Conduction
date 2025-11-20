@@ -8,13 +8,14 @@ import { toast } from "react-toastify";
 
 function ResetPassword() {
   axios.defaults.withCredentials = true;
-  const { getUserData, backend_url, setUserData, isLoggedIn, setIsLoggedin } = useContext(AppContent);
+  const { getUserData, backend_url, setUserData, isLoggedIn, setIsLoggedin } =
+    useContext(AppContent);
   const inputRefs = React.useRef([]);
   const navigate = useNavigate();
 
-  const[email,setEmail]=useState()
-  const[newPassword,setNewPassword]=useState()
-  const[otp,setPasswordOtp]=useState()
+  const [email, setEmail] = useState();
+  const [newPassword, setNewPassword] = useState();
+  const [otp, setPasswordOtp] = useState();
 
   const [isEmailClicked, setIsEmailClicked] = useState(false);
   const [isOtpClicked, setIsOtpClicked] = useState(false);
@@ -41,55 +42,51 @@ function ResetPassword() {
     });
   };
 
-  const setOtp= async (e)=>{
+  const setOtp = async (e) => {
     try {
-     e.preventDefault()
-     const otpArray=inputRefs.current.map(e=>e.value)
-     const otp=otpArray.join("")
-     setPasswordOtp(otp)
-     setIsOtpClicked(true)
-     toast.success("OTP Added") 
+      e.preventDefault();
+      const otpArray = inputRefs.current.map((e) => e.value);
+      const otp = otpArray.join("");
+      setPasswordOtp(otp);
+      setIsOtpClicked(true);
+      toast.success("OTP Added");
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.message);
     }
-  }
+  };
 
-
-
-const otpsendemail=async (e)=>{
-  
+  const otpsendemail = async (e) => {
     try {
-      e.preventDefault()
-      const {data}=await axios.post(backend_url+"/api/auth/resetotp",{email})
-      if(data){
-        toast.success(data.message)
-        setIsEmailClicked(true)
-
+      e.preventDefault();
+      const { data } = await axios.post(backend_url + "/api/auth/resetotp", {
+        email,
+      });
+      if (data) {
+        toast.success(data.message);
+        setIsEmailClicked(true);
       }
     } catch (error) {
-      toast.error(data.message)
-     
+      toast.error(data.message);
     }
-}
+  };
 
-const resetPassword=async (e)=>{
-  e.preventDefault()
-  try {
-
-    const {data}=await axios.post(backend_url+"/api/auth/resetpassword",
-      {email,otp,newPassword})
-      if(data.sucess){
-        toast.success(data.message)
-        setIsLoggedin(false)
-        setUserData(false)    
-        navigate("/")    
+  const resetPassword = async (e) => {
+    e.preventDefault();
+    try {
+      const { data } = await axios.post(
+        backend_url + "/api/auth/resetpassword",
+        { email, otp, newPassword }
+      );
+      if (data.sucess) {
+        toast.success(data.message);
+        setIsLoggedin(false);
+        setUserData(false);
+        navigate("/");
       }
-    
-  } catch (error) {
-    toast.error(data.message)
-  }
-
-}
+    } catch (error) {
+      toast.error(data.message);
+    }
+  };
 
   return (
     <>
@@ -133,14 +130,14 @@ const resetPassword=async (e)=>{
                   placeholder="Email"
                   required
                   value={email}
-                  onChange={e=>setEmail(e.target.value)}
-                  
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
 
               <button
                 className="w-full py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-900
-          text-white font-medium cursor-pointer" type="submit"
+          text-white font-medium cursor-pointer"
+                type="submit"
               >
                 Send Otp
               </button>
@@ -163,7 +160,10 @@ const resetPassword=async (e)=>{
             </h2>
             <p className=" text-center text-sm mb-6">Enter your 6 Digit Otp</p>
 
-            <form className="bg-slate-900 p-8 rounded-lg shadow-lg text-sm " onSubmit={setOtp}>
+            <form
+              className="bg-slate-900 p-8 rounded-lg shadow-lg text-sm "
+              onSubmit={setOtp}
+            >
               <div className="flex justify-between mb-8" onPaste={handlePaste}>
                 {Array(6)
                   .fill(0)
@@ -184,7 +184,8 @@ const resetPassword=async (e)=>{
 
               <button
                 className="w-full py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-900
-          text-white font-medium cursor-pointer" type="submit"
+          text-white font-medium cursor-pointer"
+                type="submit"
               >
                 Verify Otp
               </button>
@@ -219,13 +220,14 @@ const resetPassword=async (e)=>{
                   placeholder="Password"
                   required
                   value={newPassword}
-                  onChange={e=>setNewPassword(e.target.value)}
+                  onChange={(e) => setNewPassword(e.target.value)}
                 />
               </div>
 
               <button
                 className="w-full py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-900
-          text-white font-medium cursor-pointer"  type="submit"
+          text-white font-medium cursor-pointer"
+                type="submit"
               >
                 Set Password
               </button>

@@ -6,7 +6,9 @@ const backend_url = import.meta.env.VITE_BACKEND_URI;
 export const getAllNotes = async (studentId) => {
   axios.defaults.withCredentials = true;
   try {
-    const { data } = await axios.get(`${backend_url}/api/notes/student/${studentId}`);
+    const { data } = await axios.get(
+      `${backend_url}/api/notes/student/${studentId}`
+    );
     return data.success ? data : toast.error(data.message);
   } catch (error) {
     toast.error(error.response?.data?.message || "Failed to fetch notes");
@@ -36,7 +38,10 @@ export const createNote = async (noteData) => {
 export const updateNote = async (noteId, noteData) => {
   axios.defaults.withCredentials = true;
   try {
-    const { data } = await axios.put(`${backend_url}/api/notes/${noteId}`, noteData);
+    const { data } = await axios.put(
+      `${backend_url}/api/notes/${noteId}`,
+      noteData
+    );
     if (data.success) {
       toast.success("Note updated successfully");
       return data;
@@ -72,9 +77,12 @@ export const deleteNote = async (noteId) => {
 export const searchNotes = async (studentId, query) => {
   axios.defaults.withCredentials = true;
   try {
-    const { data } = await axios.get(`${backend_url}/api/notes/student/${studentId}/search`, {
-      params: { q: query }
-    });
+    const { data } = await axios.get(
+      `${backend_url}/api/notes/student/${studentId}/search`,
+      {
+        params: { q: query },
+      }
+    );
     return data.success ? data : toast.error(data.message);
   } catch (error) {
     toast.error(error.response?.data?.message || "Failed to search notes");

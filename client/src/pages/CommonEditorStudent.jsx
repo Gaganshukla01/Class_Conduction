@@ -29,7 +29,7 @@ import {
 
 export default function StudentChatViewer() {
   const { userData, backend_url } = useContext(AppContent);
-  
+
   const [chats, setChats] = useState([]);
   const [filteredChats, setFilteredChats] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,10 +54,11 @@ export default function StudentChatViewer() {
     if (searchQuery.trim() === "") {
       setFilteredChats(chats);
     } else {
-      const filtered = chats.filter(chat => 
-        chat.heading?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        chat.chat?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        chat.studentName?.toLowerCase().includes(searchQuery.toLowerCase())
+      const filtered = chats.filter(
+        (chat) =>
+          chat.heading?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          chat.chat?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          chat.studentName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredChats(filtered);
     }
@@ -74,7 +75,7 @@ export default function StudentChatViewer() {
       if (result.success) {
         setChats(result.data);
         setFilteredChats(result.data);
-        result.data.forEach(chat => {
+        result.data.forEach((chat) => {
           if (!chat.isRead) {
             markAsRead(chat._id);
           }
@@ -115,30 +116,44 @@ export default function StudentChatViewer() {
   };
 
   const saveEdit = async (chatId) => {
-    if (!editorRef.current?.innerHTML || editorRef.current.innerHTML.trim() === "") {
+    if (
+      !editorRef.current?.innerHTML ||
+      editorRef.current.innerHTML.trim() === ""
+    ) {
       alert("Chat content cannot be empty!");
       return;
     }
 
     try {
       setIsSaving(true);
-      const response = await fetch(`${backend_url}/api/chateditor/chats/${chatId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          chat: editorRef.current.innerHTML,
-          heading: editedHeading 
-        }),
-      });
+      const response = await fetch(
+        `${backend_url}/api/chateditor/chats/${chatId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            chat: editorRef.current.innerHTML,
+            heading: editedHeading,
+          }),
+        }
+      );
 
       const result = await response.json();
 
       if (result.success) {
-        setChats(chats.map(chat => 
-          chat._id === chatId ? { ...chat, chat: editorRef.current.innerHTML, heading: editedHeading } : chat
-        ));
+        setChats(
+          chats.map((chat) =>
+            chat._id === chatId
+              ? {
+                  ...chat,
+                  chat: editorRef.current.innerHTML,
+                  heading: editedHeading,
+                }
+              : chat
+          )
+        );
         setEditingChatId(null);
         setEditedContent("");
         setEditedHeading("");
@@ -154,7 +169,10 @@ export default function StudentChatViewer() {
   };
 
   const createNewChat = async () => {
-    if (!createEditorRef.current?.innerHTML || createEditorRef.current.innerHTML.trim() === "") {
+    if (
+      !createEditorRef.current?.innerHTML ||
+      createEditorRef.current.innerHTML.trim() === ""
+    ) {
       alert("Chat content cannot be empty!");
       return;
     }
@@ -209,17 +227,17 @@ export default function StudentChatViewer() {
     const diffInHours = (now - date) / (1000 * 60 * 60);
 
     if (diffInHours < 24) {
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } else if (diffInHours < 48) {
-      return 'Yesterday';
+      return "Yesterday";
     } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
       });
     }
   };
@@ -243,7 +261,11 @@ export default function StudentChatViewer() {
     { icon: AlignRight, command: "justifyRight", tooltip: "Align Right" },
     { divider: true },
     { icon: List, command: "insertUnorderedList", tooltip: "Bullet List" },
-    { icon: ListOrdered, command: "insertOrderedList", tooltip: "Numbered List" },
+    {
+      icon: ListOrdered,
+      command: "insertOrderedList",
+      tooltip: "Numbered List",
+    },
   ];
 
   return (
@@ -266,16 +288,17 @@ export default function StudentChatViewer() {
               Your Chats
             </span>
           </h1>
-          <p className="text-gray-400 text-lg">
-            View and manage your messages
-          </p>
+          <p className="text-gray-400 text-lg">View and manage your messages</p>
         </div>
 
         {/* Search and Create Button */}
         <div className="mb-6 flex gap-4 items-center">
           {/* Search Bar */}
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
+            />
             <input
               type="text"
               value={searchQuery}
@@ -328,7 +351,9 @@ export default function StudentChatViewer() {
                 <div className="flex flex-wrap items-center gap-2">
                   {toolbarButtons.map((btn, index) => {
                     if (btn.divider) {
-                      return <div key={index} className="w-px h-6 bg-white/20"></div>;
+                      return (
+                        <div key={index} className="w-px h-6 bg-white/20"></div>
+                      );
                     }
                     const Icon = btn.icon;
                     return (
@@ -350,7 +375,9 @@ export default function StudentChatViewer() {
                     </button>
                     <input
                       type="color"
-                      onChange={(e) => execCommand("foreColor", e.target.value, true)}
+                      onChange={(e) =>
+                        execCommand("foreColor", e.target.value, true)
+                      }
                       className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                   </div>
@@ -412,7 +439,7 @@ export default function StudentChatViewer() {
               {searchQuery ? "No chats found" : "No chats yet"}
             </h3>
             <p className="text-gray-400 mb-6">
-              {searchQuery 
+              {searchQuery
                 ? "Try adjusting your search query"
                 : "You haven't created any chats yet. Start a conversation!"}
             </p>
@@ -443,10 +470,14 @@ export default function StudentChatViewer() {
                       </div>
                       <div className="flex-1">
                         {chat.heading && (
-                          <h2 className="text-xl font-bold mb-1">{chat.heading}</h2>
+                          <h2 className="text-xl font-bold mb-1">
+                            {chat.heading}
+                          </h2>
                         )}
                         <h3 className="font-semibold text-sm text-gray-300">
-                          {chat.createdBy ? "Message from Instructor" : "Your Message"}
+                          {chat.createdBy
+                            ? "Message from Instructor"
+                            : "Your Message"}
                         </h3>
                         <div className="flex items-center text-sm text-gray-400 space-x-2 mt-1">
                           <Calendar size={14} />
@@ -454,7 +485,10 @@ export default function StudentChatViewer() {
                           {chat.isRead && (
                             <>
                               <span>•</span>
-                              <CheckCircle size={14} className="text-green-400" />
+                              <CheckCircle
+                                size={14}
+                                className="text-green-400"
+                              />
                               <span className="text-green-400">Read</span>
                             </>
                           )}
@@ -497,7 +531,12 @@ export default function StudentChatViewer() {
                         <div className="flex flex-wrap items-center gap-2">
                           {toolbarButtons.map((btn, index) => {
                             if (btn.divider) {
-                              return <div key={index} className="w-px h-6 bg-white/20"></div>;
+                              return (
+                                <div
+                                  key={index}
+                                  className="w-px h-6 bg-white/20"
+                                ></div>
+                              );
                             }
                             const Icon = btn.icon;
                             return (
@@ -519,7 +558,9 @@ export default function StudentChatViewer() {
                             </button>
                             <input
                               type="color"
-                              onChange={(e) => execCommand("foreColor", e.target.value)}
+                              onChange={(e) =>
+                                execCommand("foreColor", e.target.value)
+                              }
                               className="absolute inset-0 opacity-0 cursor-pointer"
                             />
                           </div>
@@ -543,7 +584,10 @@ export default function StudentChatViewer() {
                         >
                           {isSaving ? (
                             <>
-                              <Loader2 className="mr-2 animate-spin" size={18} />
+                              <Loader2
+                                className="mr-2 animate-spin"
+                                size={18}
+                              />
                               Saving...
                             </>
                           ) : (
@@ -572,12 +616,13 @@ export default function StudentChatViewer() {
                 </div>
 
                 {/* Chat Footer */}
-                {editingChatId !== chat._id && chat.updatedAt !== chat.createdAt && (
-                  <div className="px-6 py-3 bg-white/5 border-t border-white/10 flex items-center text-sm text-gray-400">
-                    <Clock size={14} className="mr-2" />
-                    Last updated: {formatDate(chat.updatedAt)}
-                  </div>
-                )}
+                {editingChatId !== chat._id &&
+                  chat.updatedAt !== chat.createdAt && (
+                    <div className="px-6 py-3 bg-white/5 border-t border-white/10 flex items-center text-sm text-gray-400">
+                      <Clock size={14} className="mr-2" />
+                      Last updated: {formatDate(chat.updatedAt)}
+                    </div>
+                  )}
               </div>
             ))}
           </div>

@@ -19,7 +19,7 @@ function Login() {
   const handleGoogleSignIn = async (e) => {
     try {
       e.preventDefault(); // Prevent form submission
-      
+
       const provider = new GoogleAuthProvider();
       const auth = getAuth(app);
       const result = await signInWithPopup(auth, provider);
@@ -39,7 +39,7 @@ function Login() {
         toast.error(data.message);
       }
     } catch (error) {
-      console.error('Google auth error:', error);
+      console.error("Google auth error:", error);
       toast.error(error.message || "Authentication failed");
     }
   };
@@ -79,8 +79,12 @@ function Login() {
         }
       }
     } catch (error) {
-      console.error('Form submission error:', error);
-      toast.error(error.response?.data?.message || error.message || "Authentication failed");
+      console.error("Form submission error:", error);
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Authentication failed"
+      );
     }
   };
 
