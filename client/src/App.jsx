@@ -54,7 +54,6 @@ const PublicRoute = ({ children, isLoggedIn, userType }) => {
 
   return children;
 };
-
 function App() {
   const { isLoggedIn, userData } = useContext(AppContent);
   const [userType, setUserType] = useState(undefined);
@@ -198,7 +197,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-      
+
           {/* Catch-all route - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

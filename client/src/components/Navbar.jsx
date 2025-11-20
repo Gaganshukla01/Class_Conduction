@@ -203,7 +203,7 @@ function Navbar() {
                             </div>
                           </div>
                         </div>
-
+                        {/* for phone */}
                         {/* Menu Items */}
                         <div className="py-2">
                           {/* Dashboard Button */}
@@ -259,8 +259,7 @@ function Navbar() {
                               <p className="text-xs text-gray-500">Open Chat</p>
                             </div>
                           </button>
-
-                          {!userData.isAccountVerified && (
+                          {!userData.isAccountVerifed && (
                             <button
                               onClick={sendVerificationMail}
                               className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-blue-50 transition-colors duration-200 text-left group/item"
@@ -327,9 +326,10 @@ function Navbar() {
                         </div>
                       </div>
 
+                      {/* for desktop users */}
                       {/* Menu Items */}
                       <div className="py-2">
-                        {!userData.isAccountVerified && (
+                        {!userData.isAccountVerifed && (
                           <button
                             onClick={sendVerificationMail}
                             className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-blue-50 transition-colors duration-200 text-left group/item"
