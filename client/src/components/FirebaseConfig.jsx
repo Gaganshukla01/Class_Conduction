@@ -8,7 +8,7 @@ const firebaseConfig = {
   storageBucket: "warrentyassignment.firebasestorage.app",
   messagingSenderId: "520307777730",
   appId: "1:520307777730:web:adff7aa9603b77b540db5b",
-  measurementId: "G-Z324K5BBBE"
+  measurementId: "G-Z324K5BBBE",
 };
 
 export const app = initializeApp(firebaseConfig);

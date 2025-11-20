@@ -14,6 +14,7 @@ import { contactRouter } from "./router/contactRouter.js";
 import { chatEditorRouter } from "./router/chatEditorRouter.js";
 import { ratingRouter } from "./router/ratingController.js";
 import { projectRouter } from "./router/projectRouter.js";
+import { gameRouter } from "./router/gameRouter.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -92,6 +93,7 @@ app.use("/api/contactus", contactRouter);
 app.use("/api/chateditor", chatEditorRouter);
 app.use("/api/rating", ratingRouter);
 app.use("/api/project", projectRouter);
+app.use("/api/game", gameRouter);
 
 app.use((err, req, res, next) => {
   if (err.message.includes("CORS")) {

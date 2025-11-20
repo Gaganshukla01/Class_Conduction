@@ -47,13 +47,12 @@ const homeworkSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "completed", "overdue"],
-      default: "pending",    
+      default: "pending",
     },
     assignedDate: {
       type: Date,
       default: Date.now,
     },
-  
   },
   {
     timestamps: true,

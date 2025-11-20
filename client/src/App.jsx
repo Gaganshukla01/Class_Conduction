@@ -17,6 +17,7 @@ import ContactInquiriesAdmin from "./components/ContactResultForm";
 import CommonAreaEditor from "./pages/CommonAreaEditor";
 import StudentChatViewer from "./pages/CommonEditorStudent";
 import ProjectShowcase from "./pages/StudentProject";
+import FunZone from "./pages/FunZone";
 
 const ProtectedRoute = ({
   children,
@@ -76,6 +77,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/seehowitworks" element={<SeeHowItWorks />} />
           <Route path="/projectview" element={<ProjectShowcase />} />
+          <Route path="/funzone" element={<FunZone />} />
 
           <Route
             path="/login"

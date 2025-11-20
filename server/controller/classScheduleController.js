@@ -225,7 +225,6 @@ export const updatePaymentStatus = async (req, res) => {
   try {
     const { id, paid } = req.body;
 
-   
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -244,14 +243,14 @@ export const updatePaymentStatus = async (req, res) => {
     // Find and update the class schedule
     const updatedClass = await classSchedule.findByIdAndUpdate(
       id,
-      { 
+      {
         paid: paid,
         // Optionally add timestamp for when payment status was updated
-        paymentUpdatedAt: new Date()
+        paymentUpdatedAt: new Date(),
       },
-      { 
+      {
         new: true, // Return the updated document
-        runValidators: true // Run mongoose validations
+        runValidators: true, // Run mongoose validations
       }
     );
 
@@ -265,10 +264,11 @@ export const updatePaymentStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Payment status updated successfully. Class marked as ${paid ? 'paid' : 'unpaid'}.`,
+      message: `Payment status updated successfully. Class marked as ${
+        paid ? "paid" : "unpaid"
+      }.`,
       data: updatedClass,
     });
-
   } catch (error) {
     // Handle mongoose validation errors
     if (error.name === "ValidationError") {
@@ -299,7 +299,6 @@ export const updatePaymentStatus = async (req, res) => {
   }
 };
 
-
 export const updateBatchPaymentStatus = async (req, res) => {
   try {
     const { classIds, paid } = req.body;
@@ -323,16 +322,18 @@ export const updateBatchPaymentStatus = async (req, res) => {
     // Update multiple classes at once
     const updateResult = await classSchedule.updateMany(
       { _id: { $in: classIds } },
-      { 
+      {
         paid: paid,
-        paymentUpdatedAt: new Date()
+        paymentUpdatedAt: new Date(),
       }
     );
 
     // Get the updated classes to return in response
-    const updatedClasses = await classSchedule.find({ 
-      _id: { $in: classIds } 
-    }).sort({ classDate: 1 });
+    const updatedClasses = await classSchedule
+      .find({
+        _id: { $in: classIds },
+      })
+      .sort({ classDate: 1 });
 
     // Check if any classes were updated
     if (updateResult.modifiedCount === 0) {
@@ -344,14 +345,17 @@ export const updateBatchPaymentStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `${updateResult.modifiedCount} class(es) payment status updated successfully. Classes marked as ${paid ? 'paid' : 'unpaid'}.`,
+      message: `${
+        updateResult.modifiedCount
+      } class(es) payment status updated successfully. Classes marked as ${
+        paid ? "paid" : "unpaid"
+      }.`,
       data: {
         modifiedCount: updateResult.modifiedCount,
         matchedCount: updateResult.matchedCount,
-        updatedClasses: updatedClasses
+        updatedClasses: updatedClasses,
       },
     });
-
   } catch (error) {
     // Handle mongoose validation errors
     if (error.name === "ValidationError") {
@@ -381,7 +385,6 @@ export const updateBatchPaymentStatus = async (req, res) => {
   }
 };
 
-
 export const getPaymentStats = async (req, res) => {
   try {
     const { month, year, instructorId } = req.query;
@@ -398,10 +401,10 @@ export const getPaymentStats = async (req, res) => {
     if (month && year) {
       const startDate = new Date(year, month - 1, 1); // month - 1 because Date months are 0-indexed
       const endDate = new Date(year, month, 0, 23, 59, 59); // Last day of the month
-      
+
       matchConditions.classDate = {
         $gte: startDate,
-        $lte: endDate
+        $lte: endDate,
       };
     }
 
@@ -412,31 +415,34 @@ export const getPaymentStats = async (req, res) => {
         $group: {
           _id: null,
           totalClasses: { $sum: 1 },
-          paidClasses: { 
-            $sum: { $cond: [{ $eq: ["$paid", true] }, 1, 0] }
+          paidClasses: {
+            $sum: { $cond: [{ $eq: ["$paid", true] }, 1, 0] },
           },
-          unpaidClasses: { 
-            $sum: { $cond: [{ $eq: ["$paid", false] }, 1, 0] }
+          unpaidClasses: {
+            $sum: { $cond: [{ $eq: ["$paid", false] }, 1, 0] },
           },
           totalAmount: { $sum: "$classRate" },
-          paidAmount: { 
-            $sum: { $cond: [{ $eq: ["$paid", true] }, "$classRate", 0] }
+          paidAmount: {
+            $sum: { $cond: [{ $eq: ["$paid", true] }, "$classRate", 0] },
           },
-          unpaidAmount: { 
-            $sum: { $cond: [{ $eq: ["$paid", false] }, "$classRate", 0] }
-          }
-        }
-      }
+          unpaidAmount: {
+            $sum: { $cond: [{ $eq: ["$paid", false] }, "$classRate", 0] },
+          },
+        },
+      },
     ]);
 
-    const result = stats.length > 0 ? stats[0] : {
-      totalClasses: 0,
-      paidClasses: 0,
-      unpaidClasses: 0,
-      totalAmount: 0,
-      paidAmount: 0,
-      unpaidAmount: 0
-    };
+    const result =
+      stats.length > 0
+        ? stats[0]
+        : {
+            totalClasses: 0,
+            paidClasses: 0,
+            unpaidClasses: 0,
+            totalAmount: 0,
+            paidAmount: 0,
+            unpaidAmount: 0,
+          };
 
     // Remove the _id field from the result
     delete result._id;
@@ -449,11 +455,10 @@ export const getPaymentStats = async (req, res) => {
         filters: {
           month: month || "all",
           year: year || "all",
-          instructorId: instructorId || "all"
-        }
-      }
+          instructorId: instructorId || "all",
+        },
+      },
     });
-
   } catch (error) {
     console.error("Error getting payment statistics:", error);
     res.status(500).json({

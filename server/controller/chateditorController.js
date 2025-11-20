@@ -148,7 +148,7 @@ export const markAsRead = async (req, res) => {
 export const updateChat = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { chat,heading } = req.body;
+    const { chat, heading } = req.body;
 
     if (!chat) {
       return res.json({
@@ -159,7 +159,7 @@ export const updateChat = async (req, res) => {
 
     const updatedChat = await chatModel.findByIdAndUpdate(
       chatId,
-      { chat,heading },
+      { chat, heading },
       { new: true, runValidators: true }
     );
 

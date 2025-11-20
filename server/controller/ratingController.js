@@ -1,5 +1,5 @@
 import ratingModel from "../model/reviewModel.js";
-import userModel from "../model/userModel.js"; 
+import userModel from "../model/userModel.js";
 
 // POST - Create a new rating/comment
 export const createRating = async (req, res) => {
@@ -26,7 +26,7 @@ export const createRating = async (req, res) => {
     // Create new rating
     const newRating = new ratingModel({
       userId,
-      userName: user.name, 
+      userName: user.name,
       rating,
       comment,
     });

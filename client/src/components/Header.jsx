@@ -10,6 +10,7 @@ import {
   Rocket,
   Lightbulb,
   Projector,
+  Gamepad2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
@@ -396,6 +397,22 @@ export default function ClassWaveLanding() {
               ClassWave
             </span>
           </div>
+          {/* game button */}
+          <button
+            onClick={() => navigate("/funzone")}
+            className="relative px-8 py-4 mb-8 bg-gradient-to-br from-purple-600 via-pink-600 to-red-600 rounded-2xl font-bold text-white shadow-xl hover:shadow-2xl cursor-pointer hover:scale-110 transition-all duration-300 border-2 border-yellow-400/50 hover:border-yellow-400 animate-pulse hover:animate-none group sm:px-6 sm:py-3 text-sm sm:text-base"
+          >
+            <span className="flex items-center gap-2 justify-center">
+              <Gamepad2
+                size={20}
+                className="group-hover:rotate-180 transition-transform duration-500"
+              />
+              <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent group-hover:from-white group-hover:to-white transition-all">
+                FunZone
+              </span>
+            </span>
+            <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 rounded-2xl blur opacity-30 group-hover:opacity-60 transition-opacity -z-10"></div>
+          </button>
           <p className="text-gray-400 mb-8">
             Empowering students to achieve their dreams through quality
             education

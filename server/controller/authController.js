@@ -11,7 +11,7 @@ import {
 // for regiter new user
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
-  
+
   if (!name || !email || !password) {
     return res.json({ sucess: false, message: "Missing Details" });
   }
@@ -28,7 +28,7 @@ export const register = async (req, res) => {
     await user.save();
 
     // genarting token
-    jwtTokenGenrate(user,res);
+    jwtTokenGenrate(user, res);
 
     // send mail
     const mailOption = {
@@ -52,13 +52,13 @@ export const googleAuth = async (req, res) => {
     if (!name || !email || !Validuser) {
       return res.json({ sucess: false, message: "Cred not fetched" });
     }
-   
+
     const existingUser = await userModel.findOne({ email });
 
     if (existingUser) {
       if (Validuser) {
         // genarting token
-        jwtTokenGenrate(existingUser,res);
+        jwtTokenGenrate(existingUser, res);
 
         return res.json({ sucess: true, message: "Login Successfull" });
       } else {
@@ -75,7 +75,7 @@ export const googleAuth = async (req, res) => {
     await newUser.save();
 
     // genarting token
-    jwtTokenGenrate(newUser,res);
+    jwtTokenGenrate(newUser, res);
 
     // send mail
     const mailOption = {
@@ -86,7 +86,7 @@ export const googleAuth = async (req, res) => {
     };
 
     await transporter.sendMail(mailOption);
-    return res.json({sucess:true,message:"User Created."})
+    return res.json({ sucess: true, message: "User Created." });
   } catch (error) {
     return res.json({ sucess: false, message: error.message });
   }
@@ -112,7 +112,7 @@ export const login = async (req, res) => {
   }
 
   // genarting token
-  jwtTokenGenrate(user,res);
+  jwtTokenGenrate(user, res);
 
   return res.json({ sucess: true, message: "Login Sucessfull" });
 };

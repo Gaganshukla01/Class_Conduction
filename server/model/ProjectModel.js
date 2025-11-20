@@ -1,10 +1,10 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const projectSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'user',
+      ref: "user",
       required: true,
       index: true,
     },
@@ -32,11 +32,11 @@ const projectSchema = new mongoose.Schema(
     },
     imageUrl: {
       type: String,
-      default: '',
+      default: "",
     },
     githubUrl: {
       type: String,
-      default: '',
+      default: "",
     },
     technologies: {
       type: [String],
@@ -44,8 +44,8 @@ const projectSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['web', 'mobile', 'portfolio', 'game', 'productivity', 'other'],
-      default: 'web',
+      enum: ["web", "mobile", "portfolio", "game", "productivity", "other"],
+      default: "web",
     },
     views: {
       type: Number,
@@ -53,8 +53,8 @@ const projectSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected'],
-      default: 'pending',
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
     },
   },
   {
@@ -66,6 +66,6 @@ projectSchema.index({ studentId: 1, createdAt: -1 });
 projectSchema.index({ status: 1, createdAt: -1 });
 projectSchema.index({ category: 1, status: 1 });
 
-const projectModel = mongoose.model('Project', projectSchema);
+const projectModel = mongoose.model("Project", projectSchema);
 
 export default projectModel;

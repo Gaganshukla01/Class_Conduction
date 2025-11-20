@@ -4,7 +4,6 @@ export const userData = async (req, res) => {
   try {
     const { userId } = req.body;
 
-
     const user = await userModel.findById(userId);
     if (!user) {
       return res.json({ sucess: false, message: "user not found.." });
@@ -88,5 +87,3 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
-
-

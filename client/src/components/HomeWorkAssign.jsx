@@ -72,7 +72,7 @@ export default function StudentHomeworkAssignment() {
 
   const [studentsData, setStudentsData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentMode, setCurrentMode] = useState("assign"); 
+  const [currentMode, setCurrentMode] = useState("assign");
   const [homeworkList, setHomeworkList] = useState([]);
   const [loadingHomework, setLoadingHomework] = useState(false);
 
@@ -84,7 +84,6 @@ export default function StudentHomeworkAssignment() {
         if (allUserData?.data && Array.isArray(allUserData.data)) {
           const students = generateStudentData(allUserData);
           setStudentsData(students);
-          
         } else {
           if (typeof getAllUserData === "function") {
             await getAllUserData();
@@ -180,7 +179,6 @@ export default function StudentHomeworkAssignment() {
       borderColor: "border-red-500/30",
     },
   ];
-
 
   const fetchHomeworkAssignments = async () => {
     try {
@@ -643,14 +641,15 @@ export default function StudentHomeworkAssignment() {
                                 homework.createdAt
                               ).toLocaleDateString()}
                             </span>
-                            {homework.status === "completed" && homework.completedDate && (
-                              <span>
-                                Completed:{" "}
-                                {new Date(
-                                  homework.completedDate
-                                ).toLocaleDateString()}
-                              </span>
-                            )}
+                            {homework.status === "completed" &&
+                              homework.completedDate && (
+                                <span>
+                                  Completed:{" "}
+                                  {new Date(
+                                    homework.completedDate
+                                  ).toLocaleDateString()}
+                                </span>
+                              )}
                           </div>
                         </div>
 
@@ -886,7 +885,9 @@ export default function StudentHomeworkAssignment() {
                               <div className="text-sm text-gray-300 flex items-center gap-2">
                                 <span>{formatDate(classItem.classDate)}</span>
                                 <span>{formatTime(classItem.classTime)}</span>
-                                <span>Duration: {classItem.classDuration}h</span>
+                                <span>
+                                  Duration: {classItem.classDuration}h
+                                </span>
                                 {isToday(classItem.classDate) && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-500/20 text-orange-300 border border-orange-500/30">
                                     Today
@@ -939,7 +940,10 @@ export default function StudentHomeworkAssignment() {
                       className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-purple-400 transition backdrop-blur-sm cursor-pointer"
                     >
                       {selectedType && (
-                        <selectedType.icon size={18} className="text-gray-300 mr-3" />
+                        <selectedType.icon
+                          size={18}
+                          className="text-gray-300 mr-3"
+                        />
                       )}
                       <span className="text-white flex-1">
                         {selectedType ? selectedType.name : "Select type..."}
@@ -984,12 +988,16 @@ export default function StudentHomeworkAssignment() {
                       Priority Level
                     </label>
                     <div
-                      onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
+                      onClick={() =>
+                        setShowPriorityDropdown(!showPriorityDropdown)
+                      }
                       className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-orange-400 transition backdrop-blur-sm cursor-pointer"
                     >
                       <AlertCircle size={18} className="text-gray-300 mr-3" />
                       <span className="text-white flex-1">
-                        {selectedPriority ? selectedPriority.name : "Select priority..."}
+                        {selectedPriority
+                          ? selectedPriority.name
+                          : "Select priority..."}
                       </span>
                       <ChevronDown
                         size={16}
@@ -1032,7 +1040,10 @@ export default function StudentHomeworkAssignment() {
                     </label>
                     <div className="bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-emerald-400 transition backdrop-blur-sm">
                       <div className="flex items-start">
-                        <MessageSquare size={18} className="text-gray-300 mr-3 mt-1" />
+                        <MessageSquare
+                          size={18}
+                          className="text-gray-300 mr-3 mt-1"
+                        />
                         <textarea
                           name="homeworkDescription"
                           value={formData.homeworkDescription}
@@ -1052,7 +1063,10 @@ export default function StudentHomeworkAssignment() {
                     </label>
                     <div className="bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-emerald-400 transition backdrop-blur-sm">
                       <div className="flex items-start">
-                        <FileText size={18} className="text-gray-300 mr-3 mt-1" />
+                        <FileText
+                          size={18}
+                          className="text-gray-300 mr-3 mt-1"
+                        />
                         <textarea
                           name="additionalNotes"
                           value={formData.additionalNotes}

@@ -1,65 +1,65 @@
-import React, { useState, useEffect,useContext } from 'react';
-import { 
-  Search, 
-  X, 
-  Filter, 
-  Code, 
+import React, { useState, useEffect, useContext } from "react";
+import {
+  Search,
+  X,
+  Filter,
+  Code,
   Calendar,
   FileText,
   ChevronDown,
   Loader2,
   FolderOpen,
-  Clock
-} from 'lucide-react';
-import axios from 'axios';
-import { AppContent } from '../context/Context';
+  Clock,
+} from "lucide-react";
+import axios from "axios";
+import { AppContent } from "../context/Context";
 
 const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState('all');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState("all");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
-  const {userData,backend_url} = useContext(AppContent);
- 
+  const { userData, backend_url } = useContext(AppContent);
 
   const languages = [
-    { value: 'all', label: 'All Languages', color: 'bg-gray-500' },
-    { value: 'javascript', label: 'JavaScript', color: 'bg-yellow-500' },
-    { value: 'python', label: 'Python', color: 'bg-blue-500' },
-    { value: 'html', label: 'HTML', color: 'bg-orange-500' },
-    { value: 'css', label: 'CSS', color: 'bg-blue-400' },
-    { value: 'cpp', label: 'C++', color: 'bg-purple-500' },
-    { value: 'java', label: 'Java', color: 'bg-red-500' }
+    { value: "all", label: "All Languages", color: "bg-gray-500" },
+    { value: "javascript", label: "JavaScript", color: "bg-yellow-500" },
+    { value: "python", label: "Python", color: "bg-blue-500" },
+    { value: "html", label: "HTML", color: "bg-orange-500" },
+    { value: "css", label: "CSS", color: "bg-blue-400" },
+    { value: "cpp", label: "C++", color: "bg-purple-500" },
+    { value: "java", label: "Java", color: "bg-red-500" },
   ];
 
   const sortOptions = [
-    { value: 'createdAt', label: 'Date Created' },
-    { value: 'updatedAt', label: 'Last Modified' },
-    { value: 'title', label: 'Title' },
-    { value: 'language', label: 'Language' }
+    { value: "createdAt", label: "Date Created" },
+    { value: "updatedAt", label: "Last Modified" },
+    { value: "title", label: "Title" },
+    { value: "language", label: "Language" },
   ];
-
 
   const fetchProjects = async () => {
     if (!userId) return;
-     
+
     setLoading(true);
     try {
-      const response = await axios.get(`${backend_url}/api/codesave/user/${userId}`);
+      const response = await axios.get(
+        `${backend_url}/api/codesave/user/${userId}`
+      );
       const data = response.data;
-      
+
       if (data.success) {
         setProjects(data.data);
         setFilteredProjects(data.data);
       } else {
-        console.error('Failed to fetch projects:', data.message);
+        console.error("Failed to fetch projects:", data.message);
       }
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error("Error fetching projects:", error);
     } finally {
       setLoading(false);
     }
@@ -70,18 +70,21 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
     let filtered = [...projects];
 
     // Language filter
-    if (selectedLanguage !== 'all') {
-      filtered = filtered.filter(project => project.language === selectedLanguage);
+    if (selectedLanguage !== "all") {
+      filtered = filtered.filter(
+        (project) => project.language === selectedLanguage
+      );
     }
 
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(project =>
-        project.title?.toLowerCase().includes(searchLower) ||
-        project.filename?.toLowerCase().includes(searchLower) ||
-        project.description?.toLowerCase().includes(searchLower) ||
-        project.language?.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        (project) =>
+          project.title?.toLowerCase().includes(searchLower) ||
+          project.filename?.toLowerCase().includes(searchLower) ||
+          project.description?.toLowerCase().includes(searchLower) ||
+          project.language?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -90,17 +93,17 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
       let aValue = a[sortBy];
       let bValue = b[sortBy];
 
-      if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+      if (sortBy === "createdAt" || sortBy === "updatedAt") {
         aValue = new Date(aValue);
         bValue = new Date(bValue);
       }
 
-      if (typeof aValue === 'string') {
+      if (typeof aValue === "string") {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
 
-      if (sortOrder === 'desc') {
+      if (sortOrder === "desc") {
         return bValue > aValue ? 1 : -1;
       }
       return aValue > bValue ? 1 : -1;
@@ -130,7 +133,7 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
       title: project.title,
       description: project.description,
       createdAt: project.createdAt,
-      updatedAt: project.updatedAt
+      updatedAt: project.updatedAt,
     });
     onClose();
   };
@@ -138,32 +141,32 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
   // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   // Get language color
   const getLanguageColor = (language) => {
-    const lang = languages.find(l => l.value === language);
-    return lang ? lang.color : 'bg-gray-500';
+    const lang = languages.find((l) => l.value === language);
+    return lang ? lang.color : "bg-gray-500";
   };
 
   // Get file extension icon color
   const getFileIconColor = (language) => {
     const colors = {
-      javascript: 'text-yellow-400',
-      python: 'text-blue-400',
-      html: 'text-orange-400',
-      css: 'text-blue-300',
-      cpp: 'text-purple-400',
-      java: 'text-red-400'
+      javascript: "text-yellow-400",
+      python: "text-blue-400",
+      html: "text-orange-400",
+      css: "text-blue-300",
+      cpp: "text-purple-400",
+      java: "text-red-400",
     };
-    return colors[language] || 'text-gray-400';
+    return colors[language] || "text-gray-400";
   };
 
   if (!isOpen) return null;
@@ -192,7 +195,10 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
         <div className="p-6 border-b border-gray-700 space-y-4">
           {/* Search Bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={18}
+            />
             <input
               type="text"
               placeholder="Search projects by title, filename, or description..."
@@ -209,7 +215,10 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
           >
             <Filter size={16} />
             <span>Filters</span>
-            <ChevronDown className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`} size={16} />
+            <ChevronDown
+              className={`transform transition-transform ${showFilters ? "rotate-180" : ""}`}
+              size={16}
+            />
           </button>
 
           {/* Filters */}
@@ -217,35 +226,45 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-700">
               {/* Language Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Language</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Language
+                </label>
                 <select
                   value={selectedLanguage}
                   onChange={(e) => setSelectedLanguage(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {languages.map(lang => (
-                    <option key={lang.value} value={lang.value}>{lang.label}</option>
+                  {languages.map((lang) => (
+                    <option key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </option>
                   ))}
                 </select>
               </div>
 
               {/* Sort By */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Sort By</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Sort By
+                </label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {sortOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
                   ))}
                 </select>
               </div>
 
               {/* Sort Order */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Order</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Order
+                </label>
                 <select
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value)}
@@ -271,10 +290,9 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
               <Code size={48} className="mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">No projects found</h3>
               <p className="text-sm">
-                {searchTerm || selectedLanguage !== 'all' 
-                  ? 'Try adjusting your search or filters' 
-                  : 'Start coding to see your projects here'
-                }
+                {searchTerm || selectedLanguage !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "Start coding to see your projects here"}
               </p>
             </div>
           ) : (
@@ -288,15 +306,22 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
                   {/* Project Header */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${getLanguageColor(project.language)}`}></div>
+                      <div
+                        className={`w-3 h-3 rounded-full ${getLanguageColor(project.language)}`}
+                      ></div>
                       <div>
                         <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors line-clamp-1">
                           {project.title || project.filename}
                         </h3>
-                        <p className="text-sm text-gray-400">{project.filename}</p>
+                        <p className="text-sm text-gray-400">
+                          {project.filename}
+                        </p>
                       </div>
                     </div>
-                    <FileText className={`${getFileIconColor(project.language)} group-hover:scale-110 transition-transform`} size={18} />
+                    <FileText
+                      className={`${getFileIconColor(project.language)} group-hover:scale-110 transition-transform`}
+                      size={18}
+                    />
                   </div>
 
                   {/* Project Description */}
@@ -309,7 +334,9 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
                   {/* Project Metadata */}
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <div className="flex items-center space-x-4">
-                      <span className={`px-2 py-1 rounded-full text-white ${getLanguageColor(project.language)}`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-white ${getLanguageColor(project.language)}`}
+                      >
                         {project.language}
                       </span>
                       <div className="flex items-center space-x-1">

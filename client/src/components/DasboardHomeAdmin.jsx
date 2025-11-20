@@ -1,12 +1,12 @@
-import React, { useState, useContext } from 'react';
-import { 
-  BookOpen, 
-  Users, 
-  GraduationCap, 
-  IndianRupee, 
-  Clock, 
-  CheckCircle, 
-  TrendingUp, 
+import React, { useState, useContext } from "react";
+import {
+  BookOpen,
+  Users,
+  GraduationCap,
+  IndianRupee,
+  Clock,
+  CheckCircle,
+  TrendingUp,
   Calendar,
   Eye,
   UserCheck,
@@ -14,7 +14,7 @@ import {
   Activity,
   BarChart3,
   PieChart as PieChartIcon,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -29,10 +29,10 @@ import {
   LineChart,
   Line,
   Area,
-  AreaChart
-} from 'recharts';
+  AreaChart,
+} from "recharts";
 
-import { AppContent } from '../context/Context';
+import { AppContent } from "../context/Context";
 
 function DashboardHome() {
   const { allSchedule, allUserData, allCourse } = useContext(AppContent);
@@ -43,10 +43,10 @@ function DashboardHome() {
   const courses = allCourse?.data || allCourse || [];
   // Calculate statistics from real data
   const totalCourses = courses.length;
-  
+
   // Separate instructors and students
-  const instructors = users.filter(user => user.userType === 'admin');
-  const students = users.filter(user => user.userType === 'student');
+  const instructors = users.filter((user) => user.userType === "admin");
+  const students = users.filter((user) => user.userType === "student");
   const totalStudents = students.length;
   const totalInstructors = instructors.length;
 
@@ -57,17 +57,17 @@ function DashboardHome() {
 
   // Get current date to filter active classes
   const currentDate = new Date();
-  const activeClasses = classes.filter(classItem => {
+  const activeClasses = classes.filter((classItem) => {
     const classDate = new Date(classItem.classDate);
     return classDate >= currentDate;
   }).length;
 
   const totalRevenue = classes.reduce((total, classItem) => {
-    return total + (classItem.paid ? (classItem.classRate || 0) : 0);
+    return total + (classItem.paid ? classItem.classRate || 0 : 0);
   }, 0);
 
-  const paidClasses = classes.filter(classItem => classItem.paid === true);
-  const unpaidClasses = classes.filter(classItem => classItem.paid === false);
+  const paidClasses = classes.filter((classItem) => classItem.paid === true);
+  const unpaidClasses = classes.filter((classItem) => classItem.paid === false);
   const completedPayments = paidClasses.reduce((total, classItem) => {
     return total + (classItem.classRate || 0);
   }, 0);
@@ -75,60 +75,69 @@ function DashboardHome() {
     return total + (classItem.classRate || 0);
   }, 0);
 
-  const averageClassFee = classes.length > 0 ? classes.reduce((total, classItem) => {
-    return total + (classItem.classRate || 0);
-  }, 0) / classes.length : 0;
+  const averageClassFee =
+    classes.length > 0
+      ? classes.reduce((total, classItem) => {
+          return total + (classItem.classRate || 0);
+        }, 0) / classes.length
+      : 0;
 
   // Get detailed breakdowns for hover tooltips
   const getStudentDetails = () => {
-    const verifiedStudents = students.filter(student => student.isAccountVerified).length;
+    const verifiedStudents = students.filter(
+      (student) => student.isAccountVerified
+    ).length;
     const unverifiedStudents = students.length - verifiedStudents;
     return {
       total: students.length,
       verified: verifiedStudents,
       unverified: unverifiedStudents,
-      enrollments: totalEnrollments
+      enrollments: totalEnrollments,
     };
   };
 
   const getInstructorDetails = () => {
-    const verifiedInstructors = instructors.filter(instructor => instructor.isAccountVerified).length;
+    const verifiedInstructors = instructors.filter(
+      (instructor) => instructor.isAccountVerified
+    ).length;
     const unverifiedInstructors = instructors.length - verifiedInstructors;
     return {
       total: instructors.length,
       verified: verifiedInstructors,
       unverified: unverifiedInstructors,
-      activeClasses: activeClasses
+      activeClasses: activeClasses,
     };
   };
 
   const getCourseDetails = () => {
-    const courseRevenue = courses.map(course => {
-      const courseClasses = classes.filter(classItem => classItem.className === course.nameCourse);
+    const courseRevenue = courses.map((course) => {
+      const courseClasses = classes.filter(
+        (classItem) => classItem.className === course.nameCourse
+      );
       const paidRevenue = courseClasses.reduce((total, classItem) => {
-        return total + (classItem.paid ? (classItem.classRate || 0) : 0);
+        return total + (classItem.paid ? classItem.classRate || 0 : 0);
       }, 0);
       return {
         courseName: course.nameCourse,
         revenue: paidRevenue,
         totalClasses: courseClasses.length,
-        paidClasses: courseClasses.filter(c => c.paid).length
+        paidClasses: courseClasses.filter((c) => c.paid).length,
       };
     });
-    
+
     return {
       total: courses.length,
       activeClasses: classes.length,
       upcomingClasses: activeClasses,
       totalEnrollments: totalEnrollments,
-      courseRevenue: courseRevenue
+      courseRevenue: courseRevenue,
     };
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
     }).format(amount);
   };
 
@@ -140,156 +149,162 @@ function DashboardHome() {
     averageClassFee: averageClassFee,
     paidClassesCount: paidClasses.length,
     unpaidClassesCount: unpaidClasses.length,
-    revenueGrowth: 0 // You can calculate this if you have historical data
+    revenueGrowth: 0, // You can calculate this if you have historical data
   };
 
   // Chart data preparations
-  const courseEnrollmentData = courses.map(course => {
-    const courseClasses = classes.filter(classItem => classItem.className === course.nameCourse);
+  const courseEnrollmentData = courses.map((course) => {
+    const courseClasses = classes.filter(
+      (classItem) => classItem.className === course.nameCourse
+    );
     const enrollments = courseClasses.reduce((total, classItem) => {
       return total + (classItem.studentsEnrolled?.length || 0);
     }, 0);
     return {
       name: course.nameCourse,
       enrollments: enrollments,
-      price: course.coursePrice
+      price: course.coursePrice,
     };
   });
 
-  const revenueData = courses.map(course => {
-    const courseClasses = classes.filter(classItem => classItem.className === course.nameCourse);
+  const revenueData = courses.map((course) => {
+    const courseClasses = classes.filter(
+      (classItem) => classItem.className === course.nameCourse
+    );
     const revenue = courseClasses.reduce((total, classItem) => {
-      return total + (classItem.paid ? (classItem.classRate || 0) : 0);
+      return total + (classItem.paid ? classItem.classRate || 0 : 0);
     }, 0);
-    const paidClasses = courseClasses.filter(classItem => classItem.paid).length;
+    const paidClasses = courseClasses.filter(
+      (classItem) => classItem.paid
+    ).length;
     return {
       name: course.nameCourse,
       revenue: revenue,
       classes: courseClasses.length,
-      paidClasses: paidClasses
+      paidClasses: paidClasses,
     };
   });
 
   const userTypeData = [
-    { name: 'Students', value: totalStudents, color: '#10B981' },
-    { name: 'Instructors', value: totalInstructors, color: '#8B5CF6' }
+    { name: "Students", value: totalStudents, color: "#10B981" },
+    { name: "Instructors", value: totalInstructors, color: "#8B5CF6" },
   ];
 
   const paymentStatusData = [
-    { name: 'Paid', value: paidClasses.length, color: '#10B981' },
-    { name: 'Unpaid', value: unpaidClasses.length, color: '#F59E0B' }
+    { name: "Paid", value: paidClasses.length, color: "#10B981" },
+    { name: "Unpaid", value: unpaidClasses.length, color: "#F59E0B" },
   ];
 
   const verificationData = [
-    { 
-      name: 'Students', 
-      verified: students.filter(s => s.isAccountVerified).length,
-      unverified: students.filter(s => !s.isAccountVerified).length
+    {
+      name: "Students",
+      verified: students.filter((s) => s.isAccountVerified).length,
+      unverified: students.filter((s) => !s.isAccountVerified).length,
     },
-    { 
-      name: 'Instructors', 
-      verified: instructors.filter(i => i.isAccountVerified).length,
-      unverified: instructors.filter(i => !i.isAccountVerified).length
-    }
+    {
+      name: "Instructors",
+      verified: instructors.filter((i) => i.isAccountVerified).length,
+      unverified: instructors.filter((i) => !i.isAccountVerified).length,
+    },
   ];
 
   const stats = [
     {
-      id: 'courses',
+      id: "courses",
       label: "Total Courses",
       value: totalCourses.toString(),
       icon: BookOpen,
       color: "from-blue-500 to-cyan-500",
       subtext: `${activeClasses} active classes`,
       hasHover: true,
-      details: getCourseDetails()
+      details: getCourseDetails(),
     },
     {
-      id: 'students',
+      id: "students",
       label: "Total Students",
       value: totalStudents.toString(),
       icon: Users,
       color: "from-green-500 to-emerald-500",
       subtext: `${totalEnrollments} enrollments`,
       hasHover: true,
-      details: getStudentDetails()
+      details: getStudentDetails(),
     },
     {
-      id: 'instructors',
+      id: "instructors",
       label: "Instructors",
       value: totalInstructors.toString(),
       icon: GraduationCap,
       color: "from-purple-500 to-violet-500",
       subtext: "Active instructors",
       hasHover: true,
-      details: getInstructorDetails()
+      details: getInstructorDetails(),
     },
     {
-      id: 'revenue',
+      id: "revenue",
       label: "Total Revenue (Paid)",
       value: formatCurrency(totalRevenue),
       icon: IndianRupee,
       color: "from-orange-500 to-red-500",
       subtext: `${paidClasses.length} paid classes`,
-      hasHover: false
+      hasHover: false,
     },
     {
-      id: 'pending',
+      id: "pending",
       label: "Pending Payments",
       value: formatCurrency(pendingPayments),
       icon: Clock,
       color: "from-yellow-500 to-amber-500",
       subtext: `${unpaidClasses.length} classes`,
-      hasHover: false
+      hasHover: false,
     },
     {
-      id: 'completed',
+      id: "completed",
       label: "Completed Payments",
       value: formatCurrency(completedPayments),
       icon: CheckCircle,
       color: "from-emerald-500 to-teal-500",
       subtext: `${paidClasses.length} classes`,
-      hasHover: false
+      hasHover: false,
     },
     {
-      id: 'average',
+      id: "average",
       label: "Average Class Fee",
       value: formatCurrency(averageClassFee),
       icon: TrendingUp,
       color: "from-indigo-500 to-blue-500",
       subtext: "Per class",
-      hasHover: false
+      hasHover: false,
     },
     {
-      id: 'active',
+      id: "active",
       label: "Active Classes",
       value: activeClasses.toString(),
       icon: Calendar,
       color: "from-pink-500 to-rose-500",
       subtext: "Upcoming classes",
-      hasHover: false
-    }
+      hasHover: false,
+    },
   ];
 
   // Get recent classes (next 3 upcoming)
   const upcomingClasses = classes
-    .filter(classItem => new Date(classItem.classDate) >= currentDate)
+    .filter((classItem) => new Date(classItem.classDate) >= currentDate)
     .sort((a, b) => new Date(a.classDate) - new Date(b.classDate))
     .slice(0, 3);
 
   // Get instructor name by ID
   const getInstructorName = (instructorId) => {
-    const instructor = users.find(user => user._id === instructorId);
-    return instructor ? instructor.name : 'Unknown Instructor';
+    const instructor = users.find((user) => user._id === instructorId);
+    return instructor ? instructor.name : "Unknown Instructor";
   };
 
   // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
@@ -309,8 +324,8 @@ function DashboardHome() {
     if (!stat.hasHover || hoveredStat !== stat.id) return null;
 
     let tooltipContent;
-    
-    if (stat.id === 'courses') {
+
+    if (stat.id === "courses") {
       tooltipContent = (
         <div className="space-y-2">
           <div className="font-semibold text-blue-300 border-b border-blue-400/30 pb-1">
@@ -323,20 +338,26 @@ function DashboardHome() {
             </div>
             <div>
               <div className="text-gray-300">Active Classes:</div>
-              <div className="font-medium text-white">{stat.details.activeClasses}</div>
+              <div className="font-medium text-white">
+                {stat.details.activeClasses}
+              </div>
             </div>
             <div>
               <div className="text-gray-300">Upcoming:</div>
-              <div className="font-medium text-white">{stat.details.upcomingClasses}</div>
+              <div className="font-medium text-white">
+                {stat.details.upcomingClasses}
+              </div>
             </div>
             <div>
               <div className="text-gray-300">Total Enrollments:</div>
-              <div className="font-medium text-white">{stat.details.totalEnrollments}</div>
+              <div className="font-medium text-white">
+                {stat.details.totalEnrollments}
+              </div>
             </div>
           </div>
         </div>
       );
-    } else if (stat.id === 'students') {
+    } else if (stat.id === "students") {
       tooltipContent = (
         <div className="space-y-2">
           <div className="font-semibold text-green-300 border-b border-green-400/30 pb-1">
@@ -349,20 +370,26 @@ function DashboardHome() {
             </div>
             <div>
               <div className="text-gray-300">Verified:</div>
-              <div className="font-medium text-green-400">{stat.details.verified}</div>
+              <div className="font-medium text-green-400">
+                {stat.details.verified}
+              </div>
             </div>
             <div>
               <div className="text-gray-300">Unverified:</div>
-              <div className="font-medium text-yellow-400">{stat.details.unverified}</div>
+              <div className="font-medium text-yellow-400">
+                {stat.details.unverified}
+              </div>
             </div>
             <div>
               <div className="text-gray-300">Total Enrollments:</div>
-              <div className="font-medium text-white">{stat.details.enrollments}</div>
+              <div className="font-medium text-white">
+                {stat.details.enrollments}
+              </div>
             </div>
           </div>
         </div>
       );
-    } else if (stat.id === 'instructors') {
+    } else if (stat.id === "instructors") {
       tooltipContent = (
         <div className="space-y-2">
           <div className="font-semibold text-purple-300 border-b border-purple-400/30 pb-1">
@@ -375,15 +402,21 @@ function DashboardHome() {
             </div>
             <div>
               <div className="text-gray-300">Verified:</div>
-              <div className="font-medium text-green-400">{stat.details.verified}</div>
+              <div className="font-medium text-green-400">
+                {stat.details.verified}
+              </div>
             </div>
             <div>
               <div className="text-gray-300">Unverified:</div>
-              <div className="font-medium text-yellow-400">{stat.details.unverified}</div>
+              <div className="font-medium text-yellow-400">
+                {stat.details.unverified}
+              </div>
             </div>
             <div>
               <div className="text-gray-300">Active Classes:</div>
-              <div className="font-medium text-white">{stat.details.activeClasses}</div>
+              <div className="font-medium text-white">
+                {stat.details.activeClasses}
+              </div>
             </div>
           </div>
         </div>
@@ -412,13 +445,13 @@ function DashboardHome() {
             <div
               key={index}
               className={`relative bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/10 transition-all duration-300 ${
-                stat.hasHover 
-                  ? 'hover:bg-white/15 hover:scale-105 hover:shadow-xl cursor-pointer' 
-                  : 'hover:bg-white/15'
+                stat.hasHover
+                  ? "hover:bg-white/15 hover:scale-105 hover:shadow-xl cursor-pointer"
+                  : "hover:bg-white/15"
               }`}
               onMouseEnter={() => stat.hasHover && setHoveredStat(stat.id)}
               onMouseLeave={() => stat.hasHover && setHoveredStat(null)}
-              style={{ zIndex: hoveredStat === stat.id ? 100 : 'auto' }}
+              style={{ zIndex: hoveredStat === stat.id ? 100 : "auto" }}
             >
               <div
                 className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.color} flex items-center justify-center mb-4`}
@@ -491,13 +524,13 @@ function DashboardHome() {
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} />
               <YAxis stroke="#9CA3AF" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1F2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#F9FAFB'
-                }} 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1F2937",
+                  border: "1px solid #374151",
+                  borderRadius: "8px",
+                  color: "#F9FAFB",
+                }}
               />
               <Bar dataKey="enrollments" fill="#3B82F6" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -515,29 +548,29 @@ function DashboardHome() {
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} />
               <YAxis stroke="#9CA3AF" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1F2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#F9FAFB'
-                }} 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1F2937",
+                  border: "1px solid #374151",
+                  borderRadius: "8px",
+                  color: "#F9FAFB",
+                }}
                 formatter={(value, name) => [
-                  formatCurrency(value), 
-                  'Revenue (Paid Only)'
+                  formatCurrency(value),
+                  "Revenue (Paid Only)",
                 ]}
                 labelFormatter={(label) => `Course: ${label}`}
               />
-              <Area 
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="#10B981" 
-                fill="url(#colorRevenue)" 
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#10B981"
+                fill="url(#colorRevenue)"
               />
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
             </AreaChart>
@@ -558,19 +591,19 @@ function DashboardHome() {
                 cy="50%"
                 outerRadius={80}
                 dataKey="value"
-                label={({name, value}) => `${name}: ${value}`}
+                label={({ name, value }) => `${name}: ${value}`}
               >
                 {userTypeData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1F2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#F9FAFB'
-                }} 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1F2937",
+                  border: "1px solid #374151",
+                  borderRadius: "8px",
+                  color: "#F9FAFB",
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -590,19 +623,19 @@ function DashboardHome() {
                 cy="50%"
                 outerRadius={80}
                 dataKey="value"
-                label={({name, value}) => `${name}: ${value}`}
+                label={({ name, value }) => `${name}: ${value}`}
               >
                 {paymentStatusData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1F2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#F9FAFB'
-                }} 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1F2937",
+                  border: "1px solid #374151",
+                  borderRadius: "8px",
+                  color: "#F9FAFB",
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -620,13 +653,13 @@ function DashboardHome() {
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="name" stroke="#9CA3AF" />
             <YAxis stroke="#9CA3AF" />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#1F2937', 
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                color: '#F9FAFB'
-              }} 
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#1F2937",
+                border: "1px solid #374151",
+                borderRadius: "8px",
+                color: "#F9FAFB",
+              }}
             />
             <Bar dataKey="verified" fill="#10B981" radius={[4, 4, 0, 0]} />
             <Bar dataKey="unverified" fill="#F59E0B" radius={[4, 4, 0, 0]} />
@@ -637,12 +670,15 @@ function DashboardHome() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Welcome Section */}
         <div className="lg:col-span-2 bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/10">
-          <h3 className="text-2xl font-semibold mb-4">Welcome to Admin Panel</h3>
+          <h3 className="text-2xl font-semibold mb-4">
+            Welcome to Admin Panel
+          </h3>
           <p className="text-gray-300 mb-6">
-            Manage your courses, students, instructors, and payments from this centralized
-            dashboard. Use the navigation to access different sections.
+            Manage your courses, students, instructors, and payments from this
+            centralized dashboard. Use the navigation to access different
+            sections.
           </p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
               <BookOpen className="mb-2 text-blue-400" size={24} />
@@ -654,7 +690,7 @@ function DashboardHome() {
                 {totalCourses} courses available
               </div>
             </div>
-            
+
             <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
               <Users className="mb-2 text-green-400" size={24} />
               <h4 className="font-semibold mb-1">Student Management</h4>
@@ -665,7 +701,7 @@ function DashboardHome() {
                 {totalStudents} students registered
               </div>
             </div>
-            
+
             <div className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all duration-300">
               <Calendar className="mb-2 text-purple-400" size={24} />
               <h4 className="font-semibold mb-1">Class Scheduling</h4>
@@ -685,7 +721,7 @@ function DashboardHome() {
             <Calendar className="mr-2 text-blue-400" size={20} />
             Upcoming Classes
           </h3>
-          
+
           <div className="space-y-3">
             {upcomingClasses.length === 0 ? (
               <p className="text-gray-400 text-sm">No upcoming classes</p>
@@ -711,15 +747,18 @@ function DashboardHome() {
                   </div>
                   <div className="flex justify-between items-center mt-1">
                     <span className="text-xs text-gray-500">
-                      {classItem.studentsEnrolled?.length || 0} students enrolled
+                      {classItem.studentsEnrolled?.length || 0} students
+                      enrolled
                     </span>
                     <div className="flex items-center space-x-2">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        classItem.paid 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-yellow-500/20 text-yellow-400'
-                      }`}>
-                        {classItem.paid ? 'Paid' : 'Pending'}
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          classItem.paid
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-yellow-500/20 text-yellow-400"
+                        }`}
+                      >
+                        {classItem.paid ? "Paid" : "Pending"}
                       </span>
                     </div>
                   </div>
@@ -727,7 +766,7 @@ function DashboardHome() {
               ))
             )}
           </div>
-          
+
           {upcomingClasses.length > 0 && (
             <div className="mt-4 pt-3 border-t border-white/10">
               <button className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors duration-200">
@@ -744,28 +783,40 @@ function DashboardHome() {
           <Activity className="mr-2 text-indigo-400" size={20} />
           Quick Actions
         </h3>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <button className="bg-white/5 hover:bg-white/10 p-4 rounded-xl transition-all duration-300 text-left group">
-            <BookOpen className="mb-2 text-blue-400 group-hover:scale-110 transition-transform duration-200" size={20} />
+            <BookOpen
+              className="mb-2 text-blue-400 group-hover:scale-110 transition-transform duration-200"
+              size={20}
+            />
             <div className="font-medium text-sm">Add Course</div>
             <div className="text-xs text-gray-400">Create new course</div>
           </button>
-          
+
           <button className="bg-white/5 hover:bg-white/10 p-4 rounded-xl transition-all duration-300 text-left group">
-            <Users className="mb-2 text-green-400 group-hover:scale-110 transition-transform duration-200" size={20} />
+            <Users
+              className="mb-2 text-green-400 group-hover:scale-110 transition-transform duration-200"
+              size={20}
+            />
             <div className="font-medium text-sm">Add Student</div>
             <div className="text-xs text-gray-400">Register new student</div>
           </button>
-          
+
           <button className="bg-white/5 hover:bg-white/10 p-4 rounded-xl transition-all duration-300 text-left group">
-            <Calendar className="mb-2 text-purple-400 group-hover:scale-110 transition-transform duration-200" size={20} />
+            <Calendar
+              className="mb-2 text-purple-400 group-hover:scale-110 transition-transform duration-200"
+              size={20}
+            />
             <div className="font-medium text-sm">Schedule Class</div>
             <div className="text-xs text-gray-400">Create new class</div>
           </button>
-          
+
           <button className="bg-white/5 hover:bg-white/10 p-4 rounded-xl transition-all duration-300 text-left group">
-            <IndianRupee className="mb-2 text-yellow-400 group-hover:scale-110 transition-transform duration-200" size={20} />
+            <IndianRupee
+              className="mb-2 text-yellow-400 group-hover:scale-110 transition-transform duration-200"
+              size={20}
+            />
             <div className="font-medium text-sm">Payment Report</div>
             <div className="text-xs text-gray-400">View financial report</div>
           </button>

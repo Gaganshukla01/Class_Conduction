@@ -11,7 +11,7 @@ const classScheduleSchema = new mongoose.Schema({
   attendance: { type: String, default: "Absent", enum: ["Present", "Absent"] },
   notes: { type: String, default: "" },
   topicCovered: { type: String, default: "" },
-  classRate:{ type: Number, required:true },
+  classRate: { type: Number, required: true },
   paid: { type: Boolean, default: false },
 });
 
@@ -20,5 +20,3 @@ const classSchedule =
   mongoose.model("classSchedule", classScheduleSchema);
 
 export default classSchedule;
-
-
