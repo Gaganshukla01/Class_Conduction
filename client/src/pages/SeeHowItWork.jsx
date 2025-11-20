@@ -28,6 +28,7 @@ export default function SeeHowItWorks() {
   const [animateArrows, setAnimateArrows] = useState(false);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % 12);
       setAnimateArrows(true);
