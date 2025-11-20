@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   BookOpen,
@@ -24,6 +25,7 @@ import {
   EyeOff,
   IndianRupeeIcon,
   Timer,
+  Projector,
 } from "lucide-react";
 import {
   getNoteById,
@@ -37,6 +39,7 @@ import { AppContent } from "../context/Context";
 import axios from "axios";
 import PaymentTab from "../components/PaymentBoard";
 import TimezoneConverter from "../components/TimeZone";
+import ProjectShowcase from "./StudentProject";
 
 const ProgressTab = ({
   activeTab,
@@ -571,6 +574,11 @@ export default function StudentDashboard() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [classesData, setClassesData] = useState([]);
   const [homeWorkData, setHomeworkData] = useState([]);
+  const navigate = useNavigate();
+
+  const goToUpload = () => {
+    navigate("/projectview");
+  };
 
   const [notes, setNotes] = useState([
     {
@@ -1029,6 +1037,7 @@ export default function StudentDashboard() {
             { id: "homework", label: "Homework", icon: Target },
             { id: "progress", label: "Progress", icon: TrendingUp },
             { id: "payment", label: "Payments", icon: IndianRupeeIcon },
+            { id: "upload", label: "Project Upload", icon: Projector },
             { id: "timezone", label: "TimeZone", icon: Timer },
           ].map((tab) => (
             <button
@@ -3038,8 +3047,6 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* Homework Tab */}
-
         {/* Progress Tab */}
         {activeTab === "progress" && (
           <ProgressTab
@@ -3051,6 +3058,7 @@ export default function StudentDashboard() {
         )}
         {activeTab === "payment" && <PaymentTab />}
         {activeTab === "timezone" && <TimezoneConverter />}
+        {activeTab === "upload" && goToUpload()}
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   Target,
   Rocket,
   Lightbulb,
+  Projector,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
@@ -253,6 +254,16 @@ export default function ClassWaveLanding() {
                 <Play className="mr-2" size={20} />
                 See How It Works
               </button>
+              {/* only show if user is login is presnet  */}
+              {userData && (
+                <button
+                  className="group flex items-center justify-center px-8 py-4 border border-white/30 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300 hover:cursor-pointer"
+                  onClick={() => navigate("/projectview")}
+                >
+                  <Projector className="mr-2" size={20} />
+                  Student Projects
+                </button>
+              )}
             </div>
 
             {/* Quick Features */}

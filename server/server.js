@@ -13,6 +13,7 @@ import { codeSaveRouter } from "./router/codeSave.js";
 import { contactRouter } from "./router/contactRouter.js";
 import { chatEditorRouter } from "./router/chatEditorRouter.js";
 import { ratingRouter } from "./router/ratingController.js";
+import { projectRouter } from "./router/projectRouter.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -90,6 +91,7 @@ app.use("/api/codesave", codeSaveRouter);
 app.use("/api/contactus", contactRouter);
 app.use("/api/chateditor", chatEditorRouter);
 app.use("/api/rating", ratingRouter);
+app.use("/api/project", projectRouter);
 
 app.use((err, req, res, next) => {
   if (err.message.includes("CORS")) {

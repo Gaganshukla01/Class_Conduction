@@ -16,6 +16,7 @@ import ContactUs from "./pages/ContactUs";
 import ContactInquiriesAdmin from "./components/ContactResultForm";
 import CommonAreaEditor from "./pages/CommonAreaEditor";
 import StudentChatViewer from "./pages/CommonEditorStudent";
+import ProjectShowcase from "./pages/StudentProject";
 
 const ProtectedRoute = ({
   children,
@@ -74,6 +75,7 @@ function App() {
           {/* Public routes - accessible to everyone */}
           <Route path="/" element={<Home />} />
           <Route path="/seehowitworks" element={<SeeHowItWorks />} />
+          <Route path="/projectview" element={<ProjectShowcase />} />
 
           <Route
             path="/login"
@@ -194,7 +196,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+      
           {/* Catch-all route - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

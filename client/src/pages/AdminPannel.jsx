@@ -26,6 +26,7 @@ import {
   DollarSign as IndianRupeeIcon,
   Menu,
   Contact,
+  Projector,
 } from "lucide-react";
 
 import { AppContent } from "../context/Context";
@@ -38,6 +39,7 @@ import DashboardHome from "../components/DasboardHomeAdmin";
 import axios from "axios";
 import { toast } from "react-toastify";
 import ContactInquiriesAdmin from "../components/ContactResultForm";
+import AdminProjectApproval from "./ProjectApproveSection";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -50,6 +52,7 @@ export default function AdminDashboard() {
     { id: "updateUser", label: "Update User", icon: UserCheck },
     { id: "addClass", label: "Schedule Class", icon: Calendar },
     { id: "classAttendence", label: "Class Attendence", icon: Check },
+    { id: "projectApprove", label: "Approve Project", icon: Projector },
     { id: "homeWorkAssign", label: "Home Work", icon: Book },
     { id: "paymentUpdate", label: "Payment Update", icon: IndianRupeeIcon },
     { id: "contactUs", label: "Contact Us Res", icon: Contact },
@@ -81,6 +84,8 @@ export default function AdminDashboard() {
         return <ClassPaymentUpdate />;
       case "contactUs":
         return <ContactInquiriesAdmin />;
+      case "projectApprove":
+        return <AdminProjectApproval />;
       default:
         return <DashboardHome />;
     }
@@ -126,7 +131,7 @@ export default function AdminDashboard() {
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 ${
+                  className={`w-full flex items-center px-4 py-3 rounded-xl hover:cursor-pointer transition-all duration-300 ${
                     activeTab === item.id
                       ? "bg-white/20 text-white shadow-lg"
                       : "text-gray-300 hover:bg-white/10 hover:text-white"
@@ -562,7 +567,6 @@ function ManageClasses() {
 
   const handleJoinClass = (classLink) => {
     if (classLink) {
-      // Open the class link in a new tab
       window.open(classLink, "_blank", "noopener,noreferrer");
     } else {
       alert("Class link is not available");
