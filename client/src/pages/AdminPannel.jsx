@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   BookOpen,
   Users,
@@ -44,6 +44,7 @@ import AdminProjectApproval from "./ProjectApproveSection";
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { refreshData } = useContext(AppContent);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -63,6 +64,11 @@ export default function AdminDashboard() {
     setActiveTab(tabId);
     setSidebarOpen(false);
   };
+
+  // for loading the content
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
