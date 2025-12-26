@@ -2,7 +2,6 @@ import { use, useContext, useEffect, useState } from "react";
 import Home from "./pages/Home";
 import { Route, Routes, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
-import "./App.css";
 import ResetPassword from "./pages/ResetPassword";
 import EmailVerify from "./pages/EmailVerify";
 import AdminDashboard from "./pages/AdminPannel";

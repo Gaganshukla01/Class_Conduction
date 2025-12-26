@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect ,useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Clock,
@@ -13,16 +13,90 @@ import {
   Filter,
   ChevronRight,
   CheckCircle,
+  Download,
+  FileText,
+  Loader,
 } from "lucide-react";
+import { AppContent } from "../context/Context";
 
 export default function CourseDetails() {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [filter, setFilter] = useState("all");
   const [favorites, setFavorites] = useState([]);
+  const [pdfPreview, setPdfPreview] = useState(null);
 
-  // Lock body scroll when any modal is open
+  const navigate = useNavigate();
+
+  const { backend_url } = useContext(AppContent);
+
   useEffect(() => {
-    if (selectedCourse) {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`${backend_url}/api/course`);
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch courses");
+      }
+      
+      const data = await response.json();
+      
+      const transformedCourses = data.map((course) => ({
+        id: course._id,
+        title: course.nameCourse,
+        category: course.courseCategory,
+        description: course.description,
+        price: course.coursePrice,
+        originalPrice: Math.round(course.coursePrice * 1.3), 
+        courseImage: course.courseImage,
+        courseVideo: course.courseVideo,
+        icon: course.courseCategory === "WEB" ? 
+          <Globe className="w-8 h-8 text-blue-400" /> : 
+          <Code className="w-8 h-8 text-green-400" />,
+        instructor: "Expert Instructor",
+        rating: 4.8,
+        reviewCount: Math.floor(Math.random() * 3000) + 500,
+        students: Math.floor(Math.random() * 20000) + 5000,
+        sessions: Math.floor(Math.random() * 30) + 20,
+        duration: "8-12 weeks",
+        level: "All Levels",
+        difficulty: "beginner",
+        nextBatch: "Starting Soon",
+        topics: course.description.split(" ").slice(0, 6),
+        features: [
+          "Lifetime Access",
+          "Certificate",
+          "Career Support",
+          "Community Access",
+        ],
+        whatYouLearn: [
+          `Master ${course.nameCourse} from basics to advanced`,
+          "Build real-world projects",
+          "Get industry-ready skills",
+          "Hands-on practical experience",
+        ],
+        pdfUrl: `/public/${course._id}.pdf`,
+      }));
+
+      setCourses(transformedCourses);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching courses:", err);
+      setError("Failed to load courses. Please try again later.");
+      setLoading(false);
+    }
+  };
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedCourse || pdfPreview) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -30,176 +104,11 @@ export default function CourseDetails() {
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [selectedCourse]);
+  }, [selectedCourse, pdfPreview]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-
-  const courses = [
-    {
-      id: 1,
-      title: "Complete Web Development Bootcamp",
-      category: "Web Development",
-      icon: <Globe className="w-8 h-8 text-blue-400" />,
-      instructor: "Sarah Johnson",
-      rating: 4.8,
-      reviewCount: 2340,
-      students: 15420,
-      sessions: 45,
-      duration: "12 weeks",
-      price: 299,
-      originalPrice: 399,
-      level: "Beginner Friendly",
-      description:
-        "Start your web development journey! Learn HTML, CSS, JavaScript, React, and build real projects.",
-      preview: "Watch a free preview lesson",
-      difficulty: "beginner",
-      topics: [
-        "HTML5 & CSS3",
-        "JavaScript Fundamentals",
-        "React.js",
-        "Node.js",
-        "MongoDB",
-        "Portfolio Projects",
-      ],
-      nextBatch: "Aug 15, 2025",
-      features: [
-        "Lifetime Access",
-        "Certificate",
-        "Career Support",
-        "Community Access",
-      ],
-      whatYouLearn: [
-        "Build responsive websites from scratch",
-        "Master modern JavaScript and React",
-        "Create full-stack web applications",
-        "Deploy projects to the web",
-      ],
-    },
-    {
-      id: 2,
-      title: "Python Programming Masterclass",
-      category: "Python Development",
-      icon: <Code className="w-8 h-8 text-green-400" />,
-      instructor: "Michael Chen",
-      rating: 4.9,
-      reviewCount: 3120,
-      students: 22100,
-      sessions: 38,
-      duration: "10 weeks",
-      price: 249,
-      originalPrice: 349,
-      level: "Beginner Friendly",
-      description:
-        "Learn Python from zero to hero! Perfect for beginners who want to start programming.",
-      preview: "Try a free coding exercise",
-      difficulty: "beginner",
-      topics: [
-        "Python Basics",
-        "Data Structures",
-        "Web Development",
-        "APIs",
-        "Database Integration",
-        "Real Projects",
-      ],
-      nextBatch: "Aug 22, 2025",
-      features: [
-        "Hands-on Projects",
-        "Code Reviews",
-        "Job Assistance",
-        "Mobile App",
-      ],
-      whatYouLearn: [
-        "Write clean, efficient Python code",
-        "Build web applications with Django",
-        "Work with databases and APIs",
-        "Automate tasks with Python scripts",
-      ],
-    },
-    {
-      id: 3,
-      title: "Advanced React & Next.js",
-      category: "Web Development",
-      icon: <Globe className="w-8 h-8 text-blue-400" />,
-      instructor: "Emily Rodriguez",
-      rating: 4.7,
-      reviewCount: 890,
-      students: 8900,
-      sessions: 32,
-      duration: "8 weeks",
-      price: 199,
-      originalPrice: 299,
-      level: "Intermediate",
-      description:
-        "Take your React skills to the next level with advanced patterns and Next.js framework.",
-      preview: "See what you'll build",
-      difficulty: "intermediate",
-      topics: [
-        "Advanced React Hooks",
-        "Next.js 14",
-        "TypeScript",
-        "Performance",
-        "Testing",
-        "Deployment",
-      ],
-      nextBatch: "Aug 10, 2025",
-      features: [
-        "Real Projects",
-        "Code Mentorship",
-        "Interview Prep",
-        "Portfolio Review",
-      ],
-      whatYouLearn: [
-        "Master advanced React patterns",
-        "Build production-ready Next.js apps",
-        "Optimize performance and SEO",
-        "Deploy scalable applications",
-      ],
-    },
-    {
-      id: 4,
-      title: "Python for Data Science & AI",
-      category: "Python Development",
-      icon: <Code className="w-8 h-8 text-green-400" />,
-      instructor: "Dr. James Park",
-      rating: 4.6,
-      reviewCount: 1560,
-      students: 12300,
-      sessions: 42,
-      duration: "14 weeks",
-      price: 399,
-      originalPrice: 549,
-      level: "Intermediate",
-      description:
-        "Dive into data science and AI! Learn to analyze data and build machine learning models.",
-      preview: "Explore sample projects",
-      difficulty: "intermediate",
-      topics: [
-        "Data Analysis",
-        "Machine Learning",
-        "Deep Learning",
-        "AI Projects",
-        "Data Visualization",
-        "Real Datasets",
-      ],
-      nextBatch: "Aug 28, 2025",
-      features: [
-        "Industry Projects",
-        "Kaggle Competitions",
-        "AI Certification",
-        "Career Guidance",
-      ],
-      whatYouLearn: [
-        "Analyze complex datasets",
-        "Build predictive models",
-        "Create AI-powered applications",
-        "Present insights with visualizations",
-      ],
-    },
-  ];
-
-  const navigate = useNavigate();
 
   const toggleFavorite = (courseId) => {
     setFavorites((prev) =>
@@ -209,22 +118,49 @@ export default function CourseDetails() {
     );
   };
 
+  const handleDownloadPDF = (course) => {
+    // Create download link
+    const link = document.createElement("a");
+    link.href = course.pdfUrl;
+    link.download = `${course.title.replace(/\s+/g, "_")}_Course.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePreviewPDF = (course) => {
+    setPdfPreview(course);
+  };
+
   const filteredCourses = courses.filter((course) => {
     if (filter === "all") return true;
     if (filter === "beginner") return course.difficulty === "beginner";
     if (filter === "intermediate") return course.difficulty === "intermediate";
-    if (filter === "web") return course.category === "Web Development";
-    if (filter === "python") return course.category === "Python Development";
+    if (filter === "web") return course.category.toLowerCase().includes("web");
+    if (filter === "tech") return course.category.toLowerCase().includes("tech");
+    if (filter === "python") return course.title.toLowerCase().includes("python");
     return true;
   });
 
   const StudentCourseCard = ({ course }) => (
-    <div className="group p-6 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:scale-105 transition-all duration-300 cursor-pointer">
+    <div className="group p-6 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:scale-105 transition-all duration-300">
+      {/* Course Image */}
+      <div className="mb-4 rounded-xl overflow-hidden h-48 bg-white/5">
+        <img
+          src={course.courseImage}
+          alt={course.title}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.target.src = "https://via.placeholder.com/400x200?text=Course+Image";
+          }}
+        />
+      </div>
+
       {/* Header with favorite button */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 flex-1">
           {course.icon}
-          <div>
+          <div className="flex-1">
             <h3 className="font-bold text-xl text-white mb-1">
               {course.title}
             </h3>
@@ -240,7 +176,7 @@ export default function CourseDetails() {
         </div>
         <button
           onClick={() => toggleFavorite(course.id)}
-          className="p-2 hover:bg-white/10 rounded-full transition-colors"
+          className="p-2 hover:bg-white/10 cursor-pointer rounded-full transition-colors"
         >
           <Heart
             className={`w-5 h-5 ${favorites.includes(course.id) ? "text-red-500 fill-current" : "text-gray-400"}`}
@@ -248,21 +184,18 @@ export default function CourseDetails() {
         </button>
       </div>
 
-      {/* Level Badge */}
-      <div className="mb-3">
-        <span
-          className={`px-3 py-1 rounded-full text-sm font-medium ${
-            course.difficulty === "beginner"
-              ? "bg-green-500/20 text-green-400 border border-green-500/30"
-              : "bg-orange-500/20 text-orange-400 border border-orange-500/30"
-          }`}
-        >
+      {/* Level Badge & Category */}
+      <div className="mb-3 flex items-center space-x-2">
+        <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-500/20 text-green-400 border border-green-500/30">
           {course.level}
+        </span>
+        <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+          {course.category}
         </span>
       </div>
 
       {/* Description */}
-      <p className="text-gray-300 mb-4 line-clamp-2">{course.description}</p>
+      <p className="text-gray-300 mb-4 line-clamp-3">{course.description}</p>
 
       {/* Course Stats */}
       <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
@@ -280,16 +213,16 @@ export default function CourseDetails() {
         </div>
         <div className="flex items-center space-x-2 text-gray-400">
           <Calendar className="w-4 h-4" />
-          <span>Starts {course.nextBatch}</span>
+          <span>{course.nextBatch}</span>
         </div>
       </div>
 
       {/* Pricing */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-baseline space-x-2">
-          <span className="font-bold text-2xl text-white">${course.price}</span>
+          <span className="font-bold text-2xl text-white">₹{course.price}</span>
           <span className="text-gray-400 line-through text-lg">
-            ${course.originalPrice}
+            ₹{course.originalPrice}
           </span>
           <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-sm font-medium border border-red-500/30">
             {Math.round(
@@ -301,22 +234,34 @@ export default function CourseDetails() {
         </div>
       </div>
 
-      {/* Preview Button */}
-      <button className="w-full mb-3 bg-white/10 text-gray-300 py-2 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center space-x-2 border border-white/20">
-        <Play className="w-4 h-4" />
-        <span>{course.preview}</span>
-      </button>
+      {/* PDF Buttons */}
+      <div className="flex space-x-2 mb-3">
+        <button
+          onClick={() => handlePreviewPDF(course)}
+          className="flex-1 bg-white/10 text-gray-300 py-2 px-4 rounded-lg hover:bg-white/20 cursor-pointer transition-colors flex items-center justify-center space-x-2 border border-white/20"
+        >
+          <FileText className="w-4 h-4" />
+          <span>Preview PDF</span>
+        </button>
+        <button
+          onClick={() => handleDownloadPDF(course)}
+          className="flex-1 bg-white/10 text-gray-300 py-2 px-4 rounded-lg hover:bg-white/20 cursor-pointer transition-colors flex items-center justify-center space-x-2 border border-white/20"
+        >
+          <Download className="w-4 h-4" />
+          <span>Download</span>
+        </button>
+      </div>
 
       {/* Action Buttons */}
       <div className="flex space-x-2">
         <button
           onClick={() => setSelectedCourse(course)}
-          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-600 hover:to-purple-700 cursor-pointer transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           Learn More
         </button>
         <button
-          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-emerald-700 cursor-pointer transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           onClick={() => navigate("/contactus")}
         >
           Enroll Now
@@ -330,13 +275,12 @@ export default function CourseDetails() {
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-white/10">
         <div className="p-8">
           {/* Modal Header */}
-          <div className="flex items-start justify-between mb-8">
-            <div>
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
               <h2 className="font-bold text-3xl text-white mb-2">
                 {course.title}
               </h2>
-              <p className="text-gray-300 text-lg mb-4">{course.description}</p>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 mb-4">
                 <div className="flex items-center space-x-1">
                   <Star className="w-4 h-4 text-yellow-400 fill-current" />
                   <span className="font-medium text-white">
@@ -351,10 +295,32 @@ export default function CourseDetails() {
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white text-2xl font-bold p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="text-gray-400 hover:text-white text-2xl font-bold p-2 hover:bg-white/10 cursor-pointer rounded-full transition-colors"
             >
               ×
             </button>
+          </div>
+
+          {/* Course Image */}
+          <div className="mb-6 rounded-xl overflow-hidden h-64 bg-white/5">
+            <img
+              src={course.courseImage}
+              alt={course.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src = "https://via.placeholder.com/800x400?text=Course+Image";
+              }}
+            />
+          </div>
+
+          {/* Description */}
+          <div className="mb-8">
+            <h3 className="font-semibold text-xl mb-3 text-white">
+              About this course
+            </h3>
+            <p className="text-gray-300 text-lg leading-relaxed">
+              {course.description}
+            </p>
           </div>
 
           {/* What You'll Learn */}
@@ -421,9 +387,9 @@ export default function CourseDetails() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Next Batch:</span>
+                  <span className="text-gray-400">Category:</span>
                   <span className="font-medium text-blue-400">
-                    {course.nextBatch}
+                    {course.category}
                   </span>
                 </div>
               </div>
@@ -436,10 +402,10 @@ export default function CourseDetails() {
               <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl p-6 border border-green-500/30">
                 <div className="flex items-baseline space-x-2 mb-4">
                   <span className="font-bold text-3xl text-green-400">
-                    ${course.price}
+                    ₹{course.price}
                   </span>
                   <span className="text-gray-400 line-through text-xl">
-                    ${course.originalPrice}
+                    ₹{course.originalPrice}
                   </span>
                 </div>
                 <div className="space-y-3">
@@ -454,15 +420,41 @@ export default function CourseDetails() {
             </div>
           </div>
 
+          {/* PDF Download Section */}
+          <div className="mb-8 bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <h3 className="font-semibold text-xl mb-4 text-white">
+              Course Materials
+            </h3>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => handlePreviewPDF(course)}
+                className="flex-1 bg-blue-500/20 text-blue-400 py-3 px-6 rounded-lg hover:bg-blue-500/30 cursor-pointer transition-all duration-300 font-medium border border-blue-500/30 flex items-center justify-center space-x-2"
+              >
+                <FileText className="w-5 h-5" />
+                <span>Preview Course PDF</span>
+              </button>
+              <button
+                onClick={() => handleDownloadPDF(course)}
+                className="flex-1 bg-green-500/20 text-green-400 py-3 px-6 rounded-lg hover:bg-green-500/30 cursor-pointer transition-all duration-300 font-medium border border-green-500/30 flex items-center justify-center space-x-2"
+              >
+                <Download className="w-5 h-5" />
+                <span>Download PDF</span>
+              </button>
+            </div>
+          </div>
+
           {/* Enrollment Actions */}
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-            <button className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2">
-              <span>Enroll Now - ${course.price}</span>
+            <button
+              onClick={() => navigate("/contactus")}
+              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-emerald-700 cursor-pointer transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
+            >
+              <span>Enroll Now - ₹{course.price}</span>
               <ChevronRight className="w-5 h-5" />
             </button>
             <button
               onClick={() => toggleFavorite(course.id)}
-              className="flex-1 bg-white/10 backdrop-blur-sm text-white py-4 px-6 rounded-xl hover:bg-white/20 transition-all duration-300 font-medium shadow-lg hover:shadow-xl border border-white/20"
+              className="flex-1 bg-white/10 backdrop-blur-sm text-white py-4 px-6 rounded-xl hover:bg-white/20 cursor-pointer transition-all duration-300 font-medium shadow-lg hover:shadow-xl border border-white/20"
             >
               {favorites.includes(course.id)
                 ? "Remove from Wishlist"
@@ -474,9 +466,73 @@ export default function CourseDetails() {
     </div>
   );
 
+  const PDFPreviewModal = ({ course, onClose }) => (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-6xl w-full h-[90vh] border border-white/10 flex flex-col">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h2 className="font-bold text-2xl text-white mb-1">
+              {course.title} - Course PDF
+            </h2>
+            <p className="text-gray-400">Preview course materials</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-2xl font-bold p-2 hover:bg-white/10 cursor-pointer rounded-full transition-colors"
+          >
+            ×
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden p-6">
+          <iframe
+            src={course.pdfUrl}
+            className="w-full h-full rounded-lg border border-white/10"
+            title="Course PDF Preview"
+          />
+        </div>
+        <div className="p-6 border-t border-white/10">
+          <button
+            onClick={() => handleDownloadPDF(course)}
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-6 rounded-xl hover:from-green-600 hover:to-emerald-700 cursor-pointer transition-all duration-300 font-semibold shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+          >
+            <Download className="w-5 h-5" />
+            <span>Download PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-16 h-16 text-blue-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-xl">Loading courses...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center bg-red-500/10 border border-red-500/30 rounded-xl p-8">
+          <p className="text-red-400 text-xl mb-4">{error}</p>
+          <button
+            onClick={fetchCourses}
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 cursor-pointer transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
-      {/* Background Effects - matching landing page */}
+      {/* Background Effects */}
       <div className="absolute inset-0">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -496,7 +552,7 @@ export default function CourseDetails() {
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             Transform your career with hands-on courses in web development and
-            Python programming
+            programming
           </p>
         </div>
       </div>
@@ -511,6 +567,7 @@ export default function CourseDetails() {
               { key: "beginner", label: "Beginner" },
               { key: "intermediate", label: "Intermediate" },
               { key: "web", label: "Web Development" },
+              { key: "tech", label: "Tech" },
               { key: "python", label: "Python" },
             ].map(({ key, label }) => (
               <button
@@ -519,7 +576,7 @@ export default function CourseDetails() {
                 className={`px-6 py-2 rounded-full transition-all duration-300 font-medium ${
                   filter === key
                     ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
-                    : "bg-white/10 text-gray-300 hover:bg-white/20 border border-white/20 backdrop-blur-sm"
+                    : "bg-white/10 text-gray-300 hover:bg-white/20 cursor-pointer border border-white/20 backdrop-blur-sm"
                 }`}
               >
                 {label}
@@ -529,18 +586,31 @@ export default function CourseDetails() {
         </div>
 
         {/* Course Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {filteredCourses.map((course) => (
-            <StudentCourseCard key={course.id} course={course} />
-          ))}
-        </div>
+        {filteredCourses.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            {filteredCourses.map((course) => (
+              <StudentCourseCard key={course.id} course={course} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-gray-400 text-xl">No courses found for this filter.</p>
+          </div>
+        )}
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       {selectedCourse && (
         <CourseDetailModal
           course={selectedCourse}
           onClose={() => setSelectedCourse(null)}
+        />
+      )}
+
+      {pdfPreview && (
+        <PDFPreviewModal
+          course={pdfPreview}
+          onClose={() => setPdfPreview(null)}
         />
       )}
     </div>
