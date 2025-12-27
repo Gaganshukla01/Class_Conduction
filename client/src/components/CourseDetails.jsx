@@ -82,7 +82,7 @@ export default function CourseDetails() {
           "Get industry-ready skills",
           "Hands-on practical experience",
         ],
-        pdfUrl: `/public/${course._id}.pdf`,
+        pdfUrl: `/${course._id}.pdf`,
       }));
 
       setCourses(transformedCourses);
