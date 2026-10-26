@@ -1,5 +1,5 @@
 import express from "express";
-export const noteRouter = express.Router();
+import { anyUser } from "../middlewares/userAuthMiddleware.js";
 import {
   getAllNotes,
   createNote,
@@ -8,17 +8,11 @@ import {
   searchNotes,
 } from "../controller/notesController.js";
 
-// Get all notes for a student
-noteRouter.get("/student/:studentId", getAllNotes);
+export const noteRouter = express.Router();
 
-// Search notes
-noteRouter.get("/student/:studentId/search", searchNotes);
-
-// Create a new note
-noteRouter.post("/", createNote);
-
-// Update a note
-noteRouter.put("/:id", updateNote);
-
-// Delete a note
-noteRouter.delete("/:id", deleteNote);
+// Every route requires a logged-in user; the controller checks ownership.
+noteRouter.get("/student/:studentId", anyUser, getAllNotes);
+noteRouter.get("/student/:studentId/search", anyUser, searchNotes);
+noteRouter.post("/", anyUser, createNote);
+noteRouter.put("/:id", anyUser, updateNote);
+noteRouter.delete("/:id", anyUser, deleteNote);

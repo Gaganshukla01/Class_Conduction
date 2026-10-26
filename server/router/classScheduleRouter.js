@@ -4,10 +4,16 @@ import {
   getAllClasses,
   markAttendance,
   updatePaymentStatus,
+  updateBatchPaymentStatus,
+  getPaymentStats,
 } from "../controller/classScheduleController.js";
+import { adminOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
+
 export const classScheduleRouter = express.Router();
 
-classScheduleRouter.post("/add", classCreate);
-classScheduleRouter.get("/getallclasses", getAllClasses);
-classScheduleRouter.put("/markattendence", markAttendance);
-classScheduleRouter.put("/updatePayment", updatePaymentStatus);
+classScheduleRouter.post("/add", adminOnly, classCreate);
+classScheduleRouter.get("/getallclasses", anyUser, getAllClasses);
+classScheduleRouter.put("/markattendence", adminOnly, markAttendance);
+classScheduleRouter.put("/updatePayment", adminOnly, updatePaymentStatus);
+classScheduleRouter.put("/updatePaymentBatch", adminOnly, updateBatchPaymentStatus);
+classScheduleRouter.get("/paymentStats", adminOnly, getPaymentStats);

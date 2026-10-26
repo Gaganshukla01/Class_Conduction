@@ -15,15 +15,23 @@ import { chatEditorRouter } from "./router/chatEditorRouter.js";
 import { ratingRouter } from "./router/ratingController.js";
 import { projectRouter } from "./router/projectRouter.js";
 import { gameRouter } from "./router/gameRouter.js";
+import { uploadRouter } from "./router/uploadRouter.js";
+import { classNoteRouter } from "./router/classNoteRouter.js";
+import { resourceRouter } from "./router/resourceRouter.js";
+import { jobsRouter } from "./router/jobsRouter.js";
+import { codeRunRouter } from "./router/codeRunRouter.js";
+import { questionRouter } from "./router/questionRouter.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
 
-app.use(express.json());
+app.disable("x-powered-by");
+app.use(express.json({ limit: "1mb" }));
 
 // Define allowed origins and patterns
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  process.env.FRONTED_URL, // the current .env uses this (misspelled) name
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:5174",
@@ -94,9 +102,20 @@ app.use("/api/chateditor", chatEditorRouter);
 app.use("/api/rating", ratingRouter);
 app.use("/api/project", projectRouter);
 app.use("/api/game", gameRouter);
+app.use("/api/upload", uploadRouter);
+app.use("/api/classnotes", classNoteRouter);
+app.use("/api/resources", resourceRouter);
+app.use("/api/jobs", jobsRouter);
+app.use("/api/code", codeRunRouter);
+app.use("/api/questions", questionRouter);
+
+// Unknown API route -> JSON 404 instead of an HTML page
+app.use("/api", (req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
+});
 
 app.use((err, req, res, next) => {
-  if (err.message.includes("CORS")) {
+  if (err.message?.includes("CORS")) {
     res.status(403).json({
       error: "CORS Error",
       message: err.message,
@@ -104,8 +123,11 @@ app.use((err, req, res, next) => {
       allowedPatterns: allowedOriginPatterns.map((p) => p.toString()),
     });
   } else {
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Unhandled error:", err);
+    res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
 
 app.listen(port, () => console.log(`Server is running on port ${port}`));
+
+export default app;

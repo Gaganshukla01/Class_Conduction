@@ -1,8 +1,16 @@
 import Note from "../model/notesModel.js";
+import { escapeRegex } from "../utils/time.js";
+
+const isAdmin = (req) => req.user?.userType === "admin";
+const ownsOrAdmin = (req, studentId) =>
+  isAdmin(req) || String(studentId) === String(req.userId);
 
 export const getAllNotes = async (req, res) => {
   try {
     const { studentId } = req.params;
+    if (!ownsOrAdmin(req, studentId)) {
+      return res.status(403).json({ success: false, message: "Not allowed" });
+    }
     const notes = await Note.find({ studentId }).sort({ lastModified: -1 });
 
     res.status(200).json({
@@ -22,7 +30,9 @@ export const getAllNotes = async (req, res) => {
 // Create a new note
 export const createNote = async (req, res) => {
   try {
-    const { title, content, subject, tags, studentId } = req.body;
+    const { title, content, subject, tags } = req.body;
+    // Students can only create notes for themselves
+    const studentId = isAdmin(req) && req.body.studentId ? req.body.studentId : req.userId;
 
     // Validate required fields
     if (!title || !content || !subject || !studentId) {
@@ -64,6 +74,14 @@ export const updateNote = async (req, res) => {
     const { id } = req.params;
     const { title, content, subject, tags } = req.body;
 
+    const existing = await Note.findById(id).select("studentId");
+    if (!existing) {
+      return res.status(404).json({ success: false, message: "Note not found" });
+    }
+    if (!ownsOrAdmin(req, existing.studentId)) {
+      return res.status(403).json({ success: false, message: "Not allowed" });
+    }
+
     // Find and update the note
     const updatedNote = await Note.findByIdAndUpdate(
       id,
@@ -103,6 +121,14 @@ export const deleteNote = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const existing = await Note.findById(id).select("studentId");
+    if (!existing) {
+      return res.status(404).json({ success: false, message: "Note not found" });
+    }
+    if (!ownsOrAdmin(req, existing.studentId)) {
+      return res.status(403).json({ success: false, message: "Not allowed" });
+    }
+
     const deletedNote = await Note.findByIdAndDelete(id);
 
     if (!deletedNote) {
@@ -130,6 +156,9 @@ export const searchNotes = async (req, res) => {
   try {
     const { studentId } = req.params;
     const { q } = req.query;
+    if (!ownsOrAdmin(req, studentId)) {
+      return res.status(403).json({ success: false, message: "Not allowed" });
+    }
 
     if (!q) {
       return res.status(400).json({
@@ -138,13 +167,15 @@ export const searchNotes = async (req, res) => {
       });
     }
 
+    // Escape user input: a raw regex from the query string allows ReDoS.
+    const safeQ = escapeRegex(q);
     const notes = await Note.find({
       studentId,
       $or: [
-        { title: { $regex: q, $options: "i" } },
-        { content: { $regex: q, $options: "i" } },
-        { subject: { $regex: q, $options: "i" } },
-        { tags: { $in: [new RegExp(q, "i")] } },
+        { title: { $regex: safeQ, $options: "i" } },
+        { content: { $regex: safeQ, $options: "i" } },
+        { subject: { $regex: safeQ, $options: "i" } },
+        { tags: { $in: [new RegExp(safeQ, "i")] } },
       ],
     }).sort({ lastModified: -1 });
 
