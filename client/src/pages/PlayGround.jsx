@@ -17,11 +17,19 @@ import {
   FolderOpen,
   CodeSquare,
   X,
+  Square,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { AppContent } from "../context/Context";
 import axios from "axios";
 import CodeProjectsModal from "../components/CodeModal.jsx";
+import {
+  runJavaScript,
+  runPython,
+  runRemote,
+  formatResult,
+  cancelAll,
+} from "../utils/codeRunner";
 const CodeEditor = () => {
   const { userData, backend_url } = useContext(AppContent);
   const [activeLanguage, setActiveLanguage] = useState("javascript");
@@ -34,6 +42,8 @@ const CodeEditor = () => {
     java: "",
   });
   const [output, setOutput] = useState("");
+  const [outputIsError, setOutputIsError] = useState(false);
+  const [stdin, setStdin] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -596,224 +606,123 @@ const CodeEditor = () => {
     return extensions[language] || "txt";
   };
 
-  // Enhanced HTML/CSS preview
+  // HTML + CSS + JavaScript tabs combined into one preview document
   const renderHTMLCSS = () => {
     const htmlCode = codes.html || "";
-    const cssCode = codes.css || "";
+    const cssTag = codes.css
+      ? `<style>${codes.css.replace(/<\/style/gi, "<\\/style")}</style>`
+      : "";
+    const jsTag = codes.javascript
+      ? `<script>${codes.javascript.replace(/<\/script/gi, "<\\/script")}</script>`
+      : "";
 
-    let fullHTML = htmlCode;
-
-    // If CSS exists, inject it into HTML
-    if (cssCode) {
-      const styleTag = `<style>${cssCode}</style>`;
-      if (fullHTML.includes("</head>")) {
-        fullHTML = fullHTML.replace("</head>", `${styleTag}</head>`);
-      } else if (fullHTML.includes("<head>")) {
-        fullHTML = fullHTML.replace("<head>", `<head>${styleTag}`);
-      } else {
-        fullHTML = `<!DOCTYPE html><html><head>${styleTag}</head><body>${fullHTML}</body></html>`;
-      }
+    if (!/<html[\s>]/i.test(htmlCode)) {
+      return `<!DOCTYPE html><html><head><meta charset="utf-8">${cssTag}</head><body>${htmlCode}${jsTag}</body></html>`;
     }
-
-    return fullHTML;
-  };
-
-  // Enhanced execution functions
-  const executeJavaScript = (code) => {
-    let output = [];
-
-    const customConsole = {
-      log: (...args) =>
-        output.push(
-          args
-            .map((arg) => {
-              if (typeof arg === "object") {
-                return JSON.stringify(arg, null, 2);
-              }
-              return String(arg);
-            })
-            .join(" ")
-        ),
-      error: (...args) => output.push("Error: " + args.join(" ")),
-      warn: (...args) => output.push("Warning: " + args.join(" ")),
-      info: (...args) => output.push("Info: " + args.join(" ")),
-    };
-
-    const safeGlobals = {
-      console: customConsole,
-      alert: (message) => output.push(`Alert: ${message}`),
-      Math: Math,
-      Date: Date,
-      JSON: JSON,
-      String: String,
-      Number: Number,
-      Boolean: Boolean,
-      Array: Array,
-      Object: Object,
-      parseInt: parseInt,
-      parseFloat: parseFloat,
-      isNaN: isNaN,
-      isFinite: isFinite,
-    };
-
-    const wrappedCode = `
-        (function() {
-          ${Object.keys(safeGlobals)
-            .map((key) => `const ${key} = arguments[0].${key};`)
-            .join("\n")}
-          ${code}
-        })
-      `;
-
-    try {
-      const func = eval(wrappedCode);
-      func(safeGlobals);
-      return {
-        success: true,
-        output:
-          output.length > 0 ? output.join("\n") : "Code executed successfully",
-      };
-    } catch (err) {
-      return {
-        success: false,
-        output: `Error: ${err.message}`,
-      };
+    // function replacers: a plain string would treat "$&" / "$1" in user code specially
+    let doc = htmlCode;
+    if (cssTag) {
+      doc = /<\/head>/i.test(doc)
+        ? doc.replace(/<\/head>/i, () => `${cssTag}</head>`)
+        : doc.replace(/<html[^>]*>/i, (m) => `${m}<head>${cssTag}</head>`);
     }
-  };
-
-  const executePython = (code) => {
-    let output = [];
-
-    try {
-      const printRegex = /print\((.*?)\)/g;
-      let match;
-
-      while ((match = printRegex.exec(code)) !== null) {
-        let content = match[1].trim();
-        if (
-          (content.startsWith('"') && content.endsWith('"')) ||
-          (content.startsWith("'") && content.endsWith("'"))
-        ) {
-          content = content.slice(1, -1);
-        }
-        output.push(content);
-      }
-
-      const lines = code.split("\n");
-      const variables = {};
-
-      for (let line of lines) {
-        line = line.trim();
-        if (!line || line.startsWith("#")) continue;
-
-        const assignMatch = line.match(/^(\w+)\s*=\s*(.+)$/);
-        if (assignMatch) {
-          const [, varName, value] = assignMatch;
-          try {
-            if (!isNaN(value)) {
-              variables[varName] = parseFloat(value);
-            } else if (
-              (value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'"))
-            ) {
-              variables[varName] = value.slice(1, -1);
-            }
-          } catch (e) {
-            // Ignore complex expressions
-          }
-        }
-      }
-
-      return {
-        success: true,
-        output:
-          output.length > 0
-            ? output.join("\n")
-            : "Python code executed successfully",
-      };
-    } catch (err) {
-      return {
-        success: false,
-        output: `Error: ${err.message}`,
-      };
+    if (jsTag) {
+      doc = /<\/body>/i.test(doc)
+        ? doc.replace(/<\/body>/i, () => `${jsTag}</body>`)
+        : doc + jsTag;
     }
+    return doc;
   };
 
-  const executeHTML = (code) => {
-    // Show preview for HTML
-    setShowPreview(true);
+  // ---------------------------------------------------------------------
+  // Code execution (real):
+  //   JavaScript -> sandboxed Web Worker        Python -> Pyodide (real CPython)
+  //   Java / C++ -> your code-runner service via the backend
+  //   HTML / CSS -> live preview (HTML + CSS + the JavaScript tab together)
+  // ---------------------------------------------------------------------
+  const STDIN_LANGS = ["javascript", "python", "java", "cpp"];
+  const PREVIEW_LANGS = ["html", "css", "javascript"];
+  const usesPageApis = (code) =>
+    /\b(document|window|localStorage|sessionStorage|getElementById|querySelector)\b/.test(code);
 
-    return {
-      success: true,
-      output: `HTML rendered successfully!\n\n📄 Preview is now visible in the preview panel.\n\nCode structure analyzed:\n- HTML tags: ${(code.match(/<[^>]+>/g) || []).length}\n- Text content: ${code.replace(/<[^>]*>/g, "").trim().length} characters`,
-    };
-  };
-
-  const executeCSS = (code) => {
-    const selectors = (code.match(/[^{}]+\s*{/g) || []).length;
-    const properties = (code.match(/[^{}:]+:/g) || []).length;
-
-    // If HTML exists, show combined preview
-    if (codes.html) {
-      setShowPreview(true);
-    }
-
-    return {
-      success: true,
-      output: `CSS parsed successfully!\n\n🎨 ${codes.html ? "Combined HTML+CSS preview is visible in the preview panel." : "To see the visual output, write some HTML code first."}\n\nStylesheet analysis:\n- Selectors: ${selectors}\n- Properties: ${properties}`,
-    };
-  };
-
-  // Enhanced code execution
   const runCode = async () => {
     if (!currentCode.trim()) {
       setOutput("❌ No code to execute. Please write some code first.");
+      setOutputIsError(true);
       return;
     }
 
     setIsRunning(true);
-    setOutput("🚀 Running code...\n");
+    setOutputIsError(false);
+    setOutput("🚀 Running...\n");
 
-    setTimeout(() => {
+    try {
       let result;
-      const startTime = Date.now();
-
       switch (activeLanguage) {
+        case "html":
+          setShowPreview(true);
+          setOutput("");
+          return;
+        case "css":
+          if (!codes.html.trim()) {
+            setShowPreview(false);
+            setOutput("🎨 CSS styles HTML. Write some HTML in the HTML tab first, then press Run to see the preview.");
+            return;
+          }
+          setShowPreview(true);
+          setOutput("");
+          return;
         case "javascript":
-          result = executeJavaScript(currentCode);
+          if (usesPageApis(currentCode)) {
+            if (codes.html.trim()) {
+              // DOM code needs a page: run it inside the preview with the HTML + CSS
+              setShowPreview(true);
+              setOutput("");
+              return;
+            }
+            setShowPreview(false);
+            setOutputIsError(true);
+            setOutput("This code uses the web page (document / window). Add some HTML in the HTML tab and press Run again - your JavaScript will run inside the Live Preview.");
+            return;
+          }
+          setShowPreview(false);
+          result = await runJavaScript(currentCode, stdin);
           break;
         case "python":
-          result = executePython(currentCode);
+          setShowPreview(false);
+          result = await runPython(currentCode, stdin, {
+            onStatus: (text) => setOutput(`⏳ ${text}\n`),
+          });
           break;
-        case "html":
-          result = executeHTML(currentCode);
-          break;
-        case "css":
-          result = executeCSS(currentCode);
-          break;
-        case "cpp":
         case "java":
-          result = {
-            success: true,
-            output: `${languages[activeLanguage].name} code structure validated!\n\nNote: Full compilation requires a ${languages[activeLanguage].name} compiler.\nThis editor provides syntax validation and structure analysis.`,
-          };
+        case "cpp":
+          setShowPreview(false);
+          setOutput("⏳ Compiling and running on the server…\n");
+          result = await runRemote({
+            language: activeLanguage,
+            code: currentCode,
+            stdin,
+            backendUrl: backend_url,
+          });
           break;
         default:
-          result = {
-            success: true,
-            output: "Code structure validated successfully!",
-          };
+          result = { success: true, stdout: "", ms: 0 };
       }
 
-      const executionTime = Date.now() - startTime;
-      const icon = result.success ? "✅" : "❌";
-
+      if (result.cancelled) {
+        setOutput("⏹ Stopped.");
+        return;
+      }
+      setOutputIsError(!result.success);
       setOutput(
-        `${icon} ${result.output}\n\n⏱️ Execution time: ${executionTime}ms`
+        `${formatResult(result, { language: activeLanguage })}\n\n⏱️ ${result.ms}ms`
       );
+    } finally {
       setIsRunning(false);
-    }, 800);
+    }
   };
+
+  const stopCode = () => cancelAll();
 
   // Format code based on language
   const formatCode = () => {
@@ -1208,13 +1117,16 @@ const CodeEditor = () => {
             </button>
 
             <button
-              onClick={runCode}
-              disabled={isRunning}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 cursor-pointer text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
-              title="Run Code"
+              onClick={isRunning ? stopCode : runCode}
+              className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r ${
+                isRunning
+                  ? "from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                  : "from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+              } cursor-pointer text-white rounded-lg transition-colors shadow-lg`}
+              title={isRunning ? "Stop" : "Run Code"}
             >
-              <Play className="w-4 h-4" />
-              <span>{isRunning ? "Running..." : "Run"}</span>
+              {isRunning ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              <span>{isRunning ? "Stop" : "Run"}</span>
             </button>
           </div>
         </div>
@@ -1363,8 +1275,7 @@ const CodeEditor = () => {
               <div className="flex items-center space-x-2">
                 <Terminal className="w-4 h-4" />
                 <span className="font-medium">
-                  {showPreview &&
-                  (activeLanguage === "html" || activeLanguage === "css")
+                  {showPreview && PREVIEW_LANGS.includes(activeLanguage)
                     ? "Live Preview"
                     : "Output Console"}
                 </span>
@@ -1387,28 +1298,65 @@ const CodeEditor = () => {
             </div>
 
             <div className="flex-1 overflow-hidden">
-              {showPreview &&
-              (activeLanguage === "html" || activeLanguage === "css") ? (
+              {showPreview && PREVIEW_LANGS.includes(activeLanguage) ? (
                 <div className="h-full">
                   <iframe
                     ref={previewRef}
                     srcDoc={renderHTMLCSS()}
                     className="w-full h-full border-0"
                     title="HTML/CSS Preview"
-                    sandbox="allow-scripts"
+                    sandbox="allow-scripts allow-modals allow-forms"
                   />
                 </div>
               ) : (
-                <pre
-                  className={`w-full h-full p-4 overflow-auto font-mono text-sm ${
-                    theme === "dark"
-                      ? "bg-gray-900 text-green-400"
-                      : "bg-gray-50 text-gray-800"
-                  } transition-colors whitespace-pre-wrap`}
-                >
-                  {output ||
-                    "Output will appear here when you run your code..."}
-                </pre>
+                <div className="h-full flex flex-col">
+                  <pre
+                    className={`flex-1 w-full p-4 overflow-auto font-mono text-sm ${
+                      theme === "dark"
+                        ? outputIsError
+                          ? "bg-gray-900 text-red-400"
+                          : "bg-gray-900 text-green-400"
+                        : outputIsError
+                          ? "bg-gray-50 text-red-600"
+                          : "bg-gray-50 text-gray-800"
+                    } transition-colors whitespace-pre-wrap`}
+                  >
+                    {output ||
+                      "Output will appear here when you run your code..."}
+                  </pre>
+                  {STDIN_LANGS.includes(activeLanguage) && (
+                    <div
+                      className={`border-t ${
+                        theme === "dark"
+                          ? "border-gray-700 bg-gray-800"
+                          : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      <label className="block px-4 pt-2 text-xs uppercase tracking-wide opacity-70">
+                        Input (stdin) - one value per line, read by{" "}
+                        {activeLanguage === "python"
+                          ? "input()"
+                          : activeLanguage === "java"
+                            ? "Scanner"
+                            : activeLanguage === "cpp"
+                              ? "cin"
+                              : "prompt()"}
+                      </label>
+                      <textarea
+                        value={stdin}
+                        onChange={(e) => setStdin(e.target.value)}
+                        rows={3}
+                        placeholder={"e.g.\n5\n10"}
+                        className="w-full px-4 py-2 font-mono text-sm bg-transparent outline-none resize-none"
+                      />
+                      {activeLanguage === "java" && (
+                        <p className="px-4 pb-2 text-xs opacity-60">
+                          Java: the public class must be named <code>Main</code>.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

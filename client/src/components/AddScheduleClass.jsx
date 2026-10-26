@@ -21,7 +21,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export default function AddClassSchedule() {
-  const { getAllUserData, allUserData, backend_url, allCourse } =
+  const { getAllUserData, allUserData, backend_url, allCourse, getAllSchedule } =
     useContext(AppContent);
   const [instructors, setInstructors] = useState([]);
   const [students, setStudents] = useState([]);
@@ -225,10 +225,17 @@ export default function AddClassSchedule() {
         weeklySchedule: formData.weeklySchedule,
       };
 
-      await axios.post(`${backend_url}/api/classschedule/add`, classData);
+      const res = await axios.post(`${backend_url}/api/classschedule/add`, classData);
       toast.success(
-        `${formData.weeklySchedule.length * 30} classes created successfully! (30 weeks for each selected date)`
+        [
+          `${formData.weeklySchedule.length * 30} classes created successfully! (30 weeks for each selected date)`,
+          res.data.emailMessage,
+        ]
+          .filter(Boolean)
+          .join(" · ")
       );
+      // show the new classes everywhere without a manual page refresh
+      getAllSchedule();
       setFormData({
         className: "",
         instructorId: "",
@@ -239,7 +246,7 @@ export default function AddClassSchedule() {
         weeklySchedule: [],
       });
     } catch (error) {
-      toast.error("Error occurred", error);
+      toast.error(error.response?.data?.message || "Could not create the schedule");
     }
   };
 

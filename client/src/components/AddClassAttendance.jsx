@@ -21,7 +21,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export default function StudentAttendanceForm() {
-  const { getAllUserData, allUserData, backend_url, allSchedule } =
+  const { getAllUserData, allUserData, backend_url, allSchedule, getAllSchedule } =
     useContext(AppContent);
 
   const generateStudentData = (userData) => {
@@ -259,7 +259,11 @@ export default function StudentAttendanceForm() {
         payload
       );
       if (res.data.success) {
-        toast.success(res.data.message);
+        toast.success(
+          [res.data.message, res.data.emailMessage].filter(Boolean).join(" · ")
+        );
+        // the class must immediately show as attended - no manual refresh
+        getAllSchedule();
 
         setTimeout(() => {
           const isPast = isPastDate(formData.selectedClass.classDate);

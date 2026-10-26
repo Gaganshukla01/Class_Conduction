@@ -27,6 +27,8 @@ import {
   Menu,
   Contact,
   Projector,
+  Library,
+  Code2,
 } from "lucide-react";
 
 import { AppContent } from "../context/Context";
@@ -40,6 +42,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import ContactInquiriesAdmin from "../components/ContactResultForm";
 import AdminProjectApproval from "./ProjectApproveSection";
+import ClassNotesAdmin from "../components/ClassNotesAdmin";
+import ResourceLibraryAdmin from "../components/ResourceLibraryAdmin";
+import QuestionBankAdmin from "../components/questions/QuestionBankAdmin";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -55,6 +60,9 @@ export default function AdminDashboard() {
     { id: "classAttendence", label: "Class Attendence", icon: Check },
     { id: "projectApprove", label: "Approve Project", icon: Projector },
     { id: "homeWorkAssign", label: "Home Work", icon: Book },
+    { id: "codeQuestions", label: "Code Questions", icon: Code2 },
+    { id: "classNotes", label: "Class Notes", icon: FileText },
+    { id: "resourceLibrary", label: "Resource Library", icon: Library },
     { id: "paymentUpdate", label: "Payment Update", icon: IndianRupeeIcon },
     { id: "contactUs", label: "Contact Us Res", icon: Contact },
     { id: "settings", label: "Settings", icon: Settings },
@@ -64,11 +72,6 @@ export default function AdminDashboard() {
     setActiveTab(tabId);
     setSidebarOpen(false);
   };
-
-  // for loading the content
-  useEffect(() => {
-    refreshData();
-  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -90,6 +93,12 @@ export default function AdminDashboard() {
         return <ClassPaymentUpdate />;
       case "contactUs":
         return <ContactInquiriesAdmin />;
+      case "codeQuestions":
+        return <QuestionBankAdmin />;
+      case "classNotes":
+        return <ClassNotesAdmin />;
+      case "resourceLibrary":
+        return <ResourceLibraryAdmin />;
       case "projectApprove":
         return <AdminProjectApproval />;
       default:
@@ -222,7 +231,7 @@ function UpdateUserType() {
           getAllUserData();
         }
       } catch (err) {
-        toast.success(res.message, err);
+        toast.error(err.response?.data?.message || "Could not update the role");
       }
     }
 

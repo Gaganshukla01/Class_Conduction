@@ -61,12 +61,14 @@ function ResetPassword() {
       const { data } = await axios.post(backend_url + "/api/auth/resetotp", {
         email,
       });
-      if (data) {
+      if (data.sucess) {
         toast.success(data.message);
         setIsEmailClicked(true);
+      } else {
+        toast.error(data.message || "Could not send the OTP");
       }
     } catch (error) {
-      toast.error(data.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
 
@@ -82,9 +84,11 @@ function ResetPassword() {
         setIsLoggedin(false);
         setUserData(false);
         navigate("/");
+      } else {
+        toast.error(data.message || "Could not reset the password");
       }
     } catch (error) {
-      toast.error(data.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
 

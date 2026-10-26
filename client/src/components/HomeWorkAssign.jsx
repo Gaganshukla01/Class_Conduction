@@ -25,6 +25,54 @@ import { AppContent } from "../context/Context";
 import axios from "axios";
 import { toast } from "react-toastify";
 
+// Shows what the student handed in and lets the instructor give feedback.
+function SubmissionReview({ homework, onDone }) {
+  const { backend_url } = useContext(AppContent);
+  const [feedback, setFeedback] = useState(homework.feedback || "");
+  const [busy, setBusy] = useState(false);
+  if (homework.status !== "submitted" && !homework.submittedAt) return null;
+
+  const save = async (complete) => {
+    setBusy(true);
+    try {
+      const { data } = await axios.put(`${backend_url}/api/homework/${homework._id}`, {
+        feedback,
+        ...(complete ? { status: "completed" } : {}),
+      });
+      toast.success([data.message, data.emailMessage].filter(Boolean).join(" · "));
+      onDone();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not save feedback");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 p-3 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-sm">
+      <p className="text-cyan-200 font-medium mb-1.5">
+        Student submission{homework.submittedAt ? ` · ${new Date(homework.submittedAt).toLocaleString()}` : ""}
+      </p>
+      {homework.submissionNote && <p className="text-gray-200 whitespace-pre-line">{homework.submissionNote}</p>}
+      <div className="flex flex-wrap gap-3 mt-1.5">
+        {homework.submissionLink && <a href={homework.submissionLink} target="_blank" rel="noreferrer" className="text-cyan-300 underline break-all">Open link</a>}
+        {homework.submissionFile?.url && <a href={homework.submissionFile.url} target="_blank" rel="noreferrer" className="text-cyan-300 underline">{homework.submissionFile.originalName || "Open PDF"}</a>}
+      </div>
+      <textarea
+        value={feedback}
+        onChange={(e) => setFeedback(e.target.value)}
+        rows={2}
+        placeholder="Feedback for the student (they get an email)…"
+        className="mt-3 w-full bg-white/5 rounded-lg px-3 py-2 border border-white/10 text-white outline-none placeholder:text-gray-400 resize-none"
+      />
+      <div className="flex gap-2 mt-2">
+        <button disabled={busy} onClick={() => save(true)} className="px-3 py-1.5 rounded-lg bg-emerald-500/80 hover:bg-emerald-500 disabled:opacity-60">Approve & complete</button>
+        <button disabled={busy || !feedback.trim()} onClick={() => save(false)} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50">Send feedback only</button>
+      </div>
+    </div>
+  );
+}
+
 export default function StudentHomeworkAssignment() {
   const { getAllUserData, allUserData, backend_url, allSchedule } =
     useContext(AppContent);
@@ -117,6 +165,7 @@ export default function StudentHomeworkAssignment() {
     homeworkType: "assignment",
     priority: "medium",
     additionalNotes: "",
+    dueDate: "",
   });
 
   const [message, setMessage] = useState("");
@@ -348,12 +397,17 @@ export default function StudentHomeworkAssignment() {
       homeworkType: formData.homeworkType,
       priority: formData.priority,
       additionalNotes: formData.additionalNotes,
+      // end of the chosen day, institute time (IST)
+      dueDate: formData.dueDate ? `${formData.dueDate}T23:59:00+05:30` : undefined,
     };
 
     try {
       const res = await axios.post(`${backend_url}/api/homework/add`, payload);
       if (res.data.success) {
-        toast.success(res.data.message);
+        toast.success(
+          [res.data.message, res.data.emailMessage].filter(Boolean).join(" · ")
+        );
+        fetchHomeworkAssignments();
       }
 
       setTimeout(() => {
@@ -367,6 +421,7 @@ export default function StudentHomeworkAssignment() {
           homeworkType: "assignment",
           priority: "medium",
           additionalNotes: "",
+          dueDate: "",
         });
 
         setTimeout(() => {
@@ -633,6 +688,15 @@ export default function StudentHomeworkAssignment() {
                               Notes: {homework.additionalNotes}
                             </p>
                           )}
+
+                          {homework.dueDate && (
+                            <p className={`text-xs mb-2 ${homework.status === "overdue" ? "text-red-300" : "text-gray-400"}`}>
+                              Due: {new Date(homework.dueDate).toLocaleDateString()}
+                              {homework.status === "overdue" ? " · overdue" : ""}
+                            </p>
+                          )}
+
+                          <SubmissionReview homework={homework} onDone={fetchHomeworkAssignments} />
 
                           <div className="flex items-center gap-4 text-xs text-gray-400">
                             <span>
@@ -1057,6 +1121,25 @@ export default function StudentHomeworkAssignment() {
                   </div>
 
                   {/* Additional Notes */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">
+                      Due Date (Optional)
+                    </label>
+                    <div className="bg-white/5 rounded-xl px-4 py-3 border border-white/10 hover:ring-2 ring-emerald-400 transition backdrop-blur-sm">
+                      <input
+                        type="date"
+                        name="dueDate"
+                        value={formData.dueDate}
+                        min={new Date().toISOString().slice(0, 10)}
+                        onChange={handleChange}
+                        className="bg-transparent text-white w-full outline-none [color-scheme:dark]"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      The student gets a reminder 24 hours before and an alert if it is missed.
+                    </p>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-200 mb-2">
                       Additional Notes (Optional)
