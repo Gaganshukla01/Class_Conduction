@@ -5,14 +5,17 @@ import {
   getHomeworkByStudentId,
   createHomework,
   updateHomework,
+  submitHomework,
   deleteHomework,
 } from "../controller/homeWorkAssign.js";
+import { adminOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
 
 export const homeworkRouter = express.Router();
 
-homeworkRouter.get("/", getAllHomework);
-homeworkRouter.get("/:id", getHomeworkById);
-homeworkRouter.get("/student/:studentId", getHomeworkByStudentId);
-homeworkRouter.post("/add", createHomework);
-homeworkRouter.put("/:id", updateHomework);
-homeworkRouter.delete("/:id", deleteHomework);
+homeworkRouter.get("/", adminOnly, getAllHomework);
+homeworkRouter.get("/student/:studentId", anyUser, getHomeworkByStudentId);
+homeworkRouter.post("/add", adminOnly, createHomework);
+homeworkRouter.put("/:id/submit", anyUser, submitHomework);
+homeworkRouter.get("/:id", anyUser, getHomeworkById);
+homeworkRouter.put("/:id", adminOnly, updateHomework);
+homeworkRouter.delete("/:id", adminOnly, deleteHomework);

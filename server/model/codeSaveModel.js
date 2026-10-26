@@ -35,6 +35,6 @@ codeProjectSchema.index({ userId: 1, createdAt: -1 });
 codeProjectSchema.index({ language: 1 });
 
 const codeModel =
-  mongoose.model.code || mongoose.model("code", codeProjectSchema);
+  mongoose.models.code || mongoose.model("code", codeProjectSchema);
 
 export default codeModel;

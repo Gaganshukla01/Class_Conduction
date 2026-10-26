@@ -1,5 +1,5 @@
 import express from "express";
-import userAuth from "../middlewares/userAuthMiddleware.js";
+import userAuth, { adminOnly } from "../middlewares/userAuthMiddleware.js";
 import {
   userData,
   updateUserTypeAlt,
@@ -9,5 +9,7 @@ import {
 export const userRoutes = express.Router();
 
 userRoutes.get("/data", userAuth, userData);
-userRoutes.put("/usertypeupdate", updateUserTypeAlt);
-userRoutes.get("/getalluser", userAuth, getAllUsers);
+// SECURITY FIX: this route used to have no auth at all, so anyone could make
+// any account an admin with a single request.
+userRoutes.put("/usertypeupdate", adminOnly, updateUserTypeAlt);
+userRoutes.get("/getalluser", adminOnly, getAllUsers);

@@ -24,7 +24,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export default function ClassPaymentUpdate() {
-  const { backend_url, allSchedule, allUserData } = useContext(AppContent);
+  const { backend_url, allSchedule, allUserData, getAllSchedule } =
+    useContext(AppContent);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedClasses, setSelectedClasses] = useState(new Set());
@@ -236,31 +237,35 @@ export default function ClassPaymentUpdate() {
     setLoading(true);
     let successCount = 0;
     let errorCount = 0;
+    let emailNote = "";
 
     try {
-      const promises = Array.from(selectedClasses).map(async (classId) => {
-        try {
-          const response = await axios.put(
-            `${backend_url}/api/classschedule/updatePayment`,
-            { id: classId, paid: true }
-          );
-          if (response.data.success) {
-            successCount++;
-          } else {
-            errorCount++;
-          }
-        } catch (error) {
-          console.error(`Error updating class ${classId}:`, error);
-          errorCount++;
+      // One batch request (instead of one per class) so each student gets a
+      // single payment-receipt email, not one email per class.
+      try {
+        const { data } = await axios.put(
+          `${backend_url}/api/classschedule/updatePaymentBatch`,
+          { classIds: Array.from(selectedClasses), paid: true }
+        );
+        if (data.success) {
+          successCount = data.data?.matchedCount ?? selectedClasses.size;
+          emailNote = data.emailMessage || "";
+        } else {
+          errorCount = selectedClasses.size;
         }
-      });
-
-      await Promise.all(promises);
+      } catch (error) {
+        console.error("Error updating payments:", error);
+        errorCount = selectedClasses.size;
+      }
 
       if (successCount > 0) {
-        toast.success(`${successCount} class(es) marked as paid successfully!`);
+        toast.success(
+          [`${successCount} class(es) marked as paid successfully!`, emailNote]
+            .filter(Boolean)
+            .join(" · ")
+        );
         setSelectedClasses(new Set());
-        // Refresh data here if you have a function to do so
+        getAllSchedule();
       }
 
       if (errorCount > 0) {

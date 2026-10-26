@@ -44,5 +44,5 @@ gameResultSchema.index({ gameName: 1, score: -1 });
 gameResultSchema.index({ userId: 1, playedAt: -1 });
 
 const gameModel =
-  mongoose.model.gameModel || mongoose.model("gameModel", gameResultSchema);
+  mongoose.models.gameModel || mongoose.model("gameModel", gameResultSchema);
 export default gameModel;
