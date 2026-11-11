@@ -12,6 +12,9 @@ import {
   getAssignment,
   submitSolution,
   reviewSubmission,
+  assignBulk,
+  moveQuestions,
+  reviewQueue,
 } from "../controller/questionController.js";
 
 export const questionRouter = express.Router();
@@ -24,6 +27,9 @@ questionRouter.post("/assignments/:aid/submit", anyUser, submitSolution);
 // Admin
 questionRouter.put("/assignments/:aid/review", adminOnly, reviewSubmission);
 questionRouter.delete("/assignments/:aid", adminOnly, unassign);
+questionRouter.get("/review-queue", adminOnly, reviewQueue);
+questionRouter.post("/assign-bulk", adminOnly, assignBulk);
+questionRouter.put("/move", adminOnly, moveQuestions);
 questionRouter.get("/", adminOnly, listQuestions);
 questionRouter.post("/", adminOnly, createQuestion);
 questionRouter.put("/:id", adminOnly, updateQuestion);

@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import userModel from "../model/userModel.js";
+import classSchedule from "../model/classesScheduleDetails.js";
+import { QuestionFolder } from "../model/questionFolderModel.js";
 import {
   CodeQuestion,
   QuestionAssignment,
@@ -14,6 +16,7 @@ import {
 } from "../services/cloudinaryService.js";
 import {
   notifyQuestionsAssigned,
+  notifyQuestionBundle,
   notifyQuestionSubmitted,
   notifyQuestionReviewed,
   summaryText,
@@ -61,12 +64,42 @@ const cleanTags = (tags) =>
 const validObjectIds = (ids) =>
   [...new Set((Array.isArray(ids) ? ids : []).map(String))].filter((i) => mongoose.Types.ObjectId.isValid(i));
 
+// ---------------------------------------------------------------- folders
+// A question may only live in a SESSION folder (level 2) or be unfiled (null).
+const resolveFolderId = async (value) => {
+  if (value === undefined || value === null || value === "" || value === "unfiled") return null;
+  if (!mongoose.Types.ObjectId.isValid(value)) throw new Error("Invalid folder.");
+  const folder = await QuestionFolder.findById(value).lean();
+  if (!folder) throw new Error("Folder not found.");
+  if (folder.level !== 2) throw new Error("Questions go inside a session folder (category > session > question).");
+  return folder._id;
+};
+
+// session ids under any folder (a session returns itself, a category its sessions)
+const sessionIdsFor = async (folderIds) => {
+  const ids = validObjectIds(folderIds);
+  if (ids.length === 0) return [];
+  const folders = await QuestionFolder.find({ _id: { $in: ids } }).lean();
+  const out = new Set(folders.filter((f) => f.level === 2).map((f) => String(f._id)));
+  const catIds = folders.filter((f) => f.level === 1).map((f) => f._id);
+  if (catIds.length) {
+    const kids = await QuestionFolder.find({ parentId: { $in: catIds } }).select("_id").lean();
+    kids.forEach((k) => out.add(String(k._id)));
+  }
+  return [...out];
+};
+
 // ------------------------------------------------------- question bank (admin)
 export const listQuestions = async (req, res) => {
   try {
     const filter = {};
     if (QUESTION_LANGUAGES.includes(req.query.language)) filter.language = req.query.language;
     if (DIFFICULTIES.includes(req.query.difficulty)) filter.difficulty = req.query.difficulty;
+    if (req.query.folderId === "unfiled") filter.folderId = null;
+    else if (req.query.folderId) {
+      if (!mongoose.Types.ObjectId.isValid(req.query.folderId)) return res.status(400).json({ success: false, message: "Invalid folder." });
+      filter.folderId = { $in: await sessionIdsFor([req.query.folderId]) };
+    }
     const q = String(req.query.q || "").trim();
     if (q) {
       const rx = new RegExp(escapeRegex(q), "i");
@@ -124,6 +157,7 @@ const readQuestionBody = (body) => {
 export const createQuestion = async (req, res) => {
   try {
     const data = readQuestionBody(req.body);
+    data.folderId = await resolveFolderId(req.body.folderId);
     if (req.body.expectedImage) {
       data.expectedImage = validateUploadedFile(req.body.expectedImage, QUESTION_FOLDER, "image");
     }
@@ -143,6 +177,7 @@ export const updateQuestion = async (req, res) => {
     const question = await CodeQuestion.findById(req.params.id);
     if (!question) return res.status(404).json({ success: false, message: "Question not found." });
     Object.assign(question, readQuestionBody({ ...question.toObject(), ...req.body }));
+    if ("folderId" in req.body) question.folderId = await resolveFolderId(req.body.folderId);
 
     let oldImage = null;
     if (req.body.expectedImage) {
@@ -285,8 +320,14 @@ export const myAssignments = async (req, res) => {
     const list = await QuestionAssignment.find({ studentId: String(req.userId) }).sort({ assignedAt: -1 }).lean();
     const questions = await CodeQuestion.find({ _id: { $in: list.map((a) => a.questionId) } }).lean();
     const qMap = new Map(questions.map((q) => [String(q._id), q]));
+    // Only the folders that contain this student's questions (and their categories)
+    const sessionIds = [...new Set(questions.map((q) => q.folderId && String(q.folderId)).filter(Boolean))];
+    const sessions = sessionIds.length ? await QuestionFolder.find({ _id: { $in: sessionIds } }).lean() : [];
+    const catIds = [...new Set(sessions.map((s) => String(s.parentId)))];
+    const cats = catIds.length ? await QuestionFolder.find({ _id: { $in: catIds } }).lean() : [];
     res.status(200).json({
       success: true,
+      folders: [...cats, ...sessions],
       data: list
         .filter((a) => qMap.has(String(a.questionId)))
         .map((a) => ({ ...serializeAssignment(a), question: serializeQuestion(qMap.get(String(a.questionId))) })),
@@ -393,6 +434,13 @@ export const reviewSubmission = async (req, res) => {
     }
     assignment.status = status;
     assignment.feedback = String(feedback).trim().slice(0, 2000);
+    if (req.body.score !== undefined && req.body.score !== null && req.body.score !== "") {
+      const score = Number(req.body.score);
+      if (!Number.isFinite(score) || score < 0 || score > 100) {
+        return res.status(400).json({ success: false, message: "Score must be between 0 and 100." });
+      }
+      assignment.score = Math.round(score);
+    }
     assignment.reviewedAt = new Date();
     await assignment.save();
 
@@ -407,5 +455,168 @@ export const reviewSubmission = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ---------------------------------------------------------- bulk operations
+// Assign several questions and/or whole folders to several students and/or
+// whole classes in one go. Existing (question, student) pairs are skipped.
+const MAX_PAIRS = 5000;
+
+export const assignBulk = async (req, res) => {
+  try {
+    const { questionIds = [], folderIds = [], studentIds = [], classScheduleIds = [], dueDate } = req.body;
+
+    let due;
+    if (dueDate) {
+      due = new Date(dueDate);
+      if (Number.isNaN(due.getTime())) return res.status(400).json({ success: false, message: "Invalid due date." });
+    }
+
+    // 1) questions = picked questions + everything inside picked folders
+    const fromFolders = folderIds.length
+      ? await CodeQuestion.find({ folderId: { $in: await sessionIdsFor(folderIds) } }).select("_id").lean()
+      : [];
+    const qIds = [...new Set([...validObjectIds(questionIds), ...fromFolders.map((q) => String(q._id))])];
+    if (qIds.length === 0) return res.status(400).json({ success: false, message: "Select at least one question or a folder that contains questions." });
+    const questions = await CodeQuestion.find({ _id: { $in: qIds } }).select("title language difficulty createdBy").lean();
+
+    // 2) students = picked students + everyone enrolled in picked classes
+    let sIds = validObjectIds(studentIds);
+    const classIds = validObjectIds(classScheduleIds);
+    if (classIds.length) {
+      const classes = await classSchedule.find({ _id: { $in: classIds } }).select("studentsEnrolled").lean();
+      classes.forEach((c) => (c.studentsEnrolled || []).forEach((id) => sIds.push(String(id))));
+    }
+    sIds = validObjectIds(sIds);
+    if (sIds.length === 0) return res.status(400).json({ success: false, message: "Select at least one student or class." });
+    const students = await userModel.find({ _id: { $in: sIds }, userType: "student" }).select("_id").lean();
+    const studentList = students.map((s) => String(s._id));
+    if (studentList.length === 0) return res.status(400).json({ success: false, message: "No students found in your selection." });
+
+    if (questions.length * studentList.length > MAX_PAIRS) {
+      return res.status(400).json({ success: false, message: `That is too many at once (${questions.length} questions x ${studentList.length} students). Please assign in smaller batches (max ${MAX_PAIRS}).` });
+    }
+
+    // 3) skip pairs that already exist
+    const existing = await QuestionAssignment.find({ questionId: { $in: questions.map((q) => q._id) }, studentId: { $in: studentList } })
+      .select("questionId studentId").lean();
+    const have = new Set(existing.map((e) => `${e.questionId}:${e.studentId}`));
+    const rows = [];
+    const newByStudent = new Map();
+    for (const q of questions) {
+      for (const sid of studentList) {
+        if (have.has(`${q._id}:${sid}`)) continue;
+        rows.push({ questionId: q._id, studentId: sid, assignedBy: req.userId, dueDate: due });
+        if (!newByStudent.has(sid)) newByStudent.set(sid, []);
+        newByStudent.get(sid).push(q);
+      }
+    }
+    if (rows.length) {
+      try {
+        await QuestionAssignment.insertMany(rows, { ordered: false });
+      } catch (error) {
+        if (error.code !== 11000 && !error.writeErrors) throw error; // duplicates from a race are fine
+      }
+    }
+
+    // 4) one email per student listing everything new (not one per question)
+    const email = rows.length ? await notifyQuestionBundle(newByStudent, due) : null;
+    const total = questions.length * studentList.length;
+    res.status(200).json({
+      success: true,
+      message: rows.length === 0
+        ? "Everyone already has these questions."
+        : `Assigned ${rows.length} question${rows.length === 1 ? "" : "s"} to ${newByStudent.size} student${newByStudent.size === 1 ? "" : "s"}${total - rows.length ? ` (${total - rows.length} already assigned, skipped)` : ""}.`,
+      created: rows.length,
+      skipped: total - rows.length,
+      students: studentList.length,
+      questions: questions.length,
+      email,
+      emailMessage: summaryText(email),
+    });
+  } catch (error) {
+    console.error("assignBulk:", error);
+    res.status(500).json({ success: false, message: "Could not assign the questions." });
+  }
+};
+
+// Move several questions into a session folder (or back to Unfiled).
+export const moveQuestions = async (req, res) => {
+  try {
+    const ids = validObjectIds(req.body.questionIds);
+    if (ids.length === 0) return res.status(400).json({ success: false, message: "Select at least one question." });
+    const folderId = await resolveFolderId(req.body.folderId);
+    const result = await CodeQuestion.updateMany({ _id: { $in: ids } }, { folderId });
+    res.status(200).json({ success: true, message: `Moved ${result.modifiedCount ?? ids.length} question(s).` });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// "Submissions to Review" dashboard: everything waiting for the admin.
+export const reviewQueue = async (req, res) => {
+  try {
+    const status = ["submitted", "needs_work", "accepted"].includes(req.query.status) ? req.query.status : req.query.status === "all" ? null : "submitted";
+    const filter = {};
+    if (status) filter.status = status;
+    else filter.status = { $in: ["submitted", "needs_work", "accepted"] };
+
+    // optional folder filter (category or session)
+    let questionFilter = null;
+    if (req.query.folderId) {
+      const sids = await sessionIdsFor([req.query.folderId]);
+      const qs = await CodeQuestion.find({ folderId: { $in: sids } }).select("_id").lean();
+      questionFilter = qs.map((q) => q._id);
+      filter.questionId = { $in: questionFilter };
+    }
+    // optional student-name search
+    const search = String(req.query.q || "").trim();
+    if (search) {
+      const rx = new RegExp(escapeRegex(search), "i");
+      const us = await userModel.find({ userType: "student", $or: [{ name: rx }, { email: rx }] }).select("_id").lean();
+      filter.studentId = { $in: us.map((u) => String(u._id)) };
+    }
+
+    const [list, counts] = await Promise.all([
+      QuestionAssignment.find(filter).sort({ updatedAt: status === "submitted" ? 1 : -1 }).limit(200).lean(),
+      QuestionAssignment.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
+    ]);
+    const [questions, students, folders] = await Promise.all([
+      CodeQuestion.find({ _id: { $in: list.map((a) => a.questionId) } }).select("title language difficulty folderId").lean(),
+      userModel.find({ _id: { $in: validObjectIds(list.map((a) => a.studentId)) } }).select("name email").lean(),
+      QuestionFolder.find().select("name level parentId").lean(),
+    ]);
+    const qMap = new Map(questions.map((q) => [String(q._id), q]));
+    const uMap = new Map(students.map((u) => [String(u._id), u]));
+    const fMap = new Map(folders.map((f) => [String(f._id), f]));
+    const pathOf = (folderId) => {
+      const s = folderId && fMap.get(String(folderId));
+      if (!s) return "Unfiled";
+      const c = s.parentId && fMap.get(String(s.parentId));
+      return c ? `${c.name} / ${s.name}` : s.name;
+    };
+    res.status(200).json({
+      success: true,
+      counts: Object.fromEntries(counts.map((c) => [c._id, c.n])),
+      data: list.map((a) => {
+        const q = qMap.get(String(a.questionId));
+        const last = a.submissions?.[a.submissions.length - 1];
+        return {
+          _id: a._id,
+          status: a.status,
+          score: a.score,
+          attempts: a.submissions?.length || 0,
+          lastSubmittedAt: last?.submittedAt,
+          outputMatches: last?.outputMatches ?? null,
+          updatedAt: a.updatedAt,
+          student: uMap.get(a.studentId) || { name: "Unknown student" },
+          question: q ? { _id: q._id, title: q.title, language: q.language, difficulty: q.difficulty, path: pathOf(q.folderId) } : { title: "(deleted question)", path: "" },
+        };
+      }),
+    });
+  } catch (error) {
+    console.error("reviewQueue:", error);
+    res.status(500).json({ success: false, message: "Could not load submissions." });
   }
 };

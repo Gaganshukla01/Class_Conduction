@@ -7,3 +7,29 @@
 -o-user-select: none;
   user-select: none;
 }
+
+/* ---- phone fixes ---------------------------------------------------------- */
+/* The rule above disables text selection everywhere. On iOS Safari that also stops
+   people from TYPING into inputs, so form fields must stay selectable. */
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* iOS zooms the whole page when a focused field has a font-size under 16px. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Never let one wide element create a sideways scrollbar on a phone. */
+html,
+body {
+  overflow-x: hidden;
+}

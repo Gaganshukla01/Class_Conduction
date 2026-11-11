@@ -21,6 +21,11 @@ import { resourceRouter } from "./router/resourceRouter.js";
 import { jobsRouter } from "./router/jobsRouter.js";
 import { codeRunRouter } from "./router/codeRunRouter.js";
 import { questionRouter } from "./router/questionRouter.js";
+import { questionFolderRouter } from "./router/questionFolderRouter.js";
+import { chatRouter } from "./router/chatRouter.js";
+import { extraClassRouter } from "./router/extraClassRouter.js";
+import http from "http";
+import { initSocket } from "./services/socketHub.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -107,7 +112,10 @@ app.use("/api/classnotes", classNoteRouter);
 app.use("/api/resources", resourceRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/code", codeRunRouter);
+app.use("/api/question-folders", questionFolderRouter);
 app.use("/api/questions", questionRouter);
+app.use("/api/chat", chatRouter);
+app.use("/api/extra-classes", extraClassRouter);
 
 // Unknown API route -> JSON 404 instead of an HTML page
 app.use("/api", (req, res) => {
@@ -128,6 +136,11 @@ app.use((err, req, res, next) => {
   }
 });
 
-app.listen(port, () => console.log(`Server is running on port ${port}`));
+// An http.Server (instead of app.listen) so Socket.io can share the port.
+// On Vercel serverless the exported `app` is used and sockets stay inactive.
+const server = http.createServer(app);
+initSocket(server, validOrigins).finally(() => {
+  server.listen(port, () => console.log(`Server is running on port ${port}`));
+});
 
 export default app;

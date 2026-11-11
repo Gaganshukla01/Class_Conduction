@@ -1,24 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Download, ExternalLink, X } from "lucide-react";
+import useScrollLock from "../hooks/useScrollLock";
+import Portal from "./ui/Portal";
 
 // In-app PDF viewer. `item` = { title, file: { viewUrl, downloadUrl } }
+// The wrapper renders nothing (and runs no effects) while no PDF is selected.
 export default function PdfViewerModal({ item, onClose, onDownload }) {
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "unset";
-    };
-  }, [onClose]);
-
   if (!item) return null;
-  const { viewUrl, downloadUrl } = item.file;
+  return <Viewer item={item} onClose={onClose} onDownload={onDownload} />;
+}
 
+function Viewer({ item, onClose, onDownload }) {
+  useScrollLock(true);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && closeRef.current();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  const { viewUrl, downloadUrl } = item.file;
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/15 rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <Portal>
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-0 sm:p-6" onClick={onClose}>
+      <div className="bg-slate-900 border border-white/15 sm:rounded-2xl w-full max-w-5xl h-[100dvh] sm:h-[90dvh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
           <h3 className="text-white font-semibold truncate flex-1">{item.title}</h3>
           <a href={viewUrl} target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-1 text-sm text-gray-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/10">
@@ -35,5 +41,6 @@ export default function PdfViewerModal({ item, onClose, onDownload }) {
         </p>
       </div>
     </div>
+    </Portal>
   );
 }

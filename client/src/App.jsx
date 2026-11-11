@@ -13,8 +13,6 @@ import SeeHowItWorks from "./pages/SeeHowItWork";
 import { AppContent } from "./context/Context";
 import ContactUs from "./pages/ContactUs";
 import ContactInquiriesAdmin from "./components/ContactResultForm";
-import CommonAreaEditor from "./pages/CommonAreaEditor";
-import StudentChatViewer from "./pages/CommonEditorStudent";
 import ProjectShowcase from "./pages/StudentProject";
 import FunZone from "./pages/FunZone";
 
@@ -109,18 +107,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/commoneditor"
-            element={
-              <ProtectedRoute
-                allowedUserTypes={["admin"]}
-                userType={userType}
-                isLoggedIn={isLoggedIn}
-              >
-                <CommonAreaEditor />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/admin/commoneditor" element={<Navigate to="/admin?tab=chat" replace />} />
 
           {/* Student-only routes */}
           <Route
@@ -135,18 +122,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/studentchatview"
-            element={
-              <ProtectedRoute
-                allowedUserTypes={["student"]}
-                userType={userType}
-                isLoggedIn={isLoggedIn}
-              >
-                <StudentChatViewer />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/studentchatview" element={<Navigate to="/studentdash?tab=chat" replace />} />
 
           <Route
             path="/playground"

@@ -28,6 +28,8 @@ const codeQuestionSchema = new mongoose.Schema(
     expectedOutputText: { type: String, default: "", maxlength: 10000 },
     expectedImage: { type: imageSchema, default: undefined },
     tags: [{ type: String, trim: true }],
+    // Session folder this question lives in (null = "Unfiled"). See questionFolderModel.
+    folderId: { type: mongoose.Schema.Types.ObjectId, ref: "questionFolder", default: null, index: true },
     createdBy: { type: String, required: true },
   },
   { timestamps: true }
@@ -64,6 +66,7 @@ const questionAssignmentSchema = new mongoose.Schema(
     },
     submissions: { type: [submissionSchema], default: [] },
     feedback: { type: String, default: "", maxlength: 2000 },
+    score: { type: Number, min: 0, max: 100 }, // optional grade given while reviewing
     reviewedAt: { type: Date },
   },
   { timestamps: true }
