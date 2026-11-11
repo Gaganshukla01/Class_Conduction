@@ -8,7 +8,8 @@ import crypto from "crypto";
 const MAX_BYTES = 10 * 1024 * 1024; // Cloudinary free plan limit is 10 MB / file
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const IMAGE_FORMATS = ["png", "jpg", "jpeg", "gif", "webp"];
-const formatsFor = (kind) => (kind === "image" ? IMAGE_FORMATS.join(",") : "pdf");
+const formatsFor = (kind) =>
+  kind === "image" ? IMAGE_FORMATS.join(",") : kind === "chat" ? ["pdf", ...IMAGE_FORMATS].join(",") : "pdf";
 
 const cfg = () => ({
   cloudName: process.env.CLOUDINARY_CLOUD_NAME,
@@ -79,11 +80,11 @@ export function validateUploadedFile(file, expectedFolder, kind = "pdf") {
     throw new Error("File was not uploaded to the expected folder.");
   }
   const format = String(file.format || (kind === "image" ? "" : "pdf")).toLowerCase();
-  const allowed = kind === "image" ? IMAGE_FORMATS : ["pdf"];
+  const allowed = kind === "image" ? IMAGE_FORMATS : kind === "chat" ? ["pdf", ...IMAGE_FORMATS] : ["pdf"];
   if (!allowed.includes(format)) {
-    throw new Error(kind === "image" ? "Only PNG, JPG, GIF or WebP images are allowed." : "Only PDF files are allowed.");
+    throw new Error(kind === "image" ? "Only PNG, JPG, GIF or WebP images are allowed." : kind === "chat" ? "Only PDF or image files can be shared in chat." : "Only PDF files are allowed.");
   }
-  const limit = kind === "image" ? IMAGE_MAX_BYTES : MAX_BYTES;
+  const limit = kind === "image" ? IMAGE_MAX_BYTES : MAX_BYTES; // "chat" and "pdf" share the 10 MB limit
   if (file.bytes && Number(file.bytes) > limit) {
     throw new Error(`File is larger than the ${limit / 1024 / 1024} MB limit.`);
   }
@@ -92,6 +93,7 @@ export function validateUploadedFile(file, expectedFolder, kind = "pdf") {
     publicId: String(publicId),
     resourceType: "image",
     format,
+    kind: format === "pdf" ? "pdf" : "image",
     bytes: Number(file.bytes) || 0,
     originalName: String(file.originalName || file.original_filename || "document.pdf").slice(0, 150),
   };

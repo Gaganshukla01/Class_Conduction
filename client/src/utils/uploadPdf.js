@@ -84,3 +84,19 @@ export async function uploadImage({ file, purpose, onProgress }) {
   if (problem) throw new Error(problem);
   return uploadToCloudinary({ file, purpose, onProgress });
 }
+
+export const MAX_CHAT_BYTES = 10 * 1024 * 1024;
+// PDF or image shared in the group chat (max 10 MB)
+export function validateChatFile(file) {
+  if (!file) return "Choose a file first.";
+  const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  const isImg = /^image\/(png|jpe?g|gif|webp)$/i.test(file.type) || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
+  if (!isPdf && !isImg) return "You can share PDF files and PNG / JPG / GIF / WebP images.";
+  if (file.size > MAX_CHAT_BYTES) return `File is ${formatBytes(file.size)}. The limit is 10 MB.`;
+  return null;
+}
+export async function uploadChatFile({ file, onProgress }) {
+  const problem = validateChatFile(file);
+  if (problem) throw new Error(problem);
+  return uploadToCloudinary({ file, purpose: "chat-file", onProgress });
+}

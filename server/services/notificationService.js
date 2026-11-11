@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import transporter from "../config/nodeMailer.js";
 import userModel from "../model/userModel.js";
 import classSchedule from "../model/classesScheduleDetails.js";
+import { ChatMessage, ChatReadState } from "../model/chatModel.js";
 import {
   renderEmail,
   toText,
@@ -662,4 +663,152 @@ ${button(ok ? "View in dashboard" : "Fix and resubmit", dashboardUrl("questions"
       }),
     },
   ]);
+});
+
+// One email per student listing every newly assigned question (bulk assignment).
+export const notifyQuestionBundle = safe(async function notifyQuestionBundle(byStudent, dueDate) {
+  const students = await loadUsers([...byStudent.keys()]);
+  return dispatch(
+    students.map((s) => {
+      const list = byStudent.get(String(s._id)) || [];
+      const rows = list
+        .slice(0, 15)
+        .map((q) => `<li style="margin:0 0 6px;color:#111827;font-size:14px;">${esc(q.title)} <span style="color:#6b7280;font-size:12px;">(${esc(LANG_LABEL[q.language] || q.language)}, ${esc(q.difficulty)})</span></li>`)
+        .join("");
+      const body = `
+${paragraph(`Your instructor assigned you <strong>${list.length}</strong> new coding question${list.length === 1 ? "" : "s"}.`)}
+<ul style="margin:0 0 14px;padding-left:20px;">${rows}</ul>
+${list.length > 15 ? paragraph(`<span style="color:#6b7280;font-size:13px;">…and ${list.length - 15} more.</span>`) : ""}
+${dueDate ? detailTable([{ label: "Due date", value: esc(formatPlainDate(dueDate)) }]) : ""}
+${button("Open my questions", dashboardUrl("questions"))}`;
+      return {
+        to: s.email,
+        subject: `💻 ${list.length} new coding question${list.length === 1 ? "" : "s"} assigned`,
+        html: renderEmail({ preheader: list[0]?.title || "New questions", title: "New coding questions", greetingName: s.name, bodyHtml: body, accent: "#7c3aed" }),
+      };
+    })
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 8. Extra / substitute class
+// ---------------------------------------------------------------------------
+export const notifyExtraClass = safe(async function notifyExtraClass(extra, { cancelled = false } = {}) {
+  const [students, instructor] = await Promise.all([loadUsers(extra.studentsEnrolled), loadUsers([extra.instructorId])]);
+  const all = [...students];
+  if (instructor[0] && !all.some((s) => String(s._id) === String(instructor[0]._id))) all.push(instructor[0]);
+  const label = extra.type === "substitute" ? "Substitute class" : "Extra class";
+  const body = `
+${paragraph(cancelled ? `This ${label.toLowerCase()} has been <strong>cancelled</strong>.` : `A ${label.toLowerCase()} has been scheduled for you.`)}
+${detailTable([
+  { label: "Class", value: `<strong>${esc(extra.title)}</strong>` },
+  { label: "Type", value: badge(label, extra.type === "substitute" ? "amber" : "indigo") },
+  { label: "When", value: esc(formatDateTime(extra)) },
+  { label: "Duration", value: esc(`${extra.classDuration} hour(s)`) },
+  { label: "Substituting for", value: extra.substituteFor ? esc(extra.substituteFor) : "" },
+  { label: "Topic", value: extra.topic ? esc(extra.topic) : "" },
+  { label: "Note", value: extra.note ? multiline(extra.note) : "" },
+])}
+${!cancelled && extra.classLink ? button("Join now", extra.classLink) : ""}`;
+  return dispatch(
+    all.map((u) => ({
+      to: u.email,
+      subject: `${cancelled ? "❌ Cancelled" : "📌 " + label}: ${extra.title}`,
+      html: renderEmail({
+        preheader: formatDateTime(extra),
+        title: cancelled ? `${label} cancelled` : `${label} scheduled`,
+        greetingName: u.name,
+        bodyHtml: body,
+        accent: cancelled ? "#dc2626" : extra.type === "substitute" ? "#d97706" : "#4f46e5",
+      }),
+    }))
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 9. Community chat: admin -> every student, student -> every admin/mentor
+// ---------------------------------------------------------------------------
+// Chat can be busy, so emails are throttled per recipient:
+//   * skipped while the person is active in the chat (read / polled in the last 2 minutes)
+//   * at most one email per CHAT_EMAIL_COOLDOWN_MIN minutes (default 15); the next one
+//     says how many messages are waiting
+// Student -> student messages and system cards (extra class) never send email here.
+const CHAT_ACTIVE_MS = 2 * 60 * 1000;
+const chatCooldownMs = () => Number(process.env.CHAT_EMAIL_COOLDOWN_MIN ?? 15) * 60 * 1000;
+
+export const notifyChatMessage = safe(async function notifyChatMessage(message) {
+  if (process.env.CHAT_EMAIL_ENABLED === "false") return emptySummary();
+  if (!["admin", "student"].includes(message.senderRole) || (message.audience || []).length) return emptySummary();
+
+  const targetRole = message.senderRole === "admin" ? "student" : "admin";
+  const recipients = (
+    await userModel.find({ userType: targetRole }).select("name email").limit(500).lean()
+  ).filter((u) => String(u._id) !== String(message.senderId));
+  if (recipients.length === 0) return emptySummary();
+
+  const states = await ChatReadState.find({ userId: { $in: recipients.map((u) => String(u._id)) }, room: message.room || "community" }).lean();
+  const stateOf = new Map(states.map((s) => [s.userId, s]));
+  const now = Date.now();
+  const due = recipients.filter((u) => {
+    const st = stateOf.get(String(u._id));
+    if (st?.lastSeenAt && now - new Date(st.lastSeenAt).getTime() < CHAT_ACTIVE_MS) return false;
+    if (st?.lastReadAt && now - new Date(st.lastReadAt).getTime() < CHAT_ACTIVE_MS) return false;
+    if (st?.lastEmailedAt && now - new Date(st.lastEmailedAt).getTime() < chatCooldownMs()) return false;
+    return true;
+  });
+  if (due.length === 0) return emptySummary();
+
+  const preview = message.text
+    ? esc(message.text.length > 280 ? `${message.text.slice(0, 280)}…` : message.text).replace(/\r?\n/g, "<br/>")
+    : "";
+  const attachment = message.file ? (message.file.kind === "pdf" ? "📄 shared a PDF" : "🖼️ shared an image") : "";
+
+  const messages = [];
+  for (const u of due) {
+    const st = stateOf.get(String(u._id));
+    const since = st?.lastReadAt ? new Date(st.lastReadAt) : new Date(now - 24 * 3600 * 1000);
+    const waiting = await ChatMessage.countDocuments({
+      room: message.room || "community",
+      audience: { $size: 0 },
+      createdAt: { $gt: since },
+      senderId: { $ne: String(u._id) },
+    });
+    const open = targetRole === "admin" ? `${appUrl()}/admin?tab=chat` : dashboardUrl("chat");
+    const body = `
+${paragraph(`<strong>${esc(message.senderName)}</strong>${message.senderRole === "admin" ? ` ${badge("Teacher", "amber")}` : ""} posted in the Community Chat:`)}
+<div style="margin:14px 0;padding:14px 16px;border-left:4px solid #4f46e5;background:#f5f6ff;border-radius:8px;color:#111827;font-size:15px;line-height:1.55;">
+${preview}${preview && attachment ? "<br/>" : ""}${attachment ? `<span style="color:#6b7280;">${attachment}</span>` : ""}
+</div>
+${waiting > 1 ? paragraph(`<span style="color:#6b7280;font-size:13px;">${waiting} messages are waiting for you in total.</span>`) : ""}
+${button("Open the chat", open)}
+${paragraph(`<span style="color:#9ca3af;font-size:12px;">To keep your inbox calm you get at most one chat email every ${Math.round(chatCooldownMs() / 60000)} minutes, and none while you are active in the chat.</span>`)}`;
+    messages.push({
+      to: u.email,
+      subject: `💬 ${message.senderName}${message.senderRole === "admin" ? " (Teacher)" : ""} in Community Chat${waiting > 1 ? ` (${waiting} new)` : ""}`,
+      html: renderEmail({
+        preheader: (message.text || attachment || "New message").slice(0, 90),
+        title: "New chat message",
+        greetingName: u.name,
+        bodyHtml: body,
+        accent: "#4f46e5",
+      }),
+    });
+  }
+  const summary = await dispatch(messages);
+
+  // start the cool-down for everyone we emailed (even if one send failed we do not retry-spam)
+  try {
+    await ChatReadState.bulkWrite(
+      due.map((u) => ({
+        updateOne: {
+          filter: { userId: String(u._id), room: message.room || "community" },
+          update: { $set: { lastEmailedAt: new Date() }, $setOnInsert: { lastReadAt: new Date(now - 24 * 3600 * 1000) } },
+          upsert: true,
+        },
+      }))
+    );
+  } catch (e) {
+    console.error("[mail] could not save chat email cool-down:", e.message);
+  }
+  return summary;
 });

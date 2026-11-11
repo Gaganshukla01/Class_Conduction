@@ -60,10 +60,12 @@ export function ExpectedResult({ question, compact = false }) {
           <img src={img.thumbUrl || img.url} alt="Expected result" onClick={() => setZoom(true)}
             className="rounded-xl border border-white/20 max-h-72 cursor-zoom-in bg-white" />
           {zoom && (
-            <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setZoom(false)}>
-              <button className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white" aria-label="Close"><X size={22} /></button>
-              <img src={img.url} alt="Expected result (full size)" className="max-h-full max-w-full rounded-lg bg-white" />
-            </div>
+            <Portal>
+              <div className="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setZoom(false)}>
+                <button className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white" aria-label="Close"><X size={22} /></button>
+                <img src={img.url} alt="Expected result (full size)" className="max-h-full max-w-full rounded-lg bg-white" />
+              </div>
+            </Portal>
           )}
         </>
       )}
@@ -71,28 +73,40 @@ export function ExpectedResult({ question, compact = false }) {
   );
 }
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import useScrollLock from "../../hooks/useScrollLock";
+import Portal from "../ui/Portal";
 
-// Simple modal: ESC / backdrop click closes, body scroll locked.
+// Modal: rendered in <body> above the Navbar. The header stays visible and only the
+// body scrolls, so long forms (extra class, question editor) are always reachable.
+// On phones it is a full-width bottom sheet.
 export function Modal({ title, onClose, children, wide = false }) {
+  useScrollLock(true);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (e) => e.key === "Escape" && closeRef.current();
     document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "unset";
-    };
-  }, [onClose]);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`bg-slate-900 border border-white/15 rounded-2xl w-full ${wide ? "max-w-5xl" : "max-w-2xl"} my-auto shadow-2xl`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300" aria-label="Close"><X size={20} /></button>
+    <Portal>
+      <div
+        className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6"
+        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          className={`bg-slate-900 border border-white/15 w-full ${wide ? "sm:max-w-5xl" : "sm:max-w-2xl"} max-h-[94dvh] sm:max-h-[90dvh] flex flex-col rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden text-white`}
+        >
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-white/10 bg-slate-900">
+            <h3 className="text-base sm:text-lg font-semibold text-white truncate">{title}</h3>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 shrink-0" aria-label="Close"><X size={20} /></button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">{children}</div>
         </div>
-        <div className="p-5">{children}</div>
       </div>
-    </div>
+    </Portal>
   );
 }

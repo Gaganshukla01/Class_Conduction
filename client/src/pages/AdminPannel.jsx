@@ -29,6 +29,9 @@ import {
   Projector,
   Library,
   Code2,
+  MessageSquare,
+  CalendarPlus,
+  ClipboardCheck,
 } from "lucide-react";
 
 import { AppContent } from "../context/Context";
@@ -45,11 +48,34 @@ import AdminProjectApproval from "./ProjectApproveSection";
 import ClassNotesAdmin from "../components/ClassNotesAdmin";
 import ResourceLibraryAdmin from "../components/ResourceLibraryAdmin";
 import QuestionBankAdmin from "../components/questions/QuestionBankAdmin";
+import ReviewQueueAdmin from "../components/questions/ReviewQueueAdmin";
+import ExtraClassesAdmin from "../components/ExtraClassesAdmin";
+import ChatView from "../components/chat/ChatView";
+import useChatUnread from "../hooks/useChatUnread";
+import SidebarShell from "../components/layout/SidebarShell";
+
+const ADMIN_TABS = ["dashboard", "manageClasses", "addCourse", "updateUser", "addClass", "classAttendence", "extraClasses", "projectApprove", "homeWorkAssign", "codeQuestions", "reviewQueue", "classNotes", "resourceLibrary", "chat", "paymentUpdate", "contactUs", "settings"];
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { refreshData } = useContext(AppContent);
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return ADMIN_TABS.includes(t) ? t : "dashboard";
+  });
+  const { backend_url } = useContext(AppContent);
+  const chatUnread = useChatUnread(activeTab === "chat");
+
+  // number of coding-question submissions waiting for review (sidebar badge)
+  const [toReview, setToReview] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      document.visibilityState === "visible" &&
+      axios.get(`${backend_url}/api/questions/review-queue`, { params: { status: "submitted" } })
+        .then(({ data }) => alive && setToReview(data.counts?.submitted || 0)).catch(() => {});
+    load();
+    const id = setInterval(load, 60000);
+    return () => { alive = false; clearInterval(id); };
+  }, [backend_url, activeTab]);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -58,20 +84,18 @@ export default function AdminDashboard() {
     { id: "updateUser", label: "Update User", icon: UserCheck },
     { id: "addClass", label: "Schedule Class", icon: Calendar },
     { id: "classAttendence", label: "Class Attendence", icon: Check },
+    { id: "extraClasses", label: "Extra Classes", icon: CalendarPlus },
     { id: "projectApprove", label: "Approve Project", icon: Projector },
     { id: "homeWorkAssign", label: "Home Work", icon: Book },
     { id: "codeQuestions", label: "Code Questions", icon: Code2 },
+    { id: "reviewQueue", label: "Submissions to Review", icon: ClipboardCheck, badge: toReview },
+    { id: "chat", label: "Community Chat", icon: MessageSquare, badge: chatUnread },
     { id: "classNotes", label: "Class Notes", icon: FileText },
     { id: "resourceLibrary", label: "Resource Library", icon: Library },
     { id: "paymentUpdate", label: "Payment Update", icon: IndianRupeeIcon },
     { id: "contactUs", label: "Contact Us Res", icon: Contact },
     { id: "settings", label: "Settings", icon: Settings },
   ];
-
-  const handleNavClick = (tabId) => {
-    setActiveTab(tabId);
-    setSidebarOpen(false);
-  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -95,6 +119,10 @@ export default function AdminDashboard() {
         return <ContactInquiriesAdmin />;
       case "codeQuestions":
         return <QuestionBankAdmin />;
+      case "reviewQueue":
+        return <ReviewQueueAdmin />;
+      case "extraClasses":
+        return <ExtraClassesAdmin />;
       case "classNotes":
         return <ClassNotesAdmin />;
       case "resourceLibrary":
@@ -106,74 +134,32 @@ export default function AdminDashboard() {
     }
   };
 
+  // Same collapsible icon sidebar as the student portal. The shell is (viewport - site navbar)
+  // tall and only the content area scrolls, so the sidebar and the page scroll independently.
+  const { userData } = useContext(AppContent);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 text-white relative overflow-hidden">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
-
-      {/* Glows */}
-      <div className="absolute top-20 left-20 w-32 h-32 bg-blue-400/10 rounded-full blur-xl animate-pulse"></div>
-      <div className="absolute bottom-40 right-20 w-48 h-48 bg-pink-400/10 rounded-full blur-xl animate-pulse delay-1000"></div>
-
-      <div className="relative z-10 flex min-h-screen">
-        {/* Mobile Header */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
-            Admin Panel
-          </h1>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-          >
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+    <SidebarShell
+      items={navItems}
+      active={activeTab}
+      onSelect={setActiveTab}
+      brand="Admin Panel"
+      gradient="from-indigo-900 via-purple-800 to-pink-700"
+      footer={({ rail }) => (
+        <div className="flex items-center gap-3 px-[7px]">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center"><User size={18} /></div>
+          <div className={`min-w-0 ${rail ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200" : ""}`}>
+            <p className="text-sm font-semibold truncate">{userData?.name || "Admin"}</p>
+            <p className="text-xs text-gray-400 whitespace-nowrap">Teacher / Admin</p>
+          </div>
         </div>
-
-        {/* Sidebar Navigation */}
-        <div
-          className={`
-          fixed lg:relative inset-y-0 left-0 z-40 w-64 bg-white/10 backdrop-blur-sm border-r border-white/10 p-6 transform transition-transform duration-300 ease-in-out lg:transform-none
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        `}
-        >
-          <h1 className="text-2xl font-bold mb-8 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent hidden lg:block">
-            Admin Panel
-          </h1>
-
-          <nav className="space-y-2 mt-16 lg:mt-0">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center px-4 py-3 rounded-xl hover:cursor-pointer transition-all duration-300 ${
-                    activeTab === item.id
-                      ? "bg-white/20 text-white shadow-lg"
-                      : "text-gray-300 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <Icon size={20} className="mr-3 flex-shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Mobile Overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          ></div>
-        )}
-
-        {/* Main Content */}
-        <div className="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-0">
-          {renderContent()}
-        </div>
-      </div>
-    </div>
+      )}
+    >
+      {activeTab === "chat" ? (
+        <div className="h-full p-2 sm:p-4"><ChatView /></div>
+      ) : (
+        <div className="p-4 sm:p-6 lg:p-8">{renderContent()}</div>
+      )}
+    </SidebarShell>
   );
 }
 

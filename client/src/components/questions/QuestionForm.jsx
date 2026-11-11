@@ -19,7 +19,7 @@ const STARTERS = {
 };
 
 // mode: "create" | "edit" | "duplicate".  `question` pre-fills the form.
-export default function QuestionForm({ backend_url, mode = "create", question, onClose, onSaved }) {
+export default function QuestionForm({ backend_url, mode = "create", question, folders = [], defaultFolderId = "", onClose, onSaved }) {
   const [f, setF] = useState({
     title: question ? (mode === "duplicate" ? `${question.title} (copy)` : question.title) : "",
     description: question?.description || "",
@@ -29,6 +29,7 @@ export default function QuestionForm({ backend_url, mode = "create", question, o
     sampleInput: question?.sampleInput || "",
     expectedOutputText: question?.expectedOutputText || "",
     tags: (question?.tags || []).join(", "),
+    folderId: question?.folderId || defaultFolderId || "",
   });
   const [image, setImage] = useState(null);
   const [existing, setExisting] = useState(mode === "edit" ? question?.expectedImage : null);
@@ -80,6 +81,18 @@ export default function QuestionForm({ backend_url, mode = "create", question, o
         <div className="md:col-span-2">
           <label className={label}>Title</label>
           <input id="qf-title" autoFocus className={field} value={f.title} onChange={set("title")} maxLength={140} placeholder="e.g. Sum of two numbers" disabled={busy} />
+        </div>
+        <div className="md:col-span-2">
+          <label className={label}>Folder (Category / Session)</label>
+          <select className={field} value={f.folderId} onChange={set("folderId")} disabled={busy}>
+            <option value="" className="text-black">Unfiled (no folder)</option>
+            {folders.map((c) => (
+              <optgroup key={c._id} label={c.name} className="text-black">
+                {c.sessions.map((s) => <option key={s._id} value={s._id} className="text-black">{c.name} / {s.name}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          {folders.every((c) => c.sessions.length === 0) && <p className="text-xs text-amber-300 mt-1">No sessions yet - create a category and a session first to organise questions.</p>}
         </div>
         <div>
           <label className={label}>Language</label>

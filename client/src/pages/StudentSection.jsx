@@ -45,6 +45,12 @@ import ProjectShowcase from "./StudentProject";
 import { toast } from "react-toastify";
 import StudyMaterials from "../components/student/StudyMaterials";
 import StudentQuestions from "../components/student/StudentQuestions";
+import SidebarShell from "../components/layout/SidebarShell";
+import ChatView from "../components/chat/ChatView";
+import ExtraClassesStudent from "../components/student/ExtraClassesStudent";
+import useChatUnread from "../hooks/useChatUnread";
+import useScrollLock from "../hooks/useScrollLock";
+import { computeQuestionStats } from "../utils/questionTree";
 import AttendanceDashboard from "../components/student/AttendanceDashboard";
 import ProgressDashboard from "../components/student/ProgressDashboard";
 import PdfUploadField from "../components/PdfUploadField";
@@ -60,7 +66,7 @@ const STATUS_TONE = {
 const statusTone = (status) => STATUS_TONE[status] || "bg-gray-500/20 text-gray-300";
 const statusText = (status) => ({ completed: "text-green-300", submitted: "text-cyan-300", pending: "text-yellow-300", overdue: "text-red-300" })[status] || "text-gray-300";
 const EMPTY_SUBMISSION = { notes: "", link: "", file: null, progress: null, busy: false };
-const VALID_TABS = ["notes","resources","questions","classes","attendance","homework","progress","payment","upload","timezone"];
+const VALID_TABS = ["notes","resources","questions","chat","classes","attendance","homework","progress","payment","upload","timezone"];
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -101,6 +107,20 @@ export default function StudentDashboard() {
   ]);
 
   const { userData, allSchedule, backend_url } = useContext(AppContent);
+
+  // Coding-question assignments: shared by the Code Questions tab and the Progress tab
+  const [qState, setQState] = useState({ items: [], folders: [], loading: true });
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${backend_url}/api/questions/assignments/mine`)
+      .then(({ data }) => alive && setQState({ items: data.data, folders: data.folders || [], loading: false }))
+      .catch(() => alive && setQState({ items: [], folders: [], loading: false }));
+    return () => { alive = false; };
+  }, [backend_url]);
+  const onQuestionUpdated = (updated) =>
+    setQState((cur) => ({ ...cur, items: cur.items.map((a) => (a._id === updated._id ? { ...a, ...updated } : a)) }));
+  const questionStats = useMemo(() => computeQuestionStats(qState.items), [qState.items]);
+  const chatUnread = useChatUnread(activeTab === "chat");
 
   // One source of truth for attendance numbers (header, attendance, progress)
   const stats = useMemo(
@@ -358,18 +378,8 @@ export default function StudentDashboard() {
   const [selectedHomework, setSelectedHomework] = useState(null);
   const [submissionForm, setSubmissionForm] = useState(EMPTY_SUBMISSION);
 
-  // Lock body scroll when any modal is open
-  useEffect(() => {
-    if (showNoteForm || showHomeworkModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [showHomeworkModal, showNoteForm]);
+  // Lock page scroll only while a modal is open
+  useScrollLock(showNoteForm || showHomeworkModal);
 
   // Homework Functions
   const handleHomeworkSubmit = async (homeworkId) => {
@@ -493,9 +503,39 @@ export default function StudentDashboard() {
       note.subject.toLowerCase().includes(searchNotesQuery.toLowerCase())
   );
 
+  const navItems = [
+    { id: "notes", label: "My Notes", icon: FileText },
+    { id: "resources", label: "Study Materials", icon: Library },
+    { id: "questions", label: "Code Questions", icon: Code2, badge: questionStats.todo + questionStats.needsWork },
+    { id: "chat", label: "Community Chat", icon: MessageSquare, badge: chatUnread },
+    { id: "classes", label: "Live Classes", icon: BookOpen },
+    { id: "attendance", label: "Attendance", icon: Calendar },
+    { id: "homework", label: "Homework", icon: Target },
+    { id: "progress", label: "Progress", icon: TrendingUp },
+    { id: "payment", label: "Payments", icon: IndianRupeeIcon },
+    { id: "upload", label: "Project Upload", icon: Projector },
+    { id: "timezone", label: "TimeZone", icon: Timer },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-800 to-indigo-900 px-6 py-8 text-white">
-      <div className="max-w-7xl mx-auto">
+    <SidebarShell
+      items={navItems}
+      active={activeTab}
+      onSelect={setActiveTab}
+      footer={({ rail }) => (
+        <div className="flex items-center gap-3 px-[7px]">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center"><User size={18} /></div>
+          <div className={`min-w-0 ${rail ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200" : ""}`}>
+            <p className="text-sm font-semibold truncate">{userData.name}</p>
+            <p className="text-xs text-gray-400 whitespace-nowrap">{stats.hasData ? `${stats.rate}% attendance` : "Student"}</p>
+          </div>
+        </div>
+      )}
+    >
+      {activeTab === "chat" ? (
+        <div className="h-full p-2 sm:p-4"><ChatView /></div>
+      ) : (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20 shadow-2xl mb-6">
           <div className="flex items-center justify-between">
@@ -518,35 +558,6 @@ export default function StudentDashboard() {
               <div className="text-sm text-gray-300">Attendance Rate</div>
             </div>
           </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {[
-            { id: "notes", label: "My Notes", icon: FileText },
-            { id: "resources", label: "Study Materials", icon: Library },
-            { id: "questions", label: "Code Questions", icon: Code2 },
-            { id: "classes", label: "Live Classes", icon: BookOpen },
-            { id: "attendance", label: "Attendance", icon: Calendar },
-            { id: "homework", label: "Homework", icon: Target },
-            { id: "progress", label: "Progress", icon: TrendingUp },
-            { id: "payment", label: "Payments", icon: IndianRupeeIcon },
-            { id: "upload", label: "Project Upload", icon: Projector },
-            { id: "timezone", label: "TimeZone", icon: Timer },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex shrink-0 whitespace-nowrap items-center hover:cursor-pointer space-x-2 px-5 py-3 rounded-xl font-medium transition ${
-                activeTab === tab.id
-                  ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white"
-                  : "bg-white/10 text-gray-300 hover:bg-white/20"
-              }`}
-            >
-              <tab.icon size={18} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
         </div>
 
         {/* Notes Tab */}
@@ -735,10 +746,11 @@ export default function StudentDashboard() {
 
         {/* Study materials (class notes + resource library) */}
         {activeTab === "resources" && <StudyMaterials />}
-        {activeTab === "questions" && <StudentQuestions />}
+        {activeTab === "questions" && <StudentQuestions items={qState.items} folders={qState.folders} loading={qState.loading} onUpdated={onQuestionUpdated} />}
 
         {/* class join tab  */}
 
+        {activeTab === "classes" && <ExtraClassesStudent />}
         {activeTab === "classes" && (
           <div className="space-y-6">
             {/* Classes Header */}
@@ -1627,13 +1639,14 @@ export default function StudentDashboard() {
 
         {/* Progress Tab */}
         {activeTab === "progress" && (
-          <ProgressDashboard stats={stats} homeworkData={homeWorkData} />
+          <ProgressDashboard stats={stats} questionStats={questionStats} assignments={qState.items} />
         )}
         {activeTab === "payment" && <PaymentTab />}
         {activeTab === "timezone" && <TimezoneConverter />}
         {activeTab === "upload" && goToUpload()}
       </div>
-    </div>
+      )}
+    </SidebarShell>
   );
 }
 function Input({
