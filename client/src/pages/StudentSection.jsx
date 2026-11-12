@@ -511,7 +511,7 @@ export default function StudentDashboard() {
     { id: "notes", label: "My Notes", icon: FileText },
     { id: "resources", label: "Study Materials", icon: Library },
     { id: "questions", label: "Code Questions", icon: Code2, badge: questionStats.todo + questionStats.needsWork },
-    { id: "chat", label: "Community Chat", icon: MessageSquare, badge: chatUnread },
+    { id: "chat", label: "Chat Section", icon: MessageSquare, badge: chatUnread },
     { id: "classes", label: "Live Classes", icon: BookOpen },
     { id: "attendance", label: "Attendance", icon: Calendar },
     { id: "homework", label: "Homework", icon: Target },

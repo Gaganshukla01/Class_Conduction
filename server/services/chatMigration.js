@@ -93,7 +93,7 @@ export async function migrateChat({ dryRun = false } = {}) {
     if (!dryRun) {
       await ChatMessage.create({
         room: ROOM, senderId: "system", senderName: "ClassWave", senderRole: "system", type: "system",
-        text: "👋 Welcome to the new Community Chat! Students, teachers and admins can now talk here and share PDFs and images.",
+        text: "👋 Welcome to the new Chat Section! Students, teachers and admins can now talk here and share PDFs and images.",
         legacyId: "welcome-v1",
       });
     }

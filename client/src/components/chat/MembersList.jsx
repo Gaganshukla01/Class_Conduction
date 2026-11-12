@@ -55,7 +55,7 @@ export default function MembersList({ members, me, isAdmin, backend_url, onMigra
       {isAdmin && (
         <div className="shrink-0 p-3 border-t border-white/10">
           <button onClick={migrate} disabled={busy} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs text-gray-200 disabled:opacity-60">
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <DownloadCloud size={14} />} Set up chat for existing users & import old Common Area messages
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <DownloadCloud size={14} />} Set up chat for existing users & import old Chat Room messages
           </button>
         </div>
       )}
