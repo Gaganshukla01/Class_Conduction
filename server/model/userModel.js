@@ -10,6 +10,11 @@ const userSchema = new mongoose.Schema({
   resetOtp: { type: String, default: "" },
   resetOtpExpireAt: { type: Number, default: 0 },
   userType: { type: String, default: "student" },
+  // profile photo (Cloudinary)
+  avatar: {
+    url: { type: String },
+    publicId: { type: String },
+  },
 });
 
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);

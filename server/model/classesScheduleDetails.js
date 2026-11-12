@@ -23,6 +23,19 @@ const classScheduleSchema = new mongoose.Schema(
     paymentUpdatedAt: { type: Date },
     attendanceMarkedAt: { type: Date },
     reminderSentAt: { type: Date },
+
+    // Set while this session has been REPLACED by a substitute class. classDate / classTime /
+    // classLink above then hold the NEW details (so attendance is marked as for any other
+    // class) and the original ones are kept here so the change can be undone.
+    substitution: {
+      extraClassId: { type: String },
+      originalDate: { type: Date },
+      originalTime: { type: String },
+      originalLink: { type: String },
+      originalInstructorId: { type: String },
+      originalDuration: { type: String },
+      substitutedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

@@ -698,13 +698,25 @@ export const notifyExtraClass = safe(async function notifyExtraClass(extra, { ca
   const all = [...students];
   if (instructor[0] && !all.some((s) => String(s._id) === String(instructor[0]._id))) all.push(instructor[0]);
   const label = extra.type === "substitute" ? "Substitute class" : "Extra class";
+  const replaced = extra.original?.classDate
+    ? `${esc(extra.original.className || extra.title)} on ${esc(formatDateTime({ classDate: extra.original.classDate, classTime: extra.original.classTime }))}`
+    : "";
   const body = `
-${paragraph(cancelled ? `This ${label.toLowerCase()} has been <strong>cancelled</strong>.` : `A ${label.toLowerCase()} has been scheduled for you.`)}
+${paragraph(
+  cancelled
+    ? extra.type === "substitute" && replaced
+      ? `This substitute class has been <strong>cancelled</strong>. Your regular class (<strong>${replaced}</strong>) is back as originally scheduled.`
+      : `This ${label.toLowerCase()} has been <strong>cancelled</strong>.`
+    : extra.type === "substitute" && replaced
+      ? `Your class <strong>${replaced}</strong> has been <strong>replaced</strong> by a substitute class at a new time. Please note the new details below.`
+      : `A ${label.toLowerCase()} has been scheduled for you.`
+)}
 ${detailTable([
   { label: "Class", value: `<strong>${esc(extra.title)}</strong>` },
   { label: "Type", value: badge(label, extra.type === "substitute" ? "amber" : "indigo") },
   { label: "When", value: esc(formatDateTime(extra)) },
   { label: "Duration", value: esc(`${extra.classDuration} hour(s)`) },
+  { label: "Replaces your class", value: replaced },
   { label: "Substituting for", value: extra.substituteFor ? esc(extra.substituteFor) : "" },
   { label: "Topic", value: extra.topic ? esc(extra.topic) : "" },
   { label: "Note", value: extra.note ? multiline(extra.note) : "" },
@@ -735,25 +747,39 @@ ${!cancelled && extra.classLink ? button("Join now", extra.classLink) : ""}`;
 // Student -> student messages and system cards (extra class) never send email here.
 const CHAT_ACTIVE_MS = 2 * 60 * 1000;
 const chatCooldownMs = () => Number(process.env.CHAT_EMAIL_COOLDOWN_MIN ?? 15) * 60 * 1000;
+// private 1-to-1 messages are more urgent than the group channel
+const dmCooldownMs = () => Number(process.env.CHAT_DM_EMAIL_COOLDOWN_MIN ?? 5) * 60 * 1000;
 
 export const notifyChatMessage = safe(async function notifyChatMessage(message) {
   if (process.env.CHAT_EMAIL_ENABLED === "false") return emptySummary();
-  if (!["admin", "student"].includes(message.senderRole) || (message.audience || []).length) return emptySummary();
+  if (!["admin", "student"].includes(message.senderRole)) return emptySummary();
+  const room = message.room || "community";
+  const isDm = room.startsWith("dm:");
+  if (!isDm && (message.audience || []).length) return emptySummary();
 
-  const targetRole = message.senderRole === "admin" ? "student" : "admin";
-  const recipients = (
-    await userModel.find({ userType: targetRole }).select("name email").limit(500).lean()
-  ).filter((u) => String(u._id) !== String(message.senderId));
+  // who gets the e-mail
+  let recipients;
+  if (isDm) {
+    const [, studentId, teacherId] = room.split(":");
+    recipients = await loadUsers([message.senderRole === "admin" ? studentId : teacherId]); // the OTHER person
+  } else {
+    const targetRole = message.senderRole === "admin" ? "student" : "admin";
+    recipients = (await userModel.find({ userType: targetRole }).select("name email").limit(500).lean()).filter(
+      (u) => String(u._id) !== String(message.senderId)
+    );
+  }
+  recipients = recipients.filter((u) => String(u._id) !== String(message.senderId));
   if (recipients.length === 0) return emptySummary();
 
-  const states = await ChatReadState.find({ userId: { $in: recipients.map((u) => String(u._id)) }, room: message.room || "community" }).lean();
+  const states = await ChatReadState.find({ userId: { $in: recipients.map((u) => String(u._id)) }, room }).lean();
   const stateOf = new Map(states.map((s) => [s.userId, s]));
   const now = Date.now();
+  const cooldown = isDm ? dmCooldownMs() : chatCooldownMs();
   const due = recipients.filter((u) => {
     const st = stateOf.get(String(u._id));
     if (st?.lastSeenAt && now - new Date(st.lastSeenAt).getTime() < CHAT_ACTIVE_MS) return false;
     if (st?.lastReadAt && now - new Date(st.lastReadAt).getTime() < CHAT_ACTIVE_MS) return false;
-    if (st?.lastEmailedAt && now - new Date(st.lastEmailedAt).getTime() < chatCooldownMs()) return false;
+    if (st?.lastEmailedAt && now - new Date(st.lastEmailedAt).getTime() < cooldown) return false;
     return true;
   });
   if (due.length === 0) return emptySummary();
@@ -762,32 +788,36 @@ export const notifyChatMessage = safe(async function notifyChatMessage(message) 
     ? esc(message.text.length > 280 ? `${message.text.slice(0, 280)}…` : message.text).replace(/\r?\n/g, "<br/>")
     : "";
   const attachment = message.file ? (message.file.kind === "pdf" ? "📄 shared a PDF" : "🖼️ shared an image") : "";
+  const staff = message.senderRole === "admin";
 
   const messages = [];
   for (const u of due) {
     const st = stateOf.get(String(u._id));
     const since = st?.lastReadAt ? new Date(st.lastReadAt) : new Date(now - 24 * 3600 * 1000);
-    const waiting = await ChatMessage.countDocuments({
-      room: message.room || "community",
-      audience: { $size: 0 },
-      createdAt: { $gt: since },
-      senderId: { $ne: String(u._id) },
-    });
-    const open = targetRole === "admin" ? `${appUrl()}/admin?tab=chat` : dashboardUrl("chat");
+    const waiting = await ChatMessage.countDocuments({ room, audience: { $size: 0 }, createdAt: { $gt: since }, senderId: { $ne: String(u._id) } });
+    const toAdmin = isDm ? !staff : !staff; // recipients are admins when a student wrote
+    const open = toAdmin
+      ? `${appUrl()}/admin?tab=chat${isDm ? `&room=${encodeURIComponent(room)}` : ""}`
+      : `${dashboardUrl("chat")}${isDm ? `&room=${encodeURIComponent(room)}` : ""}`;
+    const lead = isDm
+      ? `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge("Teacher", "amber")}` : ""} sent you a private message:`
+      : `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge("Teacher", "amber")}` : ""} posted in the Community Chat:`;
     const body = `
-${paragraph(`<strong>${esc(message.senderName)}</strong>${message.senderRole === "admin" ? ` ${badge("Teacher", "amber")}` : ""} posted in the Community Chat:`)}
+${paragraph(lead)}
 <div style="margin:14px 0;padding:14px 16px;border-left:4px solid #4f46e5;background:#f5f6ff;border-radius:8px;color:#111827;font-size:15px;line-height:1.55;">
 ${preview}${preview && attachment ? "<br/>" : ""}${attachment ? `<span style="color:#6b7280;">${attachment}</span>` : ""}
 </div>
 ${waiting > 1 ? paragraph(`<span style="color:#6b7280;font-size:13px;">${waiting} messages are waiting for you in total.</span>`) : ""}
-${button("Open the chat", open)}
-${paragraph(`<span style="color:#9ca3af;font-size:12px;">To keep your inbox calm you get at most one chat email every ${Math.round(chatCooldownMs() / 60000)} minutes, and none while you are active in the chat.</span>`)}`;
+${button(isDm ? "Reply in the chat" : "Open the chat", open)}
+${paragraph(`<span style="color:#9ca3af;font-size:12px;">To keep your inbox calm you get at most one chat e-mail every ${Math.round(cooldown / 60000)} minutes, and none while you are active in the chat.</span>`)}`;
     messages.push({
       to: u.email,
-      subject: `💬 ${message.senderName}${message.senderRole === "admin" ? " (Teacher)" : ""} in Community Chat${waiting > 1 ? ` (${waiting} new)` : ""}`,
+      subject: isDm
+        ? `💬 ${message.senderName}${staff ? " (Teacher)" : ""} sent you a message${waiting > 1 ? ` (${waiting} new)` : ""}`
+        : `💬 ${message.senderName}${staff ? " (Teacher)" : ""} in Community Chat${waiting > 1 ? ` (${waiting} new)` : ""}`,
       html: renderEmail({
         preheader: (message.text || attachment || "New message").slice(0, 90),
-        title: "New chat message",
+        title: isDm ? "New private message" : "New chat message",
         greetingName: u.name,
         bodyHtml: body,
         accent: "#4f46e5",
@@ -801,7 +831,7 @@ ${paragraph(`<span style="color:#9ca3af;font-size:12px;">To keep your inbox calm
     await ChatReadState.bulkWrite(
       due.map((u) => ({
         updateOne: {
-          filter: { userId: String(u._id), room: message.room || "community" },
+          filter: { userId: String(u._id), room },
           update: { $set: { lastEmailedAt: new Date() }, $setOnInsert: { lastReadAt: new Date(now - 24 * 3600 * 1000) } },
           upsert: true,
         },

@@ -27,6 +27,7 @@ export default function ExtraClassesStudent() {
             <span className="min-w-0 flex-1">
               <span className="block text-white font-medium">{c.title} <span className={`ml-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.type === "substitute" ? "bg-amber-500/25 text-amber-200" : "bg-indigo-500/25 text-indigo-200"}`}>{c.type}</span></span>
               <span className="block text-sm text-gray-300 flex items-center gap-1.5"><Clock size={13} /> {fmt(c)} · {c.classDuration}h{c.substituteFor ? ` · for ${c.substituteFor}` : ""}</span>
+              {c.replaces && <span className="block text-xs text-amber-200 mt-0.5">Replaces your {c.replaces.className} class on {fmt(c.replaces)}</span>}
             </span>
             <a href={c.classLink} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-600 text-sm font-semibold"><Video size={15} /> Join now</a>
           </li>

@@ -1,4 +1,5 @@
 import classSchedule from "../model/classesScheduleDetails.js";
+import ExtraClass from "../model/extraClassModel.js";
 import mongoose from "mongoose";
 import {
   notifyClassScheduled,
@@ -196,6 +197,11 @@ export const markAttendance = async (req, res) => {
       new: true,
       runValidators: true,
     });
+
+    // A substitute class replaces this session: attendance here also completes that record
+    if (attendance !== undefined && updatedClass.substitution?.extraClassId) {
+      ExtraClass.updateOne({ _id: updatedClass.substitution.extraClassId, status: "scheduled" }, { status: "completed", attendanceMarkedAt: new Date() }).catch(() => {});
+    }
 
     // Email only when attendance was actually recorded / changed
     const attendanceChanged =

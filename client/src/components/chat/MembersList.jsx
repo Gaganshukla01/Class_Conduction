@@ -2,11 +2,9 @@ import { useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { DownloadCloud, Loader2, Search } from "lucide-react";
+import Avatar from "../ui/Avatar";
 
-const COLORS = ["from-rose-500 to-pink-600", "from-sky-500 to-blue-600", "from-emerald-500 to-teal-600", "from-amber-500 to-orange-600", "from-violet-500 to-fuchsia-600", "from-cyan-500 to-sky-600"];
-const colorFor = (id = "") => COLORS[[...String(id)].reduce((n, c) => n + c.charCodeAt(0), 0) % COLORS.length];
-
-// Everyone who can use the chat: all existing teachers/admins and students.
+// People you can see in the Community: teachers see everyone, students only see the teachers.
 export default function MembersList({ members, me, isAdmin, backend_url, onMigrated }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,10 +40,7 @@ export default function MembersList({ members, me, isAdmin, backend_url, onMigra
             <ul className="space-y-0.5">
               {people.map((m) => (
                 <li key={m._id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-white/5">
-                  <span className="relative shrink-0">
-                    <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${colorFor(m._id)} flex items-center justify-center text-sm font-bold`}>{(m.name || "?")[0].toUpperCase()}</span>
-                    <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${m.online ? "bg-emerald-400" : "bg-gray-500"}`} title={m.online ? "Online" : "Offline"} />
-                  </span>
+                  <Avatar name={m.name} src={m.avatar} size={36} online={m.online} id={m._id} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-white truncate">{m.name}{m._id === me && <span className="text-gray-400"> (you)</span>}</span>
                     {m.email && <span className="block text-[11px] text-gray-400 truncate">{m.email}</span>}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, Search, Users } from "lucide-react";
+import Avatar from "../ui/Avatar";
 
 // Pick students one by one and/or add a whole class at once.
 //  students: [{_id, name, email}]   batches: [{key, className, studentsEnrolled}]
@@ -49,7 +50,7 @@ export default function TargetPicker({ students, batches = [], picked, setPicked
             <li key={s._id}>
               <button type="button" onClick={() => toggle(s._id)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition ${on ? "border-cyan-400 bg-cyan-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}>
                 <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? "bg-cyan-400 border-cyan-400 text-black" : "border-white/30"}`}>{on && <Check size={14} />}</span>
-                <span className="min-w-0 flex-1"><span className="block text-white truncate">{s.name}</span><span className="block text-xs text-gray-400 truncate">{s.email}</span></span>
+                <Avatar name={s.name} src={s.avatar} size={32} id={s._id} /><span className="min-w-0 flex-1"><span className="block text-white truncate">{s.name}</span><span className="block text-xs text-gray-400 truncate">{s.email}</span></span>
               </button>
             </li>
           );

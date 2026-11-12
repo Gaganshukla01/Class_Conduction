@@ -42,6 +42,9 @@ export const signUpload = async (req, res) => {
     } else if (purpose === "solution-image") {
       folder = `${ROOT_FOLDER}/solutions/${req.userId}`;
       kind = "image";
+    } else if (purpose === "avatar") {
+      folder = `${ROOT_FOLDER}/avatars/${req.userId}`;
+      kind = "image";
     } else if (purpose === "chat-file") {
       folder = `${ROOT_FOLDER}/chat`;
       kind = "chat";

@@ -35,6 +35,12 @@ export default function ExtraClassCard({ card }) {
       </div>
 
       <div className="p-4 space-y-3">
+        {card.replaces && (
+          <div className="flex items-start gap-2 rounded-xl bg-amber-400/15 border border-amber-300/30 px-3 py-2 text-sm text-amber-50">
+            <RefreshCw size={16} className="shrink-0 mt-0.5 text-amber-300" />
+            <span>This replaces your <strong>{card.replaces.className}</strong> class on <strong>{fmtDate(classStartDate({ classDate: card.replaces.classDate, classTime: card.replaces.classTime }))}, {fmtTime(classStartDate({ classDate: card.replaces.classDate, classTime: card.replaces.classTime }))}</strong>.</span>
+          </div>
+        )}
         <div>
           <h4 className="text-lg font-bold text-white leading-snug">{card.title}</h4>
           {card.topic && <p className="text-sm text-gray-300 mt-0.5">{card.topic}</p>}
@@ -74,7 +80,9 @@ export function CancelledCard({ card }) {
       <div>
         <p className="text-sm font-semibold text-rose-100">Class cancelled</p>
         <p className="text-sm text-gray-200">{card.title}</p>
-        <p className="text-xs text-gray-400 mt-0.5">Was scheduled for {fmtDate(start)}, {fmtTime(start)}</p>
+        {card.restored?.classDate
+          ? <p className="text-xs text-emerald-200 mt-0.5">Your regular class stays as scheduled: {fmtDate(classStartDate({ classDate: card.restored.classDate, classTime: card.restored.classTime }))}, {fmtTime(classStartDate({ classDate: card.restored.classDate, classTime: card.restored.classTime }))}.</p>
+          : <p className="text-xs text-gray-400 mt-0.5">Was scheduled for {fmtDate(start)}, {fmtTime(start)}</p>}
       </div>
     </div>
   );

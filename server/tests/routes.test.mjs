@@ -13,10 +13,10 @@ const check = (name, cond, extra = "") => { cond ? pass++ : fail++; console.log(
 const call = async (m, p, auth) => (await fetch("http://127.0.0.1:4777" + p, { method: m, headers: { "content-type": "application/json", ...(auth ? { Cookie: `token=${jwt.sign({ id: "64b000000000000000000001" }, "t")}` } : {}) }, body: m === "GET" || m === "DELETE" ? undefined : "{}", signal: AbortSignal.timeout(5000) })).status;
 try {
   check("server boots and listens even without socket.io installed", /Server is running on port 4777/.test(out), out.slice(0, 300));
-  const routes = [["GET", "/api/chat/messages"], ["POST", "/api/chat/messages"], ["DELETE", "/api/chat/messages/1"], ["POST", "/api/chat/read"], ["GET", "/api/chat/unread"], ["GET", "/api/chat/members"], ["POST", "/api/chat/migrate"],
+  const routes = [["GET", "/api/chat/messages"], ["POST", "/api/chat/messages"], ["DELETE", "/api/chat/messages/1"], ["POST", "/api/chat/read"], ["GET", "/api/chat/unread"], ["GET", "/api/chat/members"], ["GET", "/api/chat/conversations"], ["GET", "/api/chat/settings"], ["PUT", "/api/chat/settings"], ["PUT", "/api/user/avatar"], ["DELETE", "/api/user/avatar"], ["POST", "/api/chat/migrate"],
     ["GET", "/api/question-folders"], ["POST", "/api/question-folders"], ["PUT", "/api/question-folders/1"], ["DELETE", "/api/question-folders/1"],
     ["POST", "/api/questions/assign-bulk"], ["PUT", "/api/questions/move"], ["GET", "/api/questions/review-queue"],
-    ["GET", "/api/extra-classes"], ["GET", "/api/extra-classes/mine"], ["POST", "/api/extra-classes"], ["PUT", "/api/extra-classes/1/attendance"], ["PUT", "/api/extra-classes/1"], ["DELETE", "/api/extra-classes/1"]];
+    ["GET", "/api/extra-classes"], ["GET", "/api/extra-classes/replaceable"], ["GET", "/api/extra-classes/mine"], ["POST", "/api/extra-classes"], ["PUT", "/api/extra-classes/1/attendance"], ["PUT", "/api/extra-classes/1"], ["DELETE", "/api/extra-classes/1"]];
   for (const [m, p] of routes) { const s = await call(m, p, false); check(`${m} ${p} -> 401 without login`, s === 401, s); }
 } finally { child.kill("SIGKILL"); }
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

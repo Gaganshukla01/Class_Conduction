@@ -28,6 +28,16 @@ const extraClassSchema = new mongoose.Schema(
     attendanceMarkedAt: { type: Date },
     createdBy: { type: String, required: true },
     chatMessageId: { type: String },
+    // Substitute classes REPLACE one scheduled session (a classSchedule document)
+    replacesClassId: { type: String, index: true },
+    original: {
+      className: String,
+      classDate: Date,
+      classTime: String,
+      classLink: String,
+      instructorId: String,
+      classDuration: String,
+    },
   },
   { timestamps: true }
 );
