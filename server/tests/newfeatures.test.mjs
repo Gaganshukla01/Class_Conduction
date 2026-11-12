@@ -11,7 +11,7 @@ process.env.CLOUDINARY_CLOUD_NAME = "democloud"; process.env.CLOUDINARY_API_KEY 
 const { default: transporter } = await imp("config/nodeMailer.js");
 const { default: userModel } = await imp("model/userModel.js");
 const { default: classSchedule } = await imp("model/classesScheduleDetails.js");
-const { ChatMessage, ChatReadState } = await imp("model/chatModel.js");
+const { ChatMessage, ChatReadState, ChatThread, ChatSettings } = await imp("model/chatModel.js");
 const { QuestionFolder } = await imp("model/questionFolderModel.js");
 const { CodeQuestion, QuestionAssignment } = await imp("model/codeQuestionModel.js");
 const { default: ExtraClass } = await imp("model/extraClassModel.js");
@@ -47,6 +47,10 @@ const imgFile = (folder, name = "a", format = "png") => ({ url: `https://res.clo
   const f = chat.visibleTo({ userType: "student", _id: A });
   assert.deepEqual(f.$or, [{ audience: { $size: 0 } }, { audience: A }]); ok("chat visibility: admins see all, students see public + messages targeted at them");
 
+  // students may post in Community in this section (the default is read-only; see dm.test.mjs)
+  ChatSettings.findOne = () => query(() => ({ studentsCanPost: true }));
+  ChatThread.findOneAndUpdate = async () => ({});
+  ChatThread.find = () => query(() => []);
   // sending a chat message also runs the e-mail notifier, which reads these models
   ChatReadState.find = () => query(() => []);
   ChatReadState.bulkWrite = async () => {};
@@ -170,19 +174,21 @@ const imgFile = (folder, name = "a", format = "png") => ({ url: `https://res.clo
 {
   const db = [];
   ExtraClass.create = async (d) => { const doc = { _id: oid(500 + db.length), ...d, attendance: [], toObject() { return { ...this }; }, async save() { return this; } }; db.push(doc); return doc; };
+  ChatThread.findOneAndUpdate = async () => ({});
   const msgs = []; ChatMessage.create = async (d) => { const doc = { ...d, _id: oid(700 + msgs.length), toObject() { return { ...this }; } }; msgs.push(doc); return doc; };
   classSchedule.find = () => query(() => [{ studentsEnrolled: [A, B] }]);
-  const good = { type: "substitute", title: "Python Basics", date: "2026-11-20", time: "17:30", duration: 1.5, classLink: "https://meet.test/abc", substituteFor: "Mr. Sharma", note: "Bring laptop", classScheduleIds: [oid(7)] };
+  const good = { type: "extra", title: "Python Basics", date: "2026-11-20", time: "17:30", duration: 1.5, classLink: "https://meet.test/abc", substituteFor: "Mr. Sharma", note: "Bring laptop", classScheduleIds: [oid(7)] };
 
   for (const [patch, why] of [[{ title: "" }, "title"], [{ date: "20-11-2026" }, "date"], [{ time: "25:00" }, "time"], [{ classLink: "meet.test" }, "link"], [{ duration: 0 }, "duration"], [{ classScheduleIds: [] }, "no students"]]) {
     const r = res(); await ec.createExtraClass({ userId: ADMIN, body: { ...good, ...patch } }, r); assert.equal(r.code, 400, why);
   } ok("create validation: title, date, time, link, duration and at least one student");
 
   sent.length = 0; let r = res(); await ec.createExtraClass({ userId: ADMIN, body: good }, r);
-  assert.equal(r.code, 201); assert.deepEqual(db[0].studentsEnrolled, [A, B]); assert.equal(db[0].classTime, "17:30"); ok("substitute class created for a whole class (students resolved from the class)");
-  const m = msgs[0]; assert.equal(m.type, "extra_class"); assert.equal(m.senderRole, "system"); assert.deepEqual(m.audience, [A, B]);
-  assert.equal(m.card.kind, "extra_class"); assert.equal(m.card.joinUrl, "https://meet.test/abc"); assert.equal(m.card.classType, "substitute"); assert.equal(m.card.substituteFor, "Mr. Sharma"); assert.equal(m.card.instructorName, "Teacher"); ok("rich chat card pushed to the targeted students only, containing the Join link");
-  assert.equal(db[0].chatMessageId, m._id); assert.equal(sent.length, 3); assert.ok(sent[0].html.includes("Join now") && sent[0].subject.includes("Substitute class")); ok("email sent as well (2 students + instructor) with a Join now button");
+  assert.equal(r.code, 201); assert.deepEqual(db[0].studentsEnrolled, [A, B]); assert.equal(db[0].classTime, "17:30"); ok("extra class created for a whole class (students resolved from the class)");
+  assert.equal(msgs.length, 2); assert.deepEqual(msgs.map((x) => x.room).sort(), [`dm:${A}:${ADMIN}`, `dm:${B}:${ADMIN}`].sort());
+  const m = msgs[0]; assert.equal(m.type, "extra_class"); assert.equal(m.senderRole, "system"); assert.deepEqual(m.audience, []);
+  assert.equal(m.card.kind, "extra_class"); assert.equal(m.card.joinUrl, "https://meet.test/abc"); assert.equal(m.card.classType, "extra"); assert.equal(m.card.substituteFor, "Mr. Sharma"); assert.equal(m.card.instructorName, "Teacher"); ok("rich card goes into each student's PRIVATE chat with the teacher, containing the Join link");
+  assert.equal(db[0].chatMessageId, String(m._id)); assert.equal(sent.length, 3); assert.ok(sent[0].html.includes("Join now") && sent[0].subject.includes("Extra class")); ok("email sent as well (2 students + instructor) with a Join now button");
 
   // attendance
   r = res(); await ec.markExtraAttendance({ params: { id: "x" }, body: { records: [{ studentId: oid(8), status: "Present" }] } }, r); // not found path below

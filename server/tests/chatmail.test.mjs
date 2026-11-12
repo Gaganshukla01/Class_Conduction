@@ -71,14 +71,15 @@ transporter.sendMail = async (m) => { sent.push(m); return {}; };
 
 // ---- members
 {
-  ChatReadState.find = () => query(() => [{ userId: S2, lastSeenAt: new Date() }, { userId: S3, lastSeenAt: minutesAgo(30) }]);
-  let rr = res(); await chat.listMembers({ userId: S1, user: { userType: "student" } }, rr);
-  assert.equal(rr.body.data.length, 5); assert.deepEqual(rr.body.counts, { admins: 2, students: 3, online: 2 }); ok("members = ALL existing accounts (2 teachers + 3 students)");
+  ChatReadState.find = () => query(() => [{ userId: S2, lastSeenAt: new Date() }, { userId: S3, lastSeenAt: minutesAgo(30) }, { userId: T2, lastSeenAt: new Date() }]);
+  let rr = res(); await chat.listMembers({ userId: T1, user: { userType: "admin" } }, rr);
+  assert.equal(rr.body.data.length, 5); assert.deepEqual(rr.body.counts, { admins: 2, students: 3, online: 3 }); ok("teachers see ALL existing accounts (2 teachers + 3 students)");
   assert.equal(rr.body.data[0].role, "admin"); ok("teachers listed first");
   const ravi = rr.body.data.find((m) => m.name === "Ravi"); const meera = rr.body.data.find((m) => m.name === "Meera");
-  assert.equal(ravi.online, true); assert.equal(meera.online, false); assert.equal(rr.body.data.find((m) => m.name === "Asha").online, true); ok("online = seen in the last 90 s (or yourself)");
-  assert.ok(!("email" in rr.body.data[0])); ok("students do NOT receive anyone's email address");
-  rr = res(); await chat.listMembers({ userId: T1, user: { userType: "admin" } }, rr); assert.ok(rr.body.data.every((m) => m.email)); ok("admins do see emails");
+  assert.equal(ravi.online, true); assert.equal(meera.online, false); ok("online = seen in the last 90 s (or yourself)");
+  assert.ok(rr.body.data.every((m) => m.email)); ok("teachers see e-mail addresses");
+  rr = res(); await chat.listMembers({ userId: S1, user: { userType: "student" } }, rr);
+  assert.deepEqual(rr.body.data.map((m) => m.name).sort(), ["Mr Sharma", "Ms Rao"]); assert.ok(rr.body.data.every((m) => m.role === "admin" && !("email" in m))); ok("students only see the teachers (never other students), and no e-mail addresses");
 }
 
 // ---- migration
@@ -91,21 +92,27 @@ transporter.sendMail = async (m) => { sent.push(m); return {}; };
     { _id: "L2", userId: S3, heading: "", chat: "Welcome", createdBy: null, createdAt: new Date("2026-01-06") },
     { _id: "L3", userId: S2, heading: "Old", chat: "Already imported", createdBy: T2, createdAt: new Date("2026-01-07") },
   ]);
-  ChatMessage.find = () => query(() => [{ legacyId: "L3" }]);
+  const { ChatThread } = await imp("model/chatModel.js");
+  const threadWrites = []; ChatThread.findOne = () => query(() => null); ChatThread.updateOne = async (f, u) => { threadWrites.push({ f, u }); };
+  const moved = []; ChatMessage.updateOne = async (f, u) => { moved.push({ f, u }); };
+  ChatMessage.find = () => query(() => [{ legacyId: "L3", room: "community" }]);
   ChatMessage.findOne = () => query(() => null);
   ChatMessage.insertMany = async (rows) => { created.msgs.push(...rows); };
   const welcome = []; ChatMessage.create = async (d) => { welcome.push(d); return d; };
 
   let out = await migrateChat({ dryRun: true });
-  assert.deepEqual([out.users, out.readStatesCreated, out.legacyFound, out.legacyImported, out.welcomePosted], [5, 4, 3, 2, true]);
-  assert.equal(created.states.length + created.msgs.length + welcome.length, 0); ok("dry run reports 5 users, 4 markers to create, 2 of 3 old posts to import - and writes nothing");
+  assert.deepEqual([out.users, out.readStatesCreated, out.legacyFound, out.legacyImported, out.legacyMoved, out.privateChats, out.welcomePosted], [5, 4, 3, 2, 1, 2, true]);
+  assert.equal(created.states.length + created.msgs.length + welcome.length + moved.length + threadWrites.length, 0); ok("dry run reports 5 users, 4 markers, 2 posts to import, 1 to move, 2 private chats - and writes nothing");
   out = await migrateChat();
   assert.deepEqual(created.states.map((s) => s.userId).sort(), [T1, T2, S2, S3].sort()); ok("every EXISTING user without a read marker gets one (unread starts at 0)");
-  assert.equal(created.msgs.length, 2); assert.deepEqual(created.msgs[0].audience, [S2]); assert.equal(created.msgs[0].senderName, "Mr Sharma"); assert.equal(created.msgs[0].text, "Homework\nDo chapter 3"); assert.equal(created.msgs[0].legacyId, "L1"); ok("old Common Area posts imported as TARGETED messages (only that student + admins), author and text kept");
+  assert.equal(created.msgs.length, 2); assert.equal(created.msgs[0].room, `dm:${S2}:${T1}`); assert.deepEqual(created.msgs[0].audience, []); assert.equal(created.msgs[0].senderName, "Mr Sharma"); assert.equal(created.msgs[0].text, "Homework\nDo chapter 3"); assert.equal(created.msgs[0].legacyId, "L1"); ok("a teacher's old post goes into that student's PRIVATE chat with that teacher (author and text kept)");
+  assert.equal(created.msgs[1].room, "community"); assert.deepEqual(created.msgs[1].audience, [S3]); ok("an old post with no known teacher stays targeted at that student in Community");
+  assert.equal(moved.length, 1); assert.equal(moved[0].u.$set.room, `dm:${S2}:${T2}`); ok("a post an earlier run left in Community is MOVED into the private chat");
+  assert.equal(threadWrites.length, 2); assert.ok(threadWrites.every((w) => w.u.$set.lastMessageAt && w.u.$setOnInsert.studentUnread === 0)); ok("conversation-list entries created without fake unread badges");
   assert.equal(created.msgs[1].senderRole, "system"); assert.equal(created.msgs[1].text, "Welcome"); ok("posts without an author become system messages");
   assert.ok(created.msgs.every((m) => m.createdAt instanceof Date)); ok("original dates are passed through");
   assert.equal(welcome.length, 1); assert.equal(welcome[0].legacyId, "welcome-v1"); ok("welcome message posted once");
-  ChatMessage.findOne = () => query(() => ({ _id: "w" })); created.msgs.length = 0; welcome.length = 0; ChatMessage.find = () => query(() => [{ legacyId: "L1" }, { legacyId: "L2" }, { legacyId: "L3" }]); ChatReadState.find = () => query(() => users.map((u) => ({ userId: String(u._id) })));
-  out = await migrateChat(); assert.equal(out.legacyImported, 0); assert.equal(out.readStatesCreated, 0); assert.equal(out.welcomePosted, false); assert.equal(created.msgs.length + welcome.length, 0); ok("running it again changes nothing (idempotent)");
+  ChatMessage.findOne = () => query(() => ({ _id: "w" })); created.msgs.length = 0; welcome.length = 0; ChatMessage.find = () => query(() => [{ legacyId: "L1", room: `dm:${S2}:${T1}` }, { legacyId: "L2", room: "community" }, { legacyId: "L3", room: `dm:${S2}:${T2}` }]); ChatReadState.find = () => query(() => users.map((u) => ({ userId: String(u._id) })));
+  out = await migrateChat(); assert.equal(out.legacyImported, 0); assert.equal(out.legacyMoved, 0); assert.equal(out.readStatesCreated, 0); assert.equal(out.welcomePosted, false); assert.equal(created.msgs.length + welcome.length, 0); ok("running it again changes nothing (idempotent)");
 }
 console.log(`\n${n} chat-email / members / migration checks passed`);

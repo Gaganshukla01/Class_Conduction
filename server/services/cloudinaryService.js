@@ -150,3 +150,8 @@ export const withImageUrls = (file, width = 900) => {
     thumbUrl: plain.url.replace("/upload/", `/upload/w_${width},c_limit,q_auto,f_auto/`),
   };
 };
+
+// Square, face/content-aware avatar thumbnail ("…/upload/…" -> "…/upload/w_160,h_160,c_fill,g_auto,…/…").
+export const avatarThumb = (url, size = 160) =>
+  url ? url.replace("/upload/", `/upload/w_${size},h_${size},c_fill,g_auto,q_auto,f_auto/`) : null;
+export const avatarOf = (user, size) => avatarThumb(user?.avatar?.url, size);

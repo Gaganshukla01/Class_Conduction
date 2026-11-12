@@ -34,7 +34,7 @@ export const requireAdmin = async (req, res, next) => {
   try {
     const user = await userModel
       .findById(req.userId)
-      .select("name email userType");
+      .select("name email userType avatar");
     if (!user || user.userType !== "admin") {
       return res
         .status(403)
@@ -54,7 +54,7 @@ export const loadUser = async (req, res, next) => {
   try {
     const user = await userModel
       .findById(req.userId)
-      .select("name email userType");
+      .select("name email userType avatar");
     if (!user) {
       return res
         .status(401)

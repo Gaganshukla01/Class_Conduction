@@ -12,6 +12,7 @@ import {
   destroyAsset,
   validateUploadedFile,
   withImageUrls,
+  avatarOf,
   ROOT_FOLDER,
 } from "../services/cloudinaryService.js";
 import {
@@ -584,7 +585,7 @@ export const reviewQueue = async (req, res) => {
     ]);
     const [questions, students, folders] = await Promise.all([
       CodeQuestion.find({ _id: { $in: list.map((a) => a.questionId) } }).select("title language difficulty folderId").lean(),
-      userModel.find({ _id: { $in: validObjectIds(list.map((a) => a.studentId)) } }).select("name email").lean(),
+      userModel.find({ _id: { $in: validObjectIds(list.map((a) => a.studentId)) } }).select("name email avatar").lean(),
       QuestionFolder.find().select("name level parentId").lean(),
     ]);
     const qMap = new Map(questions.map((q) => [String(q._id), q]));
@@ -610,7 +611,7 @@ export const reviewQueue = async (req, res) => {
           lastSubmittedAt: last?.submittedAt,
           outputMatches: last?.outputMatches ?? null,
           updatedAt: a.updatedAt,
-          student: uMap.get(a.studentId) || { name: "Unknown student" },
+          student: uMap.get(a.studentId) ? { ...uMap.get(a.studentId), avatar: avatarOf(uMap.get(a.studentId)) } : { name: "Unknown student" },
           question: q ? { _id: q._id, title: q.title, language: q.language, difficulty: q.difficulty, path: pathOf(q.folderId) } : { title: "(deleted question)", path: "" },
         };
       }),

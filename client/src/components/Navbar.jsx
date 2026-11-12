@@ -1,3 +1,4 @@
+import Avatar from "./ui/Avatar";
 import React, { useEffect, useContext, useState } from "react";
 import { assets } from "../assets/assets";
 import { useNavigate } from "react-router-dom";
@@ -190,9 +191,7 @@ function Navbar() {
                         {/* User Info Header */}
                         <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center text-white font-semibold text-sm">
-                              {userData.name[0].toUpperCase()}
-                            </div>
+                            <Avatar name={userData.name} src={userData.avatarUrl} size={40} id={userData.userId} className="rounded-full border border-white/20 shadow-lg" />
                             <div>
                               <p className="font-semibold text-gray-800 text-sm">
                                 {userData.name}
@@ -302,9 +301,7 @@ function Navbar() {
 
                 {/* Desktop User Avatar */}
                 <div className="relative group hidden lg:block">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-sm sm:text-lg cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20">
-                    {userData.name[0].toUpperCase()}
-                  </div>
+                  <Avatar name={userData.name} src={userData.avatarUrl} size={48} id={userData.userId} className="rounded-full border border-white/20 shadow-lg" />
 
                   {/* Desktop Dropdown Menu */}
                   <div className="absolute right-0 top-16 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
@@ -312,9 +309,7 @@ function Navbar() {
                       {/* User Info Header */}
                       <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center text-white font-semibold text-sm">
-                            {userData.name[0].toUpperCase()}
-                          </div>
+                          <Avatar name={userData.name} src={userData.avatarUrl} size={40} id={userData.userId} className="rounded-full border border-white/20 shadow-lg" />
                           <div>
                             <p className="font-semibold text-gray-800 text-sm">
                               {userData.name}

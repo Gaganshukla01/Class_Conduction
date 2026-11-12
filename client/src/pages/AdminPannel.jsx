@@ -50,7 +50,9 @@ import ResourceLibraryAdmin from "../components/ResourceLibraryAdmin";
 import QuestionBankAdmin from "../components/questions/QuestionBankAdmin";
 import ReviewQueueAdmin from "../components/questions/ReviewQueueAdmin";
 import ExtraClassesAdmin from "../components/ExtraClassesAdmin";
-import ChatView from "../components/chat/ChatView";
+import ChatPage from "../components/chat/ChatPage";
+import ProfileFooter from "../components/layout/ProfileFooter";
+import ProfilePhotoModal from "../components/ProfilePhotoModal";
 import useChatUnread from "../hooks/useChatUnread";
 import SidebarShell from "../components/layout/SidebarShell";
 
@@ -63,6 +65,7 @@ export default function AdminDashboard() {
   });
   const { backend_url } = useContext(AppContent);
   const chatUnread = useChatUnread(activeTab === "chat");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // number of coding-question submissions waiting for review (sidebar badge)
   const [toReview, setToReview] = useState(0);
@@ -145,20 +148,15 @@ export default function AdminDashboard() {
       brand="Admin Panel"
       gradient="from-indigo-900 via-purple-800 to-pink-700"
       footer={({ rail }) => (
-        <div className="flex items-center gap-3 px-[7px]">
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center"><User size={18} /></div>
-          <div className={`min-w-0 ${rail ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200" : ""}`}>
-            <p className="text-sm font-semibold truncate">{userData?.name || "Admin"}</p>
-            <p className="text-xs text-gray-400 whitespace-nowrap">Teacher / Admin</p>
-          </div>
-        </div>
+        <ProfileFooter rail={rail} name={userData?.name || "Admin"} userId={userData?.userId} avatarUrl={userData?.avatarUrl} subtitle="Teacher / Admin" onEdit={() => setProfileOpen(true)} />
       )}
     >
       {activeTab === "chat" ? (
-        <div className="h-full p-2 sm:p-4"><ChatView /></div>
+        <div className="h-full p-2 sm:p-4"><ChatPage /></div>
       ) : (
         <div className="p-4 sm:p-6 lg:p-8">{renderContent()}</div>
       )}
+      {profileOpen && <ProfilePhotoModal onClose={() => setProfileOpen(false)} />}
     </SidebarShell>
   );
 }

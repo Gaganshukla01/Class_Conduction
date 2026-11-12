@@ -46,7 +46,10 @@ import { toast } from "react-toastify";
 import StudyMaterials from "../components/student/StudyMaterials";
 import StudentQuestions from "../components/student/StudentQuestions";
 import SidebarShell from "../components/layout/SidebarShell";
-import ChatView from "../components/chat/ChatView";
+import ChatPage from "../components/chat/ChatPage";
+import ProfileFooter from "../components/layout/ProfileFooter";
+import ProfilePhotoModal from "../components/ProfilePhotoModal";
+import Avatar from "../components/ui/Avatar";
 import ExtraClassesStudent from "../components/student/ExtraClassesStudent";
 import useChatUnread from "../hooks/useChatUnread";
 import useScrollLock from "../hooks/useScrollLock";
@@ -121,6 +124,7 @@ export default function StudentDashboard() {
     setQState((cur) => ({ ...cur, items: cur.items.map((a) => (a._id === updated._id ? { ...a, ...updated } : a)) }));
   const questionStats = useMemo(() => computeQuestionStats(qState.items), [qState.items]);
   const chatUnread = useChatUnread(activeTab === "chat");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // One source of truth for attendance numbers (header, attendance, progress)
   const stats = useMemo(
@@ -523,26 +527,21 @@ export default function StudentDashboard() {
       active={activeTab}
       onSelect={setActiveTab}
       footer={({ rail }) => (
-        <div className="flex items-center gap-3 px-[7px]">
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center"><User size={18} /></div>
-          <div className={`min-w-0 ${rail ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200" : ""}`}>
-            <p className="text-sm font-semibold truncate">{userData.name}</p>
-            <p className="text-xs text-gray-400 whitespace-nowrap">{stats.hasData ? `${stats.rate}% attendance` : "Student"}</p>
-          </div>
-        </div>
+        <ProfileFooter rail={rail} name={userData.name} userId={userData.userId} avatarUrl={userData.avatarUrl} subtitle={stats.hasData ? `${stats.rate}% attendance` : "Student"} onEdit={() => setProfileOpen(true)} />
       )}
     >
       {activeTab === "chat" ? (
-        <div className="h-full p-2 sm:p-4"><ChatView /></div>
+        <div className="h-full p-2 sm:p-4"><ChatPage /></div>
       ) : (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20 shadow-2xl mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-2xl flex items-center justify-center">
-                <User size={32} className="text-white" />
-              </div>
+              <button onClick={() => setProfileOpen(true)} className="relative shrink-0 rounded-full group" title="Change profile photo" aria-label="Change profile photo">
+                <Avatar name={userData.name} src={userData.avatarUrl} size={64} id={userData.userId} />
+                <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] font-semibold">Change</span>
+              </button>
               <div>
                 <h1 className="text-2xl font-bold text-white">
                   {userData.name}
@@ -1646,6 +1645,7 @@ export default function StudentDashboard() {
         {activeTab === "upload" && goToUpload()}
       </div>
       )}
+      {profileOpen && <ProfilePhotoModal onClose={() => setProfileOpen(false)} />}
     </SidebarShell>
   );
 }

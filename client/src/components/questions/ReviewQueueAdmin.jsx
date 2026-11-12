@@ -5,6 +5,7 @@ import { CheckCircle2, ClipboardCheck, Clock, Loader2, RotateCcw, Search } from 
 import { AppContent } from "../../context/Context";
 import { DifficultyBadge, LanguageBadge, MatchBadge, Modal, StatusBadge, when } from "./questionKit";
 import ReviewPanel from "./ReviewPanel";
+import Avatar from "../ui/Avatar";
 
 const TABS = [
   ["submitted", "To review", Clock, "text-cyan-300"],
@@ -93,7 +94,8 @@ export default function ReviewQueueAdmin() {
           {list.map((a, i) => (
             <li key={a._id}>
               <button onClick={() => openFrom(list, i)} className="w-full text-left bg-white/10 hover:bg-white/15 border border-white/15 rounded-2xl px-4 py-3 transition flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span className="min-w-0 flex-1 basis-56">
+                <Avatar name={a.student.name} src={a.student.avatar} size={40} />
+                <span className="min-w-0 flex-1 basis-48">
                   <span className="block font-semibold text-white truncate">{a.student.name}</span>
                   <span className="block text-sm text-gray-200 truncate">{a.question.title}</span>
                   <span className="block text-xs text-cyan-300 truncate">{a.question.path}</span>

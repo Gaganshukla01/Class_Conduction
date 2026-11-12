@@ -172,8 +172,8 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[92dvh] flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div className="flex items-center space-x-3">
@@ -279,7 +279,7 @@ const CodeProjectsModal = ({ isOpen, onClose, onSelectProject, userId }) => {
         </div>
 
         {/* Projects List */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="animate-spin text-blue-400" size={32} />

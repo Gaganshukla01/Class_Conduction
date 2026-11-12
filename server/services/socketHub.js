@@ -78,6 +78,14 @@ export async function initSocket(httpServer, origins = []) {
   return io;
 }
 
+// Private (1-to-1) message -> just those users.
+export function emitToUsers(event, payload, userIds = []) {
+  if (!io) return;
+  let target = null;
+  userIds.forEach((id) => { target = (target || io).to(`user:${id}`); });
+  target?.emit(event, payload);
+}
+
 // Public message -> everyone. Targeted message -> the audience + all admins.
 export function emitToAudience(event, payload, audience = []) {
   if (!io) return;

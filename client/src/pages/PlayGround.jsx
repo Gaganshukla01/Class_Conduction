@@ -23,6 +23,7 @@ import { toast } from "react-toastify";
 import { AppContent } from "../context/Context";
 import axios from "axios";
 import CodeProjectsModal from "../components/CodeModal.jsx";
+import useNavOffset from "../hooks/useNavOffset";
 import {
   runJavaScript,
   runPython,
@@ -32,6 +33,7 @@ import {
 } from "../utils/codeRunner";
 const CodeEditor = () => {
   const { userData, backend_url } = useContext(AppContent);
+  useNavOffset(); // the site navbar sits above this page: size the editor to (viewport - navbar)
   const [activeLanguage, setActiveLanguage] = useState("javascript");
   const [codes, setCodes] = useState({
     javascript: "",
@@ -455,6 +457,20 @@ const CodeEditor = () => {
   };
 
   // Handle input change
+  // Quick-insert for the phone symbol bar: puts text at the cursor and keeps the keyboard open.
+  const insertText = (text) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? currentCode.length;
+    const end = el.selectionEnd ?? start;
+    const next = currentCode.slice(0, start) + text + currentCode.slice(end);
+    setCodes((prev) => ({ ...prev, [activeLanguage]: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.selectionStart = el.selectionEnd = start + text.length;
+    });
+  };
+
   const handleInputChange = (e) => {
     const value = e.target.value;
     const cursorPos = e.target.selectionStart;
@@ -1047,23 +1063,24 @@ const CodeEditor = () => {
 
   return (
     <div
-      className={`h-screen flex flex-col ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"} transition-colors duration-300`}
+      className={`flex flex-col min-h-0 overflow-hidden ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"} transition-colors duration-300`}
+      style={{ height: "calc(100dvh - var(--nav-h, 0px))" }}
     >
       {/* Header */}
       <div
-        className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} p-4 flex-shrink-0`}
+        className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} p-2 sm:p-4 flex-shrink-0`}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
               <Code className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               CodeWave Editor
             </h1>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto overflow-x-auto sm:overflow-visible pb-0.5 [scrollbar-width:none] [&>button]:shrink-0">
             {(activeLanguage === "html" || activeLanguage === "css") && (
               <button
                 onClick={openPreviewInNewWindow}
@@ -1071,15 +1088,15 @@ const CodeEditor = () => {
                 title="Open Preview in New Window"
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Preview</span>
+                <span className="hidden md:inline">Preview</span>
               </button>
             )}
             <button
               onClick={handleOpenModal}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 cursor-pointer px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 cursor-pointer px-3 sm:px-4 py-2 rounded-lg transition-colors"
             >
               <FolderOpen size={18} />
-              <span>Open Project</span>
+              <span className="hidden md:inline">Open Project</span>
             </button>
 
             <button
@@ -1109,16 +1126,16 @@ const CodeEditor = () => {
             <button
               onClick={() => setIsSaveModalOpen(true)}
               disabled={isSaving}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 cursor-pointer text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
+              className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 cursor-pointer text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg"
               title="Save Code"
             >
               <Save className="w-4 h-4" />
-              <span>{isSaving ? "Saving..." : "Save"}</span>
+              <span className="hidden md:inline">{isSaving ? "Saving..." : "Save"}</span>
             </button>
 
             <button
               onClick={isRunning ? stopCode : runCode}
-              className={`flex items-center space-x-2 px-4 py-2 bg-gradient-to-r ${
+              className={`flex items-center space-x-2 px-3 sm:px-4 py-2 bg-gradient-to-r ${
                 isRunning
                   ? "from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
                   : "from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
@@ -1132,7 +1149,7 @@ const CodeEditor = () => {
         </div>
 
         {/* Language Tabs */}
-        <div className="flex space-x-1 mt-4 overflow-x-auto ">
+        <div className="flex gap-1 mt-2 sm:mt-4 overflow-x-auto pb-1 [scrollbar-width:none]">
           {Object.entries(languages).map(([key, lang]) => (
             <button
               key={key}
@@ -1143,7 +1160,7 @@ const CodeEditor = () => {
                   setShowPreview(false);
                 }
               }}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg hover:cursor-pointer whitespace-nowrap transition-all ${
+              className={`flex shrink-0 items-center space-x-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:cursor-pointer whitespace-nowrap transition-all ${
                 activeLanguage === key
                   ? `${lang.color} text-white shadow-lg`
                   : `${theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-200 hover:bg-gray-300"}`
@@ -1159,18 +1176,18 @@ const CodeEditor = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
         {/* Code Editor Panel */}
         <div
-          className={`flex-1 flex flex-col ${showOutput ? (isOutputMaximized ? "w-0" : "w-1/2") : "w-full"} transition-all duration-300`}
+          className={`${showOutput && isOutputMaximized ? "hidden" : "flex"} flex-1 min-h-0 min-w-0 flex-col ${showOutput ? "lg:w-1/2" : ""} transition-all duration-300`}
         >
           <div
-            className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}
+            className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between`}
           >
             <div className="flex items-center space-x-2">
               <Terminal className="w-4 h-4" />
               <span className="font-medium">
-                {languages[activeLanguage].name} Editor
+                {languages[activeLanguage].name}<span className="hidden sm:inline"> Editor</span>
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -1207,14 +1224,14 @@ const CodeEditor = () => {
             </div>
           </div>
 
-          <div className="flex-1 relative">
+          <div className="flex-1 min-h-0 relative">
             <textarea
               ref={textareaRef}
               value={currentCode}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              className={`w-full h-full p-4 resize-none outline-none font-mono text-sm leading-relaxed ${
+              className={`w-full h-full p-3 sm:p-4 resize-none outline-none font-mono text-sm leading-relaxed ${
                 theme === "dark"
                   ? "bg-gray-900 text-white"
                   : "bg-gray-50 text-gray-900"
@@ -1233,7 +1250,7 @@ const CodeEditor = () => {
               <div
                 className={`absolute z-50 ${theme === "dark" ? "bg-gray-800" : "bg-white"} border ${
                   theme === "dark" ? "border-gray-600" : "border-gray-300"
-                } rounded-lg shadow-2xl max-w-xs`}
+                } rounded-lg shadow-2xl max-w-[80vw] sm:max-w-xs`}
                 style={{
                   top: suggestionPosition.top,
                   left: suggestionPosition.left,
@@ -1262,15 +1279,34 @@ const CodeEditor = () => {
               </div>
             )}
           </div>
+
+          {/* Phone-only symbol bar: the keys that are hard to reach on a phone keyboard */}
+          <div
+            className={`lg:hidden shrink-0 flex gap-1 overflow-x-auto px-2 py-1.5 border-t [scrollbar-width:none] ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+            aria-label="Code symbols"
+          >
+            {["Tab", "{", "}", "(", ")", "[", "]", "<", ">", "=", ";", ":", '"', "'", "/", "\\", "+", "-", "*", "#", "&", "|", "!", "_", "$"].map((k) => (
+              <button
+                key={k}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
+                onClick={() => insertText(k === "Tab" ? "  " : k)}
+                className={`shrink-0 min-w-[2.5rem] h-9 px-2 rounded-lg font-mono text-sm ${theme === "dark" ? "bg-gray-700 active:bg-gray-600" : "bg-gray-200 active:bg-gray-300"}`}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Output/Preview Panel */}
         {showOutput && (
           <div
-            className={`${isOutputMaximized ? "flex-1" : "w-1/2"} flex flex-col border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} transition-all duration-300`}
+            className={`${isOutputMaximized ? "flex-1" : "h-[42%] shrink-0 lg:h-auto lg:shrink lg:w-1/2"} min-h-0 min-w-0 flex flex-col border-t lg:border-t-0 lg:border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} transition-all duration-300`}
           >
             <div
-              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-4 py-2 flex items-center justify-between`}
+              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between`}
             >
               <div className="flex items-center space-x-2">
                 <Terminal className="w-4 h-4" />
@@ -1297,7 +1333,7 @@ const CodeEditor = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
               {showPreview && PREVIEW_LANGS.includes(activeLanguage) ? (
                 <div className="h-full">
                   <iframe
@@ -1311,7 +1347,7 @@ const CodeEditor = () => {
               ) : (
                 <div className="h-full flex flex-col">
                   <pre
-                    className={`flex-1 w-full p-4 overflow-auto font-mono text-sm ${
+                    className={`flex-1 min-h-0 w-full p-3 sm:p-4 overflow-auto font-mono text-sm ${
                       theme === "dark"
                         ? outputIsError
                           ? "bg-gray-900 text-red-400"
@@ -1371,8 +1407,8 @@ const CodeEditor = () => {
 
       {/* Save File Name Modal */}
       {isSaveModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-md p-4 sm:p-6 max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white flex items-center space-x-2">
                 <Save className="w-5 h-5" />
