@@ -146,7 +146,7 @@ function Navbar() {
                 className="flex items-center  gap-2 bg-white/10 hover:bg-white/20 cursor-pointer backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
               >
                 <Home size={18} />
-                <span>Common Area</span>
+                <span>Chat Room</span>
               </button>
 
               <button
@@ -253,7 +253,7 @@ function Navbar() {
                             </div>
                             <div>
                               <p className="font-medium text-gray-800 text-sm">
-                                Common Area
+                                Chat Room
                               </p>
                               <p className="text-xs text-gray-500">Open Chat</p>
                             </div>

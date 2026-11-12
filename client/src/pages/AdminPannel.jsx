@@ -92,7 +92,7 @@ export default function AdminDashboard() {
     { id: "homeWorkAssign", label: "Home Work", icon: Book },
     { id: "codeQuestions", label: "Code Questions", icon: Code2 },
     { id: "reviewQueue", label: "Submissions to Review", icon: ClipboardCheck, badge: toReview },
-    { id: "chat", label: "Community Chat", icon: MessageSquare, badge: chatUnread },
+    { id: "chat", label: "Chat Section", icon: MessageSquare, badge: chatUnread },
     { id: "classNotes", label: "Class Notes", icon: FileText },
     { id: "resourceLibrary", label: "Resource Library", icon: Library },
     { id: "paymentUpdate", label: "Payment Update", icon: IndianRupeeIcon },
