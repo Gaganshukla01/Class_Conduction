@@ -13,15 +13,20 @@ import { emitToAudience, emitToUsers, onlineCount, isUserOnline } from "../servi
 import { notifyChatMessage } from "../services/notificationService.js";
 import { migrateChat } from "../services/chatMigration.js";
 import { COMMUNITY, parseRoom, checkRoomAccess, touchThread, markThreadRead, validId } from "../services/chatRooms.js";
+import { STAFF_ROLES, isStaffRole } from "../config/roles.js";
+import { studentScope } from "../services/scope.js";
 
-const isAdmin = (req) => req.user?.userType === "admin";
+// only people whose account is approved can be seen / reached in the chat
+const ACTIVE = { accountStatus: { $nin: ["pending", "rejected"] } };
+
+const isAdmin = (req) => isStaffRole(req.user?.userType); // "staff": admin, manager or teacher
 const myId = (req) => String(req.userId);
 
 // ---- who can see what in the COMMUNITY room -----------------------------------
 // Everyone sees public messages (audience = []). Targeted messages are visible to the
 // audience and to every admin only. (Private 1-to-1 chats live in their own rooms.)
 export const visibleTo = (user, room = COMMUNITY) =>
-  user?.userType === "admin"
+  isStaffRole(user?.userType)
     ? { room }
     : { room, $or: [{ audience: { $size: 0 } }, { audience: String(user?._id ?? user?.id) }] };
 
@@ -144,7 +149,7 @@ export const sendMessage = async (req, res) => {
     if (!text && !file) return res.status(400).json({ success: false, message: "Type a message or attach a file." });
 
     const message = await createChatMessage({
-      sender: { id: req.userId, name: req.user.name, role: req.user.userType === "admin" ? "admin" : "student", avatar: avatarOf(req.user) },
+      sender: { id: req.userId, name: req.user.name, role: isStaffRole(req.user.userType) ? req.user.userType : "student", avatar: avatarOf(req.user) },
       room,
       type: file ? "file" : "text",
       text,
@@ -234,12 +239,16 @@ export const listConversations = async (req, res) => {
   try {
     const admin = isAdmin(req);
     const me = myId(req);
-    const peers = await userModel
-      .find(admin ? { userType: { $ne: "admin" } } : { userType: "admin" })
-      .select("name email userType avatar")
-      .lean();
     const threads = await ChatThread.find(admin ? { teacherId: me } : { studentId: me }).lean();
     const threadBy = new Map(threads.map((t) => [admin ? t.studentId : t.teacherId, t]));
+
+    let peerFilter;
+    if (!admin) peerFilter = { userType: { $in: STAFF_ROLES }, ...ACTIVE }; // students: every teacher / manager / admin
+    else {
+      const scope = await studentScope(req.user); // a teacher only gets their own students (+ anyone who already wrote to them)
+      peerFilter = scope === null ? { userType: "student", ...ACTIVE } : { userType: "student", _id: { $in: [...new Set([...scope, ...threads.map((t) => t.studentId)])].filter(validId) }, ...ACTIVE };
+    }
+    const peers = await userModel.find(peerFilter).select("name email userType avatar").lean();
     const seenStates = await ChatReadState.find({ room: COMMUNITY, userId: { $in: peers.map((p) => String(p._id)) } }).select("userId lastSeenAt").lean();
     const seen = new Map(seenStates.map((s) => [s.userId, s.lastSeenAt ? new Date(s.lastSeenAt).getTime() : 0]));
     const now = Date.now();
@@ -254,7 +263,7 @@ export const listConversations = async (req, res) => {
         return {
           type: "dm",
           room: `dm:${studentId}:${teacherId}`,
-          peer: { _id: id, name: p.name, role: admin ? "student" : "admin", avatar: avatarOf(p), ...(admin ? { email: p.email } : {}), online: isUserOnline(id) || now - (seen.get(id) || 0) < 90000 },
+          peer: { _id: id, name: p.name, role: admin ? "student" : p.userType, avatar: avatarOf(p), ...(admin ? { email: p.email } : {}), online: isUserOnline(id) || now - (seen.get(id) || 0) < 90000 },
           lastMessageAt: t?.lastMessageAt || null,
           lastMessagePreview: t?.lastMessagePreview || "",
           lastSenderId: t?.lastSenderId || "",
@@ -310,8 +319,14 @@ export const updateSettings = async (req, res) => {
 export const listMembers = async (req, res) => {
   try {
     const admin = isAdmin(req);
+    let filter = { ...ACTIVE };
+    if (!admin) filter = { userType: { $in: STAFF_ROLES }, ...ACTIVE };
+    else {
+      const scope = await studentScope(req.user); // teachers: other staff + their own students
+      if (scope !== null) filter = { $or: [{ userType: { $in: STAFF_ROLES } }, { _id: { $in: scope.filter(validId) } }], ...ACTIVE };
+    }
     const [users, states] = await Promise.all([
-      userModel.find(admin ? {} : { userType: "admin" }).select("name email userType avatar").sort({ name: 1 }).lean(),
+      userModel.find(filter).select("name email userType avatar").sort({ name: 1 }).lean(),
       ChatReadState.find({ room: COMMUNITY }).select("userId lastSeenAt").lean(),
     ]);
     const seen = new Map(states.map((s) => [s.userId, s.lastSeenAt]));
@@ -323,17 +338,17 @@ export const listMembers = async (req, res) => {
         return {
           _id: id,
           name: u.name,
-          role: u.userType === "admin" ? "admin" : "student",
+          role: isStaffRole(u.userType) ? u.userType : "student",
           avatar: avatarOf(u),
           online: isUserOnline(id) || now - last < 90 * 1000 || id === myId(req),
           ...(admin ? { email: u.email } : {}),
         };
       })
-      .sort((a, b) => (a.role === b.role ? 0 : a.role === "admin" ? -1 : 1) || Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+      .sort((a, b) => (isStaffRole(a.role) === isStaffRole(b.role) ? 0 : isStaffRole(a.role) ? -1 : 1) || Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
     res.status(200).json({
       success: true,
       data,
-      counts: { admins: data.filter((m) => m.role === "admin").length, students: data.filter((m) => m.role === "student").length, online: data.filter((m) => m.online).length },
+      counts: { admins: data.filter((m) => isStaffRole(m.role)).length, students: data.filter((m) => m.role === "student").length, online: data.filter((m) => m.online).length },
     });
   } catch (error) {
     console.error("listMembers:", error);

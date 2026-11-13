@@ -39,7 +39,7 @@ import {
 } from "../utils/noteServices";
 import { AppContent } from "../context/Context";
 import axios from "axios";
-import PaymentTab from "../components/PaymentBoard";
+import PaymentsStudent from "../components/payments/PaymentsStudent";
 import TimezoneConverter from "../components/TimeZone";
 import ProjectShowcase from "./StudentProject";
 import { toast } from "react-toastify";
@@ -511,7 +511,7 @@ export default function StudentDashboard() {
     { id: "notes", label: "My Notes", icon: FileText },
     { id: "resources", label: "Study Materials", icon: Library },
     { id: "questions", label: "Code Questions", icon: Code2, badge: questionStats.todo + questionStats.needsWork },
-    { id: "chat", label: "Chat Section", icon: MessageSquare, badge: chatUnread },
+    { id: "chat", label: "Chat", icon: MessageSquare, badge: chatUnread },
     { id: "classes", label: "Live Classes", icon: BookOpen },
     { id: "attendance", label: "Attendance", icon: Calendar },
     { id: "homework", label: "Homework", icon: Target },
@@ -1640,7 +1640,7 @@ export default function StudentDashboard() {
         {activeTab === "progress" && (
           <ProgressDashboard stats={stats} questionStats={questionStats} assignments={qState.items} />
         )}
-        {activeTab === "payment" && <PaymentTab />}
+        {activeTab === "payment" && <PaymentsStudent />}
         {activeTab === "timezone" && <TimezoneConverter />}
         {activeTab === "upload" && goToUpload()}
       </div>

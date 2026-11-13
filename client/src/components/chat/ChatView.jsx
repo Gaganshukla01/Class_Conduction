@@ -13,6 +13,7 @@ import Avatar from "../ui/Avatar";
 import MembersList from "./MembersList";
 import { Modal } from "../questions/questionKit";
 import ExtraClassCard, { CancelledCard } from "./ExtraClassCard";
+import { CHAT_LABEL, isStaff } from "../../utils/roles";
 
 const dayLabel = (d) => {
   const date = new Date(d); const today = new Date(); const y = new Date(); y.setDate(today.getDate() - 1);
@@ -27,7 +28,9 @@ const time = (d) => new Date(d).toLocaleTimeString("en-IN", { hour: "numeric", m
 export default function ChatView({ room = "community", peer, settings, socket, live, onBack, onRead, onSent, onSettingsChange, onOpenList }) {
   const { userData, backend_url } = useContext(AppContent);
   const me = userData?.userId;
-  const isAdmin = userData?.userType === "admin";
+  const isAdmin = isStaff(userData?.userType); // admin, manager or teacher
+  const canSettings = ['admin', 'manager'].includes(userData?.userType); // the Community rules (the server allows only these two)
+  const canMigrate = userData?.userType === 'admin';
   const isCommunity = room === "community";
   const { messages, loading, hasMore, typing, error, send, remove, loadOlder, sendTyping } = useChat(room, { socket, live, onRead });
   const isDesktop = useMediaQuery("(min-width: 1024px)");
@@ -160,11 +163,11 @@ export default function ChatView({ room = "community", peer, settings, socket, l
           <p className="text-xs text-gray-300 truncate">
             {typingNames.length ? `${typingNames.slice(0, 2).join(", ")} ${typingNames.length > 1 ? "are" : "is"} typing…`
               : isCommunity ? (settings?.studentsCanPost ? "Announcements & discussion" : "Announcements from your teachers")
-              : peer?.role === "admin" ? `Teacher · ${peer?.online ? "online" : "offline"}` : `Student · ${peer?.online ? "online" : "offline"}`}
+              : isStaff(peer?.role) ? `${CHAT_LABEL[peer?.role] || "Teacher"} · ${peer?.online ? "online" : "offline"}` : `Student · ${peer?.online ? "online" : "offline"}`}
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-300 shrink-0">
-          {isCommunity && isAdmin && (
+          {isCommunity && canSettings && (
             <button onClick={toggleStudentsPost} className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${settings?.studentsCanPost ? "bg-emerald-500/25 text-emerald-200" : "bg-white/10 hover:bg-white/20"}`} title="Allow students to post in Community">
               <span className={`w-7 h-4 rounded-full relative transition ${settings?.studentsCanPost ? "bg-emerald-400" : "bg-gray-500"}`}><span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${settings?.studentsCanPost ? "left-3.5" : "left-0.5"}`} /></span>
               Students can post
@@ -197,7 +200,7 @@ export default function ChatView({ room = "community", peer, settings, socket, l
                 <div className="text-center py-16 text-gray-300">
                   {isCommunity ? <Users className="mx-auto mb-3 text-gray-500" size={40} /> : <Avatar name={peer?.name} src={peer?.avatar} size={64} className="mb-3" id={peer?._id} />}
                   <p className="font-medium text-white">{isCommunity ? "No announcements yet" : `Start a conversation with ${peer?.name || "them"}`}</p>
-                  {!isCommunity && <p className="text-sm">Only you and {peer?.role === "admin" ? "this teacher" : "this student"} can see this chat.</p>}
+                  {!isCommunity && <p className="text-sm">Only you and {isStaff(peer?.role) ? "this teacher" : "this student"} can see this chat.</p>}
                 </div>
               )}
               {rows.map((row) => row.kind === "day" ? (
@@ -243,13 +246,13 @@ export default function ChatView({ room = "community", peer, settings, socket, l
         </div>
         {showMembers && isDesktop && isCommunity && (
           <aside className="w-72 shrink-0 border-l border-white/10 bg-slate-900/40 min-h-0">
-            <MembersList members={members} me={me} isAdmin={isAdmin} backend_url={backend_url} onMigrated={() => loadMembers()} />
+            <MembersList members={members} me={me} isAdmin={canMigrate} backend_url={backend_url} onMigrated={() => loadMembers()} />
           </aside>
         )}
       </div>
       {showMembers && !isDesktop && isCommunity && (
         <Modal title="Members" onClose={() => setShowMembers(false)}>
-          <div className="h-[60dvh] -m-4 sm:-m-5"><MembersList members={members} me={me} isAdmin={isAdmin} backend_url={backend_url} onMigrated={() => { loadMembers(); setShowMembers(false); }} /></div>
+          <div className="h-[60dvh] -m-4 sm:-m-5"><MembersList members={members} me={me} isAdmin={canMigrate} backend_url={backend_url} onMigrated={() => { loadMembers(); setShowMembers(false); }} /></div>
         </Modal>
       )}
 
@@ -284,7 +287,7 @@ export function Message({ m, compact, mine, canDelete, onDelete, onPdf, onZoom, 
     );
   }
 
-  const staff = m.senderRole === "admin";
+  const staff = isStaff(m.senderRole);
   return (
     <div className={`group flex gap-2 ${mine ? "flex-row-reverse" : ""} ${compact ? "mt-0.5" : "mt-3"}`}>
       <div className="w-8 shrink-0">
@@ -294,7 +297,7 @@ export function Message({ m, compact, mine, canDelete, onDelete, onPdf, onZoom, 
         {!compact && !mine && showName && (
           <div className="flex items-center gap-2 mb-0.5 px-1">
             <span className="text-xs font-semibold text-gray-200">{m.senderName}</span>
-            {staff && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-semibold">Teacher</span>}
+            {staff && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-semibold">{CHAT_LABEL[m.senderRole] || "Teacher"}</span>}
           </div>
         )}
         <div className="relative flex items-center gap-1.5">

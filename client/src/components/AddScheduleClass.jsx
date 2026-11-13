@@ -30,7 +30,7 @@ export default function AddClassSchedule() {
     if (allUserData && allUserData.data) {
       // Filter instructors (userType: "admin")
       const instructorList = allUserData.data
-        .filter((user) => user.userType === "admin")
+        .filter((user) => user.userType === "admin" || user.userType === "teacher")
         .map((user) => ({
           id: user._id,
           name: user.name,

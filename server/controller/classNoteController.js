@@ -10,7 +10,10 @@ import {
 import { notifyClassNoteUploaded, summaryText } from "../services/notificationService.js";
 import { classStart } from "../utils/time.js";
 
-const isAdmin = (req) => req.user?.userType === "admin";
+import { isStaffRole } from "../config/roles.js";
+import { teachesClass } from "../services/scope.js";
+
+const isStaff = (req) => isStaffRole(req.user?.userType);
 
 // "Class No. N" = position of this session among all sessions of the same
 // class (same name AND same set of students), ordered by real start time.
@@ -30,7 +33,11 @@ async function sessionNumber(cls) {
 
 export const listClassNotes = async (req, res) => {
   try {
-    const filter = isAdmin(req) ? {} : { studentsEnrolled: String(req.userId) };
+    // students: notes of their classes. teachers: notes they uploaded. admin / manager: all.
+    const filter =
+      !isStaff(req) ? { studentsEnrolled: String(req.userId) }
+      : req.user.userType === "teacher" ? { uploadedBy: String(req.userId) }
+      : {};
     if (req.query.classScheduleId) filter.classScheduleId = String(req.query.classScheduleId);
     const notes = await ClassNote.find(filter)
       .sort({ className: 1, classNumber: 1, createdAt: -1 })
@@ -54,6 +61,7 @@ export const createClassNote = async (req, res) => {
 
     const cls = await classSchedule.findById(classScheduleId).lean();
     if (!cls) return res.status(404).json({ success: false, message: "Class not found." });
+    if (!teachesClass(req.user, cls)) return res.status(403).json({ success: false, message: "You can only add notes to classes you teach." });
 
     const validFile = validateUploadedFile(file, `${ROOT_FOLDER}/class-notes`);
     const classNumber = await sessionNumber(cls);
@@ -117,7 +125,7 @@ export const trackClassNoteDownload = async (req, res) => {
   try {
     const note = await ClassNote.findById(req.params.id);
     if (!note) return res.status(404).json({ success: false, message: "Note not found." });
-    if (!isAdmin(req) && !note.studentsEnrolled.includes(String(req.userId))) {
+    if (!isStaff(req) && !note.studentsEnrolled.includes(String(req.userId))) {
       return res.status(403).json({ success: false, message: "You are not enrolled in this class." });
     }
     note.downloads += 1;

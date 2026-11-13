@@ -8,6 +8,7 @@ import {
   verifyEmail,
   isAuthenticated,
   resetPasswordOtp,
+  verifyResetOtp,
   resetPassword,
   googleAuth,
 } from "../controller/authController.js";
@@ -19,6 +20,7 @@ authRoute.post("/logout", logout);
 authRoute.post("/googleauth", googleAuth);
 authRoute.post("/register", register);
 authRoute.post("/resetotp", resetPasswordOtp);
+authRoute.post("/verifyresetotp", verifyResetOtp);
 authRoute.post("/resetpassword", resetPassword);
 authRoute.post("/verifyemail", userAuth, verifyEmail);
 authRoute.post("/sendverifyOtp", userAuth, sendVerifyOtp);

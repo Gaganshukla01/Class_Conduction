@@ -1,123 +1,76 @@
-import React, { useContext, useEffect } from "react";
-import { assets } from "../assets/assets";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppContent } from "../context/Context";
-import { toast } from "react-toastify";
 import axios from "axios";
+import { toast } from "react-toastify";
+import { MailCheck } from "lucide-react";
+import { AppContent } from "../context/Context";
+import AuthShell from "../components/auth/AuthShell";
+import OtpInput from "../components/auth/OtpInput";
+import { PrimaryButton, authCard } from "../components/auth/authKit";
+import { dashboardPath, isApproved } from "../utils/roles";
 
-function EmailVerify() {
+const ok = (d) => d?.sucess ?? d?.success;
+
+// Verify your e-mail with the 6-digit code that was just sent.
+export default function EmailVerify() {
   axios.defaults.withCredentials = true;
-  const inputRefs = React.useRef([]);
+  const { backend_url, userData, isLoggedIn, getUserData } = useContext(AppContent);
   const navigate = useNavigate();
+  const [otp, setOtp] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(60); // the code was just sent from the menu
+  const lock = useRef(false);
 
-  const { getUserData, backend_url, userData, isLoggedIn, setIsLoggedin } =
-    useContext(AppContent);
+  const home = () => navigate(userData && isApproved(userData) ? dashboardPath(userData.userType) : userData ? "/pending" : "/", { replace: true });
 
-  const handleInput = (e, index) => {
-    if (e.target.value.length > 0 && index < inputRefs.current.length - 1) {
-      inputRefs.current[index + 1].focus();
-    }
+  // already verified -> nothing to do here
+  useEffect(() => { if (isLoggedIn && userData?.isAccountVerifed) home(); }, [isLoggedIn, userData]); // eslint-disable-line
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const id = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
+
+  const run = async (fn) => {
+    if (lock.current) return;
+    lock.current = true; setLoading(true);
+    try { await fn(); } catch (e) { toast.error(e.response?.data?.message || e.message); } finally { lock.current = false; setLoading(false); }
   };
 
-  const handleKeyDown = (e, index) => {
-    if (e.key == "Backspace" && e.target.value === "" && index > 0) {
-      inputRefs.current[index - 1].focus();
-    }
-  };
-
-  const handlePaste = (e) => {
-    const paste = e.clipboardData.getData("text");
-    const pasteArray = paste.split("");
-    pasteArray.forEach((char, index) => {
-      if (inputRefs.current[index]) {
-        inputRefs.current[index].value = char;
-      }
+  const verify = (e, code = otp) => {
+    e?.preventDefault();
+    if (code.length !== 6) return toast.error("Enter all 6 digits");
+    return run(async () => {
+      const { data } = await axios.post(backend_url + "/api/auth/verifyemail", { otp: code });
+      if (ok(data)) { toast.success("E-mail verified!"); await getUserData(); home(); }
+      else { toast.error(data.message || "That code is not right"); setOtp(""); }
     });
   };
 
-  const verifyEmail = async (e) => {
-    try {
-      e.preventDefault();
-      const otpArray = inputRefs.current.map((e) => e.value);
-      const otp = otpArray.join("");
-      const { data } = await axios.post(backend_url + "/api/auth/verifyemail", {
-        otp,
-      });
-
-      if (data) {
-        toast.success(data.message);
-        getUserData();
-        navigate("/");
-      }
-    } catch (error) {
-      toast.error(error.message);
-    }
-  };
-
-  // if user is verified so make sure user unable to go on verify page
-  useEffect(() => {
-    isLoggedIn && userData && userData.isAccountVerified && navigate("/");
-  }, [isLoggedIn, userData]);
+  const resend = () => run(async () => {
+    const { data } = await axios.post(backend_url + "/api/auth/sendverifyOtp");
+    if (!ok(data)) return toast.error(data.message);
+    if (data.alreadyVerified) { await getUserData(); return home(); }
+    setCooldown(data.retryAfter || 60);
+    toast[data.alreadySent ? "info" : "success"](data.alreadySent ? "A code was already sent. Check your inbox (and Spam)." : "A new code was sent");
+  });
 
   return (
-    <div
-      className="flex flex-col items-center justify-center min-h-screen px-6 sm:px-0 
-    bg-gradient-to-br from-blue-200 to bg-purple-400"
-    >
-      <img
-        src={assets.logo}
-        alt=""
-        className="absolute left-5  
-              sm:left-20 top-5 w-28 sm:w-32 cursor:pointer"
-        onClick={() => navigate("/")}
-      />
-
-      <div
-        className="bg-slate-900 p-10 rounded-lg shadow-lg w-full 
-        sm:w-115  text-indigo-300 text-sm"
-      >
-        <h2
-          className="
-            text-3xl font-semibold text-white  text-center mb-3 
-            "
-        >
-          Verify Your Email
-        </h2>
-        <p className=" text-center text-sm mb-6">Enter 6 Digit Otp</p>
-
-        <form
-          className="bg-slate-900 p-8 rounded-lg shadow-lg text-sm "
-          onSubmit={verifyEmail}
-        >
-          <div className="flex justify-between mb-8" onPaste={handlePaste}>
-            {Array(6)
-              .fill(0)
-              .map((_, index) => (
-                <input
-                  type="text"
-                  key={index}
-                  maxLength="1"
-                  required
-                  className="w-12 h-12 bg-[#333A5C] text-white 
-                  text-center text-xl rounded-md m-1"
-                  ref={(e) => (inputRefs.current[index] = e)}
-                  onInput={(e) => handleInput(e, index)}
-                  onKeyDown={(e) => handleKeyDown(e, index)}
-                />
-              ))}
-          </div>
-
-          <button
-            className="w-full py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-900
-          text-white font-medium cursor-pointer"
-            type="submit"
-          >
-            Verify Email
-          </button>
+    <AuthShell>
+      <div className={authCard}>
+        <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-600 flex items-center justify-center"><MailCheck size={28} /></div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-center">Verify your e-mail</h2>
+        <p className="text-center text-sm text-gray-300 mt-1 mb-6">Enter the 6-digit code we sent{userData?.email ? <> to <strong className="text-white break-all">{userData.email}</strong></> : " to your e-mail"}.</p>
+        <form onSubmit={verify} className="space-y-5">
+          <OtpInput value={otp} onChange={setOtp} onComplete={(code) => verify(null, code)} disabled={loading} />
+          <PrimaryButton type="submit" loading={loading} disabled={otp.length !== 6}>{loading ? "Checking..." : "Verify e-mail"}</PrimaryButton>
         </form>
+        <p className="text-center text-sm text-gray-300 mt-5">
+          Did not get it?{" "}
+          {cooldown > 0 ? <span className="text-gray-400">Resend in {cooldown}s</span> : <button type="button" onClick={resend} disabled={loading} className="font-semibold text-indigo-300 hover:text-white hover:underline disabled:opacity-50">Send a new code</button>}
+        </p>
+        <button type="button" onClick={home} className="block mx-auto mt-4 text-xs text-gray-400 hover:text-white hover:underline">Skip for now</button>
       </div>
-    </div>
+    </AuthShell>
   );
 }
-
-export default EmailVerify;

@@ -21,6 +21,7 @@ const classScheduleSchema = new mongoose.Schema(
     seriesId: { type: String, index: true },
     originalDate: { type: String },
     paymentUpdatedAt: { type: Date },
+    paymentId: { type: String, index: true }, // the receipt (Payment) that paid this class
     attendanceMarkedAt: { type: Date },
     reminderSentAt: { type: Date },
 

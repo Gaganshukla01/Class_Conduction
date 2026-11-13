@@ -19,7 +19,7 @@ export default function ResourceLibraryAdmin() {
   const { backend_url } = useContext(AppContent);
   const [folders, setFolders] = useState([]);
   const [files, setFiles] = useState([]);
-  const [active, setActive] = useState(null); 
+  const [active, setActive] = useState(null); // folder id
   const [loading, setLoading] = useState(true);
   const [newFolder, setNewFolder] = useState({ name: "", color: "indigo", description: "" });
   const [showNew, setShowNew] = useState(false);
@@ -28,7 +28,7 @@ export default function ResourceLibraryAdmin() {
   const [progress, setProgress] = useState(null);
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState(null);
-  const [mode, setMode] = useState("single"); 
+  const [mode, setMode] = useState("single"); // "single" PDF or "bulk" (a whole folder)
 
   const folder = useMemo(() => folders.find((f) => f._id === active), [folders, active]);
 

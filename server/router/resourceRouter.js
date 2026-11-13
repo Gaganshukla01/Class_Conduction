@@ -1,5 +1,5 @@
 import express from "express";
-import { adminOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
+import { staffOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
 import {
   listFolders,
   createFolder,
@@ -16,13 +16,13 @@ export const resourceRouter = express.Router();
 
 // Folders
 resourceRouter.get("/folders", anyUser, listFolders);
-resourceRouter.post("/folders", adminOnly, createFolder);
-resourceRouter.put("/folders/:id", adminOnly, updateFolder);
-resourceRouter.delete("/folders/:id", adminOnly, deleteFolder);
+resourceRouter.post("/folders", staffOnly, createFolder);
+resourceRouter.put("/folders/:id", staffOnly, updateFolder);
+resourceRouter.delete("/folders/:id", staffOnly, deleteFolder);
 
 // Files
 resourceRouter.get("/", anyUser, listResources);
-resourceRouter.post("/", adminOnly, createResource);
+resourceRouter.post("/", staffOnly, createResource);
 resourceRouter.post("/:id/download", anyUser, trackResourceDownload);
-resourceRouter.put("/:id", adminOnly, updateResource);
-resourceRouter.delete("/:id", adminOnly, deleteResource);
+resourceRouter.put("/:id", staffOnly, updateResource);
+resourceRouter.delete("/:id", staffOnly, deleteResource);

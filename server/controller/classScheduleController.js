@@ -1,5 +1,8 @@
 import classSchedule from "../model/classesScheduleDetails.js";
 import ExtraClass from "../model/extraClassModel.js";
+import userModel from "../model/userModel.js";
+import { isTeachingRole } from "../config/roles.js";
+import { classFilterFor, teachesClass } from "../services/scope.js";
 import mongoose from "mongoose";
 import {
   notifyClassScheduled,
@@ -37,6 +40,14 @@ export const classCreate = async (req, res) => {
         message:
           "Missing required fields: className, instructorId, classLink, classDuration, classRate, and weeklySchedule are required",
       });
+    }
+
+    // the instructor must be somebody who can teach (a teacher or an admin)
+    const instructor = mongoose.Types.ObjectId.isValid(instructorId)
+      ? await userModel.findById(instructorId).select("userType").lean()
+      : null;
+    if (!instructor || !isTeachingRole(instructor.userType)) {
+      return res.status(400).json({ success: false, message: "Choose a teacher (or an admin) as the instructor." });
     }
 
     const validSlots = weeklySchedule.filter((s) => s && s.date && s.time);
@@ -125,10 +136,11 @@ export const classCreate = async (req, res) => {
 // (previously every student could read every other student's schedule).
 export const getAllClasses = async (req, res) => {
   try {
+    // students: their own classes. teachers: only classes they teach. admin / manager: everything.
     const filter =
-      req.user?.userType === "admin"
-        ? {}
-        : { studentsEnrolled: String(req.userId) };
+      req.user?.userType === "student"
+        ? { studentsEnrolled: String(req.userId) }
+        : classFilterFor(req.user);
 
     const allClasses = await classSchedule
       .find(filter)
@@ -186,11 +198,15 @@ export const markAttendance = async (req, res) => {
       });
     }
 
-    const previous = await classSchedule.findById(id).select("attendance attendanceMarkedAt").lean();
+    const previous = await classSchedule.findById(id).select("attendance attendanceMarkedAt instructorId").lean();
     if (!previous) {
       return res
         .status(404)
         .json({ success: false, message: "Class schedule not found" });
+    }
+    // a teacher can only mark attendance for classes they teach
+    if (!teachesClass(req.user, previous)) {
+      return res.status(403).json({ success: false, message: "You can only mark attendance for your own classes." });
     }
 
     const updatedClass = await classSchedule.findByIdAndUpdate(id, updateFields, {
@@ -259,7 +275,7 @@ export const updatePaymentStatus = async (req, res) => {
 
     const updatedClass = await classSchedule.findByIdAndUpdate(
       id,
-      { paid, paymentUpdatedAt: new Date() },
+      { paid, paymentUpdatedAt: new Date(), ...(paid ? {} : { paymentId: null }) },
       { new: true, runValidators: true }
     );
 
@@ -324,7 +340,7 @@ export const updateBatchPaymentStatus = async (req, res) => {
 
     const updateResult = await classSchedule.updateMany(
       { _id: { $in: classIds } },
-      { paid, paymentUpdatedAt: new Date() }
+      { paid, paymentUpdatedAt: new Date(), ...(paid ? {} : { paymentId: null }) }
     );
 
     if (updateResult.matchedCount === 0) {
