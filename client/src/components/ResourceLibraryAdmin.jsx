@@ -6,6 +6,7 @@ import { AppContent } from "../context/Context";
 import { uploadPdf, formatBytes } from "../utils/uploadPdf";
 import PdfUploadField from "./PdfUploadField";
 import PdfViewerModal from "./PdfViewerModal";
+import ResourceBulkUpload from "./ResourceBulkUpload";
 
 export const FOLDER_COLORS = {
   indigo: "from-indigo-500 to-blue-600", violet: "from-violet-500 to-fuchsia-600", blue: "from-sky-500 to-blue-600",
@@ -18,7 +19,7 @@ export default function ResourceLibraryAdmin() {
   const { backend_url } = useContext(AppContent);
   const [folders, setFolders] = useState([]);
   const [files, setFiles] = useState([]);
-  const [active, setActive] = useState(null); // folder id
+  const [active, setActive] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [newFolder, setNewFolder] = useState({ name: "", color: "indigo", description: "" });
   const [showNew, setShowNew] = useState(false);
@@ -27,6 +28,7 @@ export default function ResourceLibraryAdmin() {
   const [progress, setProgress] = useState(null);
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState(null);
+  const [mode, setMode] = useState("single"); 
 
   const folder = useMemo(() => folders.find((f) => f._id === active), [folders, active]);
 
@@ -160,6 +162,25 @@ export default function ResourceLibraryAdmin() {
           </div>
 
           <div className="space-y-4">
+            <div className="flex gap-2">
+              {[["single", "Upload one PDF"], ["bulk", "Bulk upload (a whole folder)"]].map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setMode(id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition ${mode === id ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white" : "bg-white/10 text-gray-300 hover:bg-white/20"}`}>{label}</button>
+              ))}
+            </div>
+
+            {mode === "bulk" && folder && (
+              <ResourceBulkUpload
+                key={folder._id}
+                folder={folder}
+                existingTitles={files.map((f) => f.title)}
+                onDone={(n) => {
+                  loadFiles(folder._id);
+                  setFolders((fs) => fs.map((f) => (f._id === folder._id ? { ...f, resourceCount: f.resourceCount + n } : f)));
+                }}
+              />
+            )}
+
+            {mode === "single" && (
             <form onSubmit={upload} className="bg-white/10 border border-white/20 rounded-2xl p-4 grid gap-3 md:grid-cols-2">
               <p className="md:col-span-2 text-sm text-gray-300">Upload to <strong className="text-white">{folder?.name}</strong></p>
               <input className={input} placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} disabled={busy} />
@@ -172,6 +193,7 @@ export default function ResourceLibraryAdmin() {
                 </button>
               </div>
             </form>
+            )}
 
             {files.length === 0 ? (
               <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center text-gray-300">This folder is empty.</div>
