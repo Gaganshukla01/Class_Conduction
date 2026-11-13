@@ -29,7 +29,7 @@ export default function ExtraClassesAdmin() {
 
   const users = allUserData?.data || [];
   const students = useMemo(() => users.filter((u) => u.userType === "student"), [users]);
-  const admins = useMemo(() => users.filter((u) => u.userType === "admin"), [users]);
+  const admins = useMemo(() => users.filter((u) => u.userType === "admin" || u.userType === "teacher"), [users]);
   const batches = useMemo(() => buildBatches(allSchedule), [allSchedule]);
   const classNames = useMemo(() => [...new Set((Array.isArray(allSchedule) ? allSchedule : []).map((c) => c.className))], [allSchedule]);
 
@@ -113,7 +113,7 @@ export default function ExtraClassesAdmin() {
         </div>
       )}
 
-      {creating && <CreateForm backend_url={backend_url} students={students} admins={admins} batches={batches} classNames={classNames} meId={userData?.userId} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); reload(); }} />}
+      {creating && <CreateForm backend_url={backend_url} students={students} admins={admins} batches={batches} classNames={classNames} meId={userData?.userId} isTeacher={userData?.userType === "teacher"} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); reload(); }} />}
       {attending && <AttendanceModal backend_url={backend_url} extra={attending} onClose={() => setAttending(null)} onSaved={() => { setAttending(null); load(); }} />}
       {classAttendance && <ClassAttendanceModal backend_url={backend_url} extra={classAttendance} onClose={() => setClassAttendance(null)} onSaved={() => { setClassAttendance(null); reload(); }} />}
       {rescheduling && <RescheduleModal backend_url={backend_url} extra={rescheduling} onClose={() => setRescheduling(null)} onSaved={() => { setRescheduling(null); reload(); }} />}
@@ -121,7 +121,7 @@ export default function ExtraClassesAdmin() {
   );
 }
 
-function CreateForm({ backend_url, students, admins, batches, classNames, meId, onClose, onSaved, initialType = "extra" }) {
+function CreateForm({ backend_url, students, admins, batches, classNames, meId, onClose, onSaved, initialType = "extra", isTeacher = false }) {
   const [f, setF] = useState({ type: initialType, title: "", topic: "", date: today(), time: "17:00", duration: "1", classLink: "", instructorId: meId || "", substituteFor: "", note: "" });
   const [picked, setPicked] = useState(new Set());
   const [busy, setBusy] = useState(false);
@@ -219,7 +219,9 @@ function CreateForm({ backend_url, students, admins, batches, classNames, meId, 
         <div className="md:col-span-2"><label className={label}>{sub ? "New join link (Meet / Zoom / Teams)" : "Join link (Meet / Zoom / Teams)"}</label><input className={field} value={f.classLink} onChange={set("classLink")} placeholder="https://meet.google.com/…" /></div>
         <div>
           <label className={label}>{sub ? "Teacher taking the substitute class" : "Instructor"}</label>
-          <select className={field} value={f.instructorId} onChange={set("instructorId")}>{admins.map((a) => <option key={a._id} value={a._id} className="text-black">{a.name}</option>)}</select>
+          {isTeacher
+            ? <input className={`${field} opacity-80`} value="You" disabled readOnly />
+            : <select className={field} value={f.instructorId} onChange={set("instructorId")}>{admins.map((a) => <option key={a._id} value={a._id} className="text-black">{a.name} ({a.userType === "admin" ? "Admin" : "Teacher"})</option>)}</select>}
         </div>
         {sub && <div><label className={label}>Original teacher (optional)</label><input className={field} value={f.substituteFor} onChange={set("substituteFor")} placeholder="Who is being substituted" maxLength={120} /></div>}
         <div className="md:col-span-2"><label className={label}>Note for students (optional)</label><textarea rows={2} className={field} value={f.note} onChange={set("note")} maxLength={1000} placeholder="Anything they should prepare or know" /></div>

@@ -8,8 +8,15 @@ import {
 } from "../services/notificationService.js";
 import { validateUploadedFile, ROOT_FOLDER } from "../services/cloudinaryService.js";
 
-const isAdmin = (req) => req.user?.userType === "admin";
-const canAccess = (req, hw) => isAdmin(req) || String(hw.studentId) === String(req.userId);
+import { isStaffRole } from "../config/roles.js";
+import { studentScope, inScope } from "../services/scope.js";
+
+const isStaff = (req) => isStaffRole(req.user?.userType);
+// Staff may open a homework only if the student is theirs (admins/managers: everyone's).
+const canAccess = async (req, hw) => {
+  if (isStaff(req)) return inScope(await studentScope(req.user), hw.studentId);
+  return String(hw.studentId) === String(req.userId);
+};
 
 // Never let the client overwrite server-controlled fields through the generic
 // update endpoint.
@@ -26,7 +33,11 @@ const ADMIN_EDITABLE = [
 
 export const getAllHomework = async (req, res) => {
   try {
-    const homework = await homeworkModel.find().sort({ createdAt: -1 }).lean();
+    const scope = await studentScope(req.user); // null for admin / manager
+    const homework = await homeworkModel
+      .find(scope === null ? {} : { studentId: { $in: scope } })
+      .sort({ createdAt: -1 })
+      .lean();
     res.status(200).json(homework);
   } catch (error) {
     res.status(500).json({ message: "Error fetching homework", error: error.message });
@@ -40,7 +51,7 @@ export const getHomeworkById = async (req, res) => {
     }
     const homework = await homeworkModel.findById(req.params.id).lean();
     if (!homework) return res.status(404).json({ message: "Homework not found" });
-    if (!canAccess(req, homework)) return res.status(403).json({ message: "Not allowed" });
+    if (!(await canAccess(req, homework))) return res.status(403).json({ message: "Not allowed" });
     res.status(200).json(homework);
   } catch (error) {
     res.status(500).json({ message: "Error fetching homework", error: error.message });
@@ -49,7 +60,9 @@ export const getHomeworkById = async (req, res) => {
 
 export const getHomeworkByStudentId = async (req, res) => {
   try {
-    if (!isAdmin(req) && String(req.params.studentId) !== String(req.userId)) {
+    if (isStaff(req)) {
+      if (!inScope(await studentScope(req.user), req.params.studentId)) return res.status(403).json({ message: "Not allowed" });
+    } else if (String(req.params.studentId) !== String(req.userId)) {
       return res.status(403).json({ message: "Not allowed" });
     }
     // An empty list is a valid answer; it used to be a 404, which showed up as
@@ -81,6 +94,9 @@ export const createHomework = async (req, res) => {
   } = req.body;
 
   try {
+    if (!inScope(await studentScope(req.user), studentId)) {
+      return res.status(403).json({ success: false, message: "You can only assign homework to your own students." });
+    }
     const newHomework = new homeworkModel({
       studentId,
       studentName,
@@ -123,6 +139,9 @@ export const updateHomework = async (req, res) => {
     const previous = await homeworkModel.findById(req.params.id).lean();
     if (!previous) {
       return res.status(404).json({ success: false, message: "Homework not found" });
+    }
+    if (!(await canAccess(req, previous))) {
+      return res.status(403).json({ success: false, message: "This homework belongs to a student who is not yours." });
     }
 
     const becameCompleted =
@@ -209,8 +228,10 @@ export const submitHomework = async (req, res) => {
 
 export const deleteHomework = async (req, res) => {
   try {
-    const deletedHomework = await homeworkModel.findByIdAndDelete(req.params.id);
-    if (!deletedHomework) return res.status(404).json({ message: "Homework not found" });
+    const existing = await homeworkModel.findById(req.params.id).lean();
+    if (!existing) return res.status(404).json({ message: "Homework not found" });
+    if (!(await canAccess(req, existing))) return res.status(403).json({ message: "Not allowed" });
+    await homeworkModel.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Homework deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting homework", error: error.message });

@@ -19,7 +19,7 @@ const chatMessageSchema = new mongoose.Schema(
     room: { type: String, default: "community", index: true },
     senderId: { type: String, required: true },
     senderName: { type: String, required: true },
-    senderRole: { type: String, enum: ["admin", "student", "system"], required: true },
+    senderRole: { type: String, enum: ["admin", "teacher", "manager", "student", "system"], required: true },
     type: { type: String, enum: ["text", "file", "extra_class", "system"], default: "text" },
     text: { type: String, default: "", maxlength: 4000 },
     file: { type: fileSchema, default: undefined },

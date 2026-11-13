@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import userModel from "../model/userModel.js";
+import { isApproved, isStaffRole } from "../config/roles.js";
 
 // Real-time push for the community chat (Socket.io).
 //
@@ -44,8 +45,8 @@ export async function initSocket(httpServer, origins = []) {
       const { token } = parseCookies(socket.handshake.headers.cookie);
       if (!token) return next(new Error("unauthorized"));
       const { id } = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await userModel.findById(id).select("name userType").lean();
-      if (!user) return next(new Error("unauthorized"));
+      const user = await userModel.findById(id).select("name userType accountStatus").lean();
+      if (!user || !isApproved(user)) return next(new Error("unauthorized"));
       socket.data.user = { id: String(user._id), name: user.name, role: user.userType };
       next();
     } catch {
@@ -57,7 +58,7 @@ export async function initSocket(httpServer, origins = []) {
     const { id, name, role } = socket.data.user;
     socket.join("community");
     socket.join(`user:${id}`);
-    if (role === "admin") socket.join("admins");
+    if (isStaffRole(role)) socket.join("admins");
 
     online.set(id, (online.get(id) || 0) + 1);
     io.to("community").emit("presence", { online: online.size });

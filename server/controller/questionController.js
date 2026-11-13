@@ -24,7 +24,9 @@ import {
 } from "../services/notificationService.js";
 import { escapeRegex } from "../utils/time.js";
 
-const isAdmin = (req) => req.user?.userType === "admin";
+import { isStaffRole } from "../config/roles.js";
+import { studentScope, inScope } from "../services/scope.js";
+const isAdmin = (req) => isStaffRole(req.user?.userType); // any staff member
 const MAX_ATTEMPTS = 20;
 const QUESTION_FOLDER = `${ROOT_FOLDER}/questions`;
 
@@ -93,6 +95,7 @@ const sessionIdsFor = async (folderIds) => {
 // ------------------------------------------------------- question bank (admin)
 export const listQuestions = async (req, res) => {
   try {
+    const scope = await studentScope(req.user); // the counters only count the teacher's own students
     const filter = {};
     if (QUESTION_LANGUAGES.includes(req.query.language)) filter.language = req.query.language;
     if (DIFFICULTIES.includes(req.query.difficulty)) filter.difficulty = req.query.difficulty;
@@ -109,6 +112,7 @@ export const listQuestions = async (req, res) => {
     const [questions, counts] = await Promise.all([
       CodeQuestion.find(filter).sort({ createdAt: -1 }).limit(500).lean(),
       QuestionAssignment.aggregate([
+        ...(scope === null ? [] : [{ $match: { studentId: { $in: scope } } }]),
         {
           $group: {
             _id: "$questionId",
@@ -239,10 +243,11 @@ export const assignQuestion = async (req, res) => {
       }
     }
 
-    const students = await userModel.find({ _id: { $in: ids }, userType: "student" }).select("_id").lean();
-    const studentIds = students.map((s) => String(s._id));
+    const scope = await studentScope(req.user); // teachers: only their own students
+    const students = await userModel.find({ _id: { $in: ids }, userType: "student", accountStatus: { $nin: ["pending", "rejected"] } }).select("_id").lean();
+    const studentIds = students.map((s) => String(s._id)).filter((id) => inScope(scope, id));
     if (studentIds.length === 0) {
-      return res.status(400).json({ success: false, message: "None of the selected users are students." });
+      return res.status(400).json({ success: false, message: students.length ? "You can only assign questions to your own students." : "None of the selected users are students." });
     }
 
     const existing = await QuestionAssignment.find({ questionId: question._id, studentId: { $in: studentIds } })
@@ -283,7 +288,8 @@ export const assignQuestion = async (req, res) => {
 
 export const listQuestionAssignments = async (req, res) => {
   try {
-    const list = await QuestionAssignment.find({ questionId: req.params.id }).sort({ assignedAt: -1 }).lean();
+    const scope = await studentScope(req.user);
+    const list = (await QuestionAssignment.find({ questionId: req.params.id }).sort({ assignedAt: -1 }).lean()).filter((a) => inScope(scope, a.studentId));
     const users = await userModel
       .find({ _id: { $in: validObjectIds(list.map((a) => a.studentId)) } })
       .select("name email")
@@ -303,6 +309,9 @@ export const listQuestionAssignments = async (req, res) => {
 
 export const unassign = async (req, res) => {
   try {
+    const existing = await QuestionAssignment.findById(req.params.aid).lean();
+    if (!existing) return res.status(404).json({ success: false, message: "Assignment not found." });
+    if (!inScope(await studentScope(req.user), existing.studentId)) return res.status(403).json({ success: false, message: "That student is not yours." });
     const a = await QuestionAssignment.findByIdAndDelete(req.params.aid);
     if (!a) return res.status(404).json({ success: false, message: "Assignment not found." });
     (a.submissions || [])
@@ -346,7 +355,9 @@ export const getAssignment = async (req, res) => {
     }
     const a = await QuestionAssignment.findById(req.params.aid).lean();
     if (!a) return res.status(404).json({ success: false, message: "Assignment not found." });
-    if (!isAdmin(req) && a.studentId !== String(req.userId)) {
+    if (isAdmin(req)) {
+      if (!inScope(await studentScope(req.user), a.studentId)) return res.status(403).json({ success: false, message: "Not allowed." });
+    } else if (a.studentId !== String(req.userId)) {
       return res.status(403).json({ success: false, message: "Not allowed." });
     }
     const [question, student] = await Promise.all([
@@ -430,6 +441,9 @@ export const reviewSubmission = async (req, res) => {
     }
     const assignment = await QuestionAssignment.findById(req.params.aid);
     if (!assignment) return res.status(404).json({ success: false, message: "Assignment not found." });
+    if (!inScope(await studentScope(req.user), assignment.studentId)) {
+      return res.status(403).json({ success: false, message: "That student is not yours." });
+    }
     if (assignment.submissions.length === 0) {
       return res.status(400).json({ success: false, message: "The student has not submitted anything yet." });
     }
@@ -491,8 +505,9 @@ export const assignBulk = async (req, res) => {
     }
     sIds = validObjectIds(sIds);
     if (sIds.length === 0) return res.status(400).json({ success: false, message: "Select at least one student or class." });
-    const students = await userModel.find({ _id: { $in: sIds }, userType: "student" }).select("_id").lean();
-    const studentList = students.map((s) => String(s._id));
+    const scope = await studentScope(req.user);
+    const students = await userModel.find({ _id: { $in: sIds }, userType: "student", accountStatus: { $nin: ["pending", "rejected"] } }).select("_id").lean();
+    const studentList = students.map((s) => String(s._id)).filter((id) => inScope(scope, id));
     if (studentList.length === 0) return res.status(400).json({ success: false, message: "No students found in your selection." });
 
     if (questions.length * studentList.length > MAX_PAIRS) {
@@ -559,9 +574,11 @@ export const moveQuestions = async (req, res) => {
 export const reviewQueue = async (req, res) => {
   try {
     const status = ["submitted", "needs_work", "accepted"].includes(req.query.status) ? req.query.status : req.query.status === "all" ? null : "submitted";
+    const scope = await studentScope(req.user); // null = everyone
     const filter = {};
     if (status) filter.status = status;
     else filter.status = { $in: ["submitted", "needs_work", "accepted"] };
+    if (scope !== null) filter.studentId = { $in: scope };
 
     // optional folder filter (category or session)
     let questionFilter = null;
@@ -576,12 +593,12 @@ export const reviewQueue = async (req, res) => {
     if (search) {
       const rx = new RegExp(escapeRegex(search), "i");
       const us = await userModel.find({ userType: "student", $or: [{ name: rx }, { email: rx }] }).select("_id").lean();
-      filter.studentId = { $in: us.map((u) => String(u._id)) };
+      filter.studentId = { $in: us.map((u) => String(u._id)).filter((id) => inScope(scope, id)) };
     }
 
     const [list, counts] = await Promise.all([
       QuestionAssignment.find(filter).sort({ updatedAt: status === "submitted" ? 1 : -1 }).limit(200).lean(),
-      QuestionAssignment.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
+      QuestionAssignment.aggregate([...(scope === null ? [] : [{ $match: { studentId: { $in: scope } } }]), { $group: { _id: "$status", n: { $sum: 1 } } }]),
     ]);
     const [questions, students, folders] = await Promise.all([
       CodeQuestion.find({ _id: { $in: list.map((a) => a.questionId) } }).select("title language difficulty folderId").lean(),

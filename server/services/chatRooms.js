@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import userModel from "../model/userModel.js";
 import { ChatThread, ChatSettings } from "../model/chatModel.js";
+import { isStaffRole } from "../config/roles.js";
 
 export const COMMUNITY = "community";
 export const dmRoom = (studentId, teacherId) => `dm:${studentId}:${teacherId}`;
@@ -24,7 +25,7 @@ export async function checkRoomAccess(user, room, { forSend = false } = {}) {
   const parsed = parseRoom(room);
   if (!parsed) return fail(400, "Unknown chat.");
   const uid = String(user?._id ?? user?.id);
-  const admin = user?.userType === "admin";
+  const admin = isStaffRole(user?.userType); // admin, manager and teacher are all "the teacher side"
 
   if (parsed.type === "community") {
     if (forSend && !admin) {
@@ -42,8 +43,8 @@ export async function checkRoomAccess(user, room, { forSend = false } = {}) {
     userModel.findById(parsed.studentId).select("userType").lean(),
     userModel.findById(parsed.teacherId).select("userType").lean(),
   ]);
-  if (!student || student.userType === "admin") return fail(403, "Private chats are only between a student and a teacher.");
-  if (!teacher || teacher.userType !== "admin") return fail(403, "Students can only chat privately with teachers.");
+  if (!student || student.userType !== "student") return fail(403, "Private chats are only between a student and a teacher.");
+  if (!teacher || !isStaffRole(teacher.userType)) return fail(403, "Students can only chat privately with teachers.");
   return { ok: true, parsed };
 }
 
@@ -51,7 +52,7 @@ export async function checkRoomAccess(user, room, { forSend = false } = {}) {
 export async function touchThread(room, sender, preview) {
   const parsed = parseRoom(room);
   if (parsed?.type !== "dm") return;
-  const fromTeacher = sender.role === "admin";
+  const fromTeacher = isStaffRole(sender.role);
   const fromStudent = sender.role === "student";
   const inc = fromStudent ? { teacherUnread: 1 } : { studentUnread: 1 }; // teacher or system -> student
   await ChatThread.findOneAndUpdate(
@@ -68,7 +69,7 @@ export async function touchThread(room, sender, preview) {
 export async function markThreadRead(room, user) {
   const parsed = parseRoom(room);
   if (parsed?.type !== "dm") return;
-  const field = user.userType === "admin" ? "teacherUnread" : "studentUnread";
+  const field = isStaffRole(user.userType) ? "teacherUnread" : "studentUnread";
   await ChatThread.updateOne({ room: parsed.room }, { $set: { [field]: 0 } });
 }
 

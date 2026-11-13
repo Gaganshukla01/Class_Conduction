@@ -1,5 +1,5 @@
 import express from "express";
-import { adminOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
+import { staffOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
 import {
   listQuestions,
   createQuestion,
@@ -25,14 +25,14 @@ questionRouter.get("/assignments/:aid", anyUser, getAssignment);
 questionRouter.post("/assignments/:aid/submit", anyUser, submitSolution);
 
 // Admin
-questionRouter.put("/assignments/:aid/review", adminOnly, reviewSubmission);
-questionRouter.delete("/assignments/:aid", adminOnly, unassign);
-questionRouter.get("/review-queue", adminOnly, reviewQueue);
-questionRouter.post("/assign-bulk", adminOnly, assignBulk);
-questionRouter.put("/move", adminOnly, moveQuestions);
-questionRouter.get("/", adminOnly, listQuestions);
-questionRouter.post("/", adminOnly, createQuestion);
-questionRouter.put("/:id", adminOnly, updateQuestion);
-questionRouter.delete("/:id", adminOnly, deleteQuestion);
-questionRouter.post("/:id/assign", adminOnly, assignQuestion);
-questionRouter.get("/:id/assignments", adminOnly, listQuestionAssignments);
+questionRouter.put("/assignments/:aid/review", staffOnly, reviewSubmission);
+questionRouter.delete("/assignments/:aid", staffOnly, unassign);
+questionRouter.get("/review-queue", staffOnly, reviewQueue);
+questionRouter.post("/assign-bulk", staffOnly, assignBulk);
+questionRouter.put("/move", staffOnly, moveQuestions);
+questionRouter.get("/", staffOnly, listQuestions);
+questionRouter.post("/", staffOnly, createQuestion);
+questionRouter.put("/:id", staffOnly, updateQuestion);
+questionRouter.delete("/:id", staffOnly, deleteQuestion);
+questionRouter.post("/:id/assign", staffOnly, assignQuestion);
+questionRouter.get("/:id/assignments", staffOnly, listQuestionAssignments);

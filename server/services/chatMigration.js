@@ -2,6 +2,7 @@ import userModel from "../model/userModel.js";
 import chatLegacy from "../model/CommonEditor.js";
 import { ChatMessage, ChatReadState, ChatThread } from "../model/chatModel.js";
 import { dmRoom } from "./chatRooms.js";
+import { isStaffRole } from "../config/roles.js";
 
 const ROOM = "community";
 
@@ -39,7 +40,7 @@ export async function migrateChat({ dryRun = false } = {}) {
     );
     const plan = legacy.map((l) => {
       const author = l.createdBy && byId.get(String(l.createdBy));
-      const teacher = author && author.userType === "admin" ? author : null;
+      const teacher = author && isStaffRole(author.userType) ? author : null;
       const room = teacher ? dmRoom(String(l.userId), String(teacher._id)) : ROOM;
       return { l, author, teacher, room };
     });
@@ -50,7 +51,7 @@ export async function migrateChat({ dryRun = false } = {}) {
         room,
         senderId: author ? String(author._id) : "system",
         senderName: author?.name || "ClassWave",
-        senderRole: author ? (author.userType === "admin" ? "admin" : "student") : "system",
+        senderRole: author ? (isStaffRole(author.userType) ? author.userType : "student") : "system",
         type: "text",
         text: [l.heading, l.chat].filter(Boolean).join("\n").slice(0, 4000),
         audience: teacher ? [] : [String(l.userId)],
@@ -93,7 +94,7 @@ export async function migrateChat({ dryRun = false } = {}) {
     if (!dryRun) {
       await ChatMessage.create({
         room: ROOM, senderId: "system", senderName: "ClassWave", senderRole: "system", type: "system",
-        text: "👋 Welcome to the new Chat Section! Students, teachers and admins can now talk here and share PDFs and images.",
+        text: "👋 Welcome to the new Community Chat! Students, teachers and admins can now talk here and share PDFs and images.",
         legacyId: "welcome-v1",
       });
     }

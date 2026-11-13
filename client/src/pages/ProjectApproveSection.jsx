@@ -166,7 +166,7 @@ export default function AdminProjectApproval() {
     rejected: projects.filter((p) => p.status === "rejected").length,
   };
 
-  const isAdmin = userData?.userType === "admin" || userData?.role === "admin";
+  const isAdmin = ["admin", "manager"].includes(userData?.userType) || userData?.role === "admin";
 
   const getActionText = () => {
     const { status } = confirmModal;

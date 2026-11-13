@@ -1,4 +1,5 @@
 import Avatar from "./ui/Avatar";
+import { dashboardPath, isApproved } from "../utils/roles";
 import React, { useEffect, useContext, useState } from "react";
 import { assets } from "../assets/assets";
 import { useNavigate } from "react-router-dom";
@@ -32,7 +33,10 @@ function Navbar() {
     navigate(-1);
   };
 
+  const sendingVerify = React.useRef(false);
   const sendVerificationMail = async () => {
+    if (sendingVerify.current) return; // a double click must not send two codes
+    sendingVerify.current = true;
     try {
       axios.defaults.withCredentials = true;
       const { data } = await axios.post(
@@ -45,6 +49,8 @@ function Navbar() {
       }
     } catch (error) {
       toast.error(error.message || "An error occurred");
+    } finally {
+      sendingVerify.current = false;
     }
   };
 
@@ -66,21 +72,14 @@ function Navbar() {
     }
   };
 
+  // admin / manager -> /admin, teacher -> /teacher, student -> /studentdash; not approved yet -> /pending
   const goToDashboard = () => {
-    if (userData.userType === "student") {
-      navigate("/studentdash");
-    } else if (userData.userType === "admin") {
-      navigate("/admin");
-    }
+    navigate(isApproved(userData) ? dashboardPath(userData.userType) : "/pending");
     setIsMobileMenuOpen(false);
   };
 
   const goToCommonArea = () => {
-    if (userData.userType === "student") {
-      navigate("/studentchatview");
-    } else if (userData.userType === "admin") {
-      navigate("/admin/commoneditor");
-    }
+    navigate(isApproved(userData) ? `${dashboardPath(userData.userType)}?tab=chat` : "/pending");
     setIsMobileMenuOpen(false);
   };
 
@@ -139,14 +138,14 @@ function Navbar() {
             </div>
           </div>
 
-          {userData && userData.name && (
+          {userData && userData.name && isApproved(userData) && (
             <div className="hidden lg:flex items-center space-x-3 mx-4">
               <button
                 onClick={goToCommonArea}
                 className="flex items-center  gap-2 bg-white/10 hover:bg-white/20 cursor-pointer backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
               >
                 <Home size={18} />
-                <span>Chat Room</span>
+                <span>Chat Section</span>
               </button>
 
               <button
@@ -253,7 +252,7 @@ function Navbar() {
                             </div>
                             <div>
                               <p className="font-medium text-gray-800 text-sm">
-                                Chat Room
+                                Chat Section
                               </p>
                               <p className="text-xs text-gray-500">Open Chat</p>
                             </div>
@@ -371,7 +370,7 @@ function Navbar() {
               >
                 <User size={16} className="text-white sm:w-4 sm:h-4" />
                 <span className="hidden xs:inline">Sign In</span>
-                <span className="xs:hidden">Login/Signup</span>
+                <span className="xs:hidden">Get Started</span>
               </button>
             )}
           </div>

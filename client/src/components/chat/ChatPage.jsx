@@ -4,6 +4,7 @@ import { AppContent } from "../../context/Context";
 import useChatSocket from "../../hooks/useChatSocket";
 import ConversationList from "./ConversationList";
 import ChatView from "./ChatView";
+import { isStaff } from "../../utils/roles";
 
 // The messenger: conversation list (Community + private chats) on the left, the open
 // conversation on the right. On phones it shows the list first, then the chat full-screen.
@@ -12,7 +13,7 @@ import ChatView from "./ChatView";
 //  * students can NEVER message each other
 export default function ChatPage() {
   const { backend_url, userData } = useContext(AppContent);
-  const isAdmin = userData?.userType === "admin";
+  const isAdmin = isStaff(userData?.userType); // admin, manager or teacher
   const me = userData?.userId;
   const { socket, live } = useChatSocket(true);
 

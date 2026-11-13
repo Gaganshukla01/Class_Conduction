@@ -24,6 +24,7 @@ import { questionRouter } from "./router/questionRouter.js";
 import { questionFolderRouter } from "./router/questionFolderRouter.js";
 import { chatRouter } from "./router/chatRouter.js";
 import { extraClassRouter } from "./router/extraClassRouter.js";
+import { paymentRouter } from "./router/paymentRouter.js";
 import http from "http";
 import { initSocket } from "./services/socketHub.js";
 
@@ -116,6 +117,7 @@ app.use("/api/question-folders", questionFolderRouter);
 app.use("/api/questions", questionRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/extra-classes", extraClassRouter);
+app.use("/api/payments", paymentRouter);
 
 // Unknown API route -> JSON 404 instead of an HTML page
 app.use("/api", (req, res) => {

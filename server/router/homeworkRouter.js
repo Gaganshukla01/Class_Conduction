@@ -8,14 +8,14 @@ import {
   submitHomework,
   deleteHomework,
 } from "../controller/homeWorkAssign.js";
-import { adminOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
+import { staffOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
 
 export const homeworkRouter = express.Router();
 
-homeworkRouter.get("/", adminOnly, getAllHomework);
+homeworkRouter.get("/", staffOnly, getAllHomework);
 homeworkRouter.get("/student/:studentId", anyUser, getHomeworkByStudentId);
-homeworkRouter.post("/add", adminOnly, createHomework);
+homeworkRouter.post("/add", staffOnly, createHomework);
 homeworkRouter.put("/:id/submit", anyUser, submitHomework);
 homeworkRouter.get("/:id", anyUser, getHomeworkById);
-homeworkRouter.put("/:id", adminOnly, updateHomework);
-homeworkRouter.delete("/:id", adminOnly, deleteHomework);
+homeworkRouter.put("/:id", staffOnly, updateHomework);
+homeworkRouter.delete("/:id", staffOnly, deleteHomework);

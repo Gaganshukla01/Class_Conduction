@@ -45,7 +45,7 @@ function DashboardHome() {
   const totalCourses = courses.length;
 
   // Separate instructors and students
-  const instructors = users.filter((user) => user.userType === "admin");
+  const instructors = users.filter((user) => user.userType === "admin" || user.userType === "teacher");
   const students = users.filter((user) => user.userType === "student");
   const totalStudents = students.length;
   const totalInstructors = instructors.length;

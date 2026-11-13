@@ -1,7 +1,8 @@
 import Note from "../model/notesModel.js";
 import { escapeRegex } from "../utils/time.js";
 
-const isAdmin = (req) => req.user?.userType === "admin";
+import { isStaffRole } from "../config/roles.js";
+const isAdmin = (req) => isStaffRole(req.user?.userType); // any staff member
 const ownsOrAdmin = (req, studentId) =>
   isAdmin(req) || String(studentId) === String(req.userId);
 

@@ -6,6 +6,13 @@ import { createChatMessage } from "./chatController.js";
 import { dmRoom } from "../services/chatRooms.js";
 import { notifyExtraClass, summaryText } from "../services/notificationService.js";
 import { classStart } from "../utils/time.js";
+import { isTeachingRole, isUnscopedRole } from "../config/roles.js";
+import { studentScope, inScope, classFilterFor, teachesClass } from "../services/scope.js";
+
+// A teacher manages only the extra classes they teach or created. Admin / manager: all of them.
+const owns = (user, extra) =>
+  isUnscopedRole(user?.userType) || [extra.instructorId, extra.createdBy].filter(Boolean).map(String).includes(String(user?._id));
+const notYours = (res) => res.status(403).json({ success: false, message: "That class belongs to another teacher." });
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
@@ -22,7 +29,7 @@ async function resolveStudents(studentIds, classScheduleIds) {
   }
   ids = validIds(ids);
   if (!ids.length) return [];
-  const users = await userModel.find({ _id: { $in: ids }, userType: "student" }).select("_id").lean();
+  const users = await userModel.find({ _id: { $in: ids }, userType: "student", accountStatus: { $nin: ["pending", "rejected"] } }).select("_id").lean();
   return users.map((u) => String(u._id));
 }
 
@@ -87,7 +94,7 @@ async function postToPrivateChats(extra, teacherId, { type, text, card }) {
 // The teacher must be an admin; fall back to the person creating the class.
 const teacherIdFor = async (instructorId, fallback) => {
   const u = instructorId && (await userModel.findById(instructorId).select("userType").lean());
-  return u && u.userType === "admin" ? String(instructorId) : String(fallback);
+  return u && isTeachingRole(u.userType) ? String(instructorId) : String(fallback);
 };
 
 const instructorNameOf = async (id) => {
@@ -160,7 +167,7 @@ export const replaceableClasses = async (req, res) => {
     if (ids.length === 0) return res.status(200).json({ success: true, data: [] });
     const since = new Date(Date.now() - 2 * 24 * 3600 * 1000);
     const docs = await classSchedule
-      .find({ studentsEnrolled: { $all: ids }, classDate: { $gte: since }, "substitution.extraClassId": null })
+      .find({ studentsEnrolled: { $all: ids }, classDate: { $gte: since }, "substitution.extraClassId": null, ...classFilterFor(req.user) })
       .select("className classDate classTime classDuration classLink instructorId studentsEnrolled attendance attendanceMarkedAt")
       .limit(300)
       .lean();
@@ -191,6 +198,7 @@ export const createExtraClass = async (req, res) => {
       cls = await classSchedule.findById(classId);
       if (!cls) return res.status(404).json({ success: false, message: "That scheduled class was not found." });
       if (cls.substitution?.extraClassId) return res.status(400).json({ success: false, message: "That class has already been replaced by a substitute class." });
+      if (!teachesClass(req.user, cls)) return res.status(403).json({ success: false, message: "You can only replace classes that you teach." });
       if (cls.attendanceMarkedAt) return res.status(400).json({ success: false, message: "Attendance is already marked for that class, so it can no longer be replaced." });
       if (classStart(cls) < new Date()) return res.status(400).json({ success: false, message: "Only upcoming classes can be replaced." });
 
@@ -202,13 +210,19 @@ export const createExtraClass = async (req, res) => {
       if (students.length === 0) return res.status(400).json({ success: false, message: "That class has no students." });
     } else {
       students = await resolveStudents(req.body.studentIds, req.body.classScheduleIds);
-      if (students.length === 0) return res.status(400).json({ success: false, message: "Select at least one student or class." });
+      const scope = await studentScope(req.user);
+      const mine = students.filter((id) => inScope(scope, id));
+      if (mine.length === 0) {
+        return res.status(students.length ? 403 : 400).json({ success: false, message: students.length ? "You can only schedule classes for your own students." : "Select at least one student or class." });
+      }
+      students = mine;
     }
 
     const fields = readFields(
       isSub ? { ...req.body, title: req.body.title || cls.className, duration: req.body.duration ?? cls.classDuration, classLink: req.body.classLink || cls.classLink } : req.body
     );
-    const instructorId = await teacherIdFor(validIds([req.body.instructorId])[0], req.userId);
+    // a teacher always teaches their own class; admin / manager choose the teacher
+    const instructorId = req.user.userType === "teacher" ? String(req.userId) : await teacherIdFor(validIds([req.body.instructorId])[0], req.userId);
 
     const extra = await ExtraClass.create({
       ...fields,
@@ -256,7 +270,8 @@ export const createExtraClass = async (req, res) => {
 
 export const listExtraClasses = async (req, res) => {
   try {
-    const list = await ExtraClass.find().sort({ classDate: -1, classTime: -1 }).limit(100).lean();
+    const mineOnly = isUnscopedRole(req.user.userType) ? {} : { $or: [{ instructorId: String(req.userId) }, { createdBy: String(req.userId) }] };
+    const list = await ExtraClass.find(mineOnly).sort({ classDate: -1, classTime: -1 }).limit(100).lean();
     const ids = validIds([...new Set(list.flatMap((c) => [...c.studentsEnrolled, c.instructorId]))]);
     const [users, docs] = await Promise.all([
       userModel.find({ _id: { $in: ids } }).select("name email avatar").lean(),
@@ -306,6 +321,7 @@ export const markExtraAttendance = async (req, res) => {
   try {
     const extra = await ExtraClass.findById(req.params.id);
     if (!extra) return res.status(404).json({ success: false, message: "Class not found." });
+    if (!owns(req.user, extra)) return notYours(res);
     if (extra.status === "cancelled") return res.status(400).json({ success: false, message: "This class was cancelled." });
     if (extra.type === "substitute") {
       return res.status(400).json({ success: false, message: "A substitute class replaces a scheduled class - mark its attendance with the scheduled class (Class Attendance, or the Mark attendance button on this card)." });
@@ -335,6 +351,7 @@ export const updateExtraClass = async (req, res) => {
   try {
     const extra = await ExtraClass.findById(req.params.id);
     if (!extra) return res.status(404).json({ success: false, message: "Class not found." });
+    if (!owns(req.user, extra)) return notYours(res);
     const wasCancelled = extra.status === "cancelled";
     const isSub = extra.type === "substitute";
 
@@ -395,6 +412,7 @@ export const deleteExtraClass = async (req, res) => {
   try {
     const extra = await ExtraClass.findById(req.params.id);
     if (!extra) return res.status(404).json({ success: false, message: "Class not found." });
+    if (!owns(req.user, extra)) return notYours(res);
     // Deleting a substitute that has not happened yet must not leave the scheduled class on the new time
     if (extra.type === "substitute" && extra.status === "scheduled" && !(await attendanceLocked(extra))) await revertSubstitution(extra);
     await extra.deleteOne();

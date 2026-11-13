@@ -1,5 +1,5 @@
 import express from "express";
-import { adminOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
+import { adminOnly, opsOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
 import { listMessages, sendMessage, deleteMessage, markRead, unreadCount, listMembers, runMigration, listConversations, getSettings, updateSettings } from "../controller/chatController.js";
 
 export const chatRouter = express.Router();
@@ -12,4 +12,4 @@ chatRouter.get("/members", anyUser, listMembers);
 chatRouter.post("/migrate", adminOnly, runMigration);
 chatRouter.get("/conversations", anyUser, listConversations);
 chatRouter.get("/settings", anyUser, getSettings);
-chatRouter.put("/settings", adminOnly, updateSettings);
+chatRouter.put("/settings", opsOnly, updateSettings);

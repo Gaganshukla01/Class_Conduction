@@ -3,6 +3,7 @@ import transporter from "../config/nodeMailer.js";
 import userModel from "../model/userModel.js";
 import classSchedule from "../model/classesScheduleDetails.js";
 import { ChatMessage, ChatReadState } from "../model/chatModel.js";
+import { STAFF_ROLES, ROLE_LABEL, CHAT_LABEL, isStaffRole, dashboardPath } from "../config/roles.js";
 import {
   renderEmail,
   toText,
@@ -109,7 +110,7 @@ const validIds = (ids = []) =>
 const loadUsers = async (ids) => {
   const list = validIds(ids);
   if (list.length === 0) return [];
-  return userModel.find({ _id: { $in: list } }).select("name email").lean();
+  return userModel.find({ _id: { $in: list } }).select("name email userType").lean();
 };
 
 const loadAdmins = async () =>
@@ -605,7 +606,7 @@ ${button("Open the question", dashboardUrl("questions"))}`;
 });
 
 export const notifyQuestionSubmitted = safe(async function notifyQuestionSubmitted(question, assignment, student) {
-  let recipients = await loadUsers([question.createdBy]);
+  let recipients = await loadUsers([assignment.assignedBy, question.createdBy]);
   if (recipients.length === 0) recipients = await loadAdmins();
   const last = assignment.submissions?.[assignment.submissions.length - 1];
   const match =
@@ -752,7 +753,7 @@ const dmCooldownMs = () => Number(process.env.CHAT_DM_EMAIL_COOLDOWN_MIN ?? 5) *
 
 export const notifyChatMessage = safe(async function notifyChatMessage(message) {
   if (process.env.CHAT_EMAIL_ENABLED === "false") return emptySummary();
-  if (!["admin", "student"].includes(message.senderRole)) return emptySummary();
+  if (!isStaffRole(message.senderRole) && message.senderRole !== "student") return emptySummary();
   const room = message.room || "community";
   const isDm = room.startsWith("dm:");
   if (!isDm && (message.audience || []).length) return emptySummary();
@@ -761,10 +762,10 @@ export const notifyChatMessage = safe(async function notifyChatMessage(message) 
   let recipients;
   if (isDm) {
     const [, studentId, teacherId] = room.split(":");
-    recipients = await loadUsers([message.senderRole === "admin" ? studentId : teacherId]); // the OTHER person
+    recipients = await loadUsers([isStaffRole(message.senderRole) ? studentId : teacherId]); // the OTHER person
   } else {
-    const targetRole = message.senderRole === "admin" ? "student" : "admin";
-    recipients = (await userModel.find({ userType: targetRole }).select("name email").limit(500).lean()).filter(
+    const target = isStaffRole(message.senderRole) ? { userType: "student" } : { userType: { $in: STAFF_ROLES } };
+    recipients = (await userModel.find({ ...target, accountStatus: { $nin: ["pending", "rejected"] } }).select("name email userType").limit(500).lean()).filter(
       (u) => String(u._id) !== String(message.senderId)
     );
   }
@@ -788,20 +789,19 @@ export const notifyChatMessage = safe(async function notifyChatMessage(message) 
     ? esc(message.text.length > 280 ? `${message.text.slice(0, 280)}…` : message.text).replace(/\r?\n/g, "<br/>")
     : "";
   const attachment = message.file ? (message.file.kind === "pdf" ? "📄 shared a PDF" : "🖼️ shared an image") : "";
-  const staff = message.senderRole === "admin";
+  const staff = isStaffRole(message.senderRole);
+  const roleLabel = CHAT_LABEL[message.senderRole] || "Teacher";
 
   const messages = [];
   for (const u of due) {
     const st = stateOf.get(String(u._id));
     const since = st?.lastReadAt ? new Date(st.lastReadAt) : new Date(now - 24 * 3600 * 1000);
     const waiting = await ChatMessage.countDocuments({ room, audience: { $size: 0 }, createdAt: { $gt: since }, senderId: { $ne: String(u._id) } });
-    const toAdmin = isDm ? !staff : !staff; // recipients are admins when a student wrote
-    const open = toAdmin
-      ? `${appUrl()}/admin?tab=chat${isDm ? `&room=${encodeURIComponent(room)}` : ""}`
-      : `${dashboardUrl("chat")}${isDm ? `&room=${encodeURIComponent(room)}` : ""}`;
+    // staff recipients open their own dashboard (admin / teacher), students open the student dashboard
+    const open = `${appUrl()}${dashboardPath(u.userType || "student")}?tab=chat${isDm ? `&room=${encodeURIComponent(room)}` : ""}`;
     const lead = isDm
-      ? `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge("Teacher", "amber")}` : ""} sent you a private message:`
-      : `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge("Teacher", "amber")}` : ""} posted in the Community Chat:`;
+      ? `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge(roleLabel, "amber")}` : ""} sent you a private message:`
+      : `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge(roleLabel, "amber")}` : ""} posted in the Community Chat:`;
     const body = `
 ${paragraph(lead)}
 <div style="margin:14px 0;padding:14px 16px;border-left:4px solid #4f46e5;background:#f5f6ff;border-radius:8px;color:#111827;font-size:15px;line-height:1.55;">
@@ -813,8 +813,8 @@ ${paragraph(`<span style="color:#9ca3af;font-size:12px;">To keep your inbox calm
     messages.push({
       to: u.email,
       subject: isDm
-        ? `💬 ${message.senderName}${staff ? " (Teacher)" : ""} sent you a message${waiting > 1 ? ` (${waiting} new)` : ""}`
-        : `💬 ${message.senderName}${staff ? " (Teacher)" : ""} in Community Chat${waiting > 1 ? ` (${waiting} new)` : ""}`,
+        ? `💬 ${message.senderName}${staff ? ` (${roleLabel})` : ""} sent you a message${waiting > 1 ? ` (${waiting} new)` : ""}`
+        : `💬 ${message.senderName}${staff ? ` (${roleLabel})` : ""} in Community Chat${waiting > 1 ? ` (${waiting} new)` : ""}`,
       html: renderEmail({
         preheader: (message.text || attachment || "New message").slice(0, 90),
         title: isDm ? "New private message" : "New chat message",
@@ -841,4 +841,172 @@ ${paragraph(`<span style="color:#9ca3af;font-size:12px;">To keep your inbox calm
     console.error("[mail] could not save chat email cool-down:", e.message);
   }
   return summary;
+});
+
+// ---------------------------------------------------------------------------
+// 10. Accounts: registration, approval, rejection
+// ---------------------------------------------------------------------------
+const ROLE_ABILITIES = {
+  student: [
+    "Join your live classes and see your timetable",
+    "Open class notes and the resource library",
+    "Practise with coding questions and submit homework",
+    "Chat privately with your teachers",
+  ],
+  teacher: [
+    "See your students and chat with them",
+    "Create extra and substitute classes and mark attendance",
+    "Assign homework and coding questions, upload notes and resources",
+    "Record payments - students and admins get a receipt",
+  ],
+  manager: [
+    "See every student and every class",
+    "Create schedules and courses",
+    "Record payments and follow up pending fees",
+    "Manage homework, questions, notes and resources",
+  ],
+  admin: ["Full access to ClassWave"],
+};
+
+// to the person who just registered
+export const notifyRegistrationReceived = safe(async function notifyRegistrationReceived(user) {
+  const body = `
+${paragraph(`Thanks for registering with <strong>ClassWave</strong>! We have received your request to join as a <strong>${esc(ROLE_LABEL[user.requestedRole] || "Student")}</strong>.`)}
+${callout(`<strong>Your account is in review.</strong><br/>An administrator checks every new account. This usually takes a short while. You can log in at any time to see the status - and we will e-mail you the moment it is approved.`, "amber")}
+${detailTable([
+  { label: "Name", value: esc(user.name) },
+  { label: "E-mail", value: esc(user.email) },
+  { label: "Requested role", value: badge(ROLE_LABEL[user.requestedRole] || "Student", "indigo") },
+  { label: "Status", value: badge("In review", "amber") },
+])}
+${button("Check my account status", `${appUrl()}/pending`)}`;
+  return dispatch([
+    { to: user.email, subject: "Welcome to ClassWave - your account is in review", html: renderEmail({ preheader: "We will e-mail you as soon as it is approved", title: "We received your registration", greetingName: user.name, bodyHtml: body, accent: "#d97706" }) },
+  ]);
+});
+
+// to every admin
+export const notifyAdminsNewSignup = safe(async function notifyAdminsNewSignup(user) {
+  const admins = await loadAdmins();
+  const body = `
+${paragraph(`A new account is waiting for your approval.`)}
+${detailTable([
+  { label: "Name", value: `<strong>${esc(user.name)}</strong>` },
+  { label: "E-mail", value: esc(user.email) },
+  { label: "Wants to join as", value: badge(ROLE_LABEL[user.requestedRole] || "Student", "indigo") },
+])}
+${paragraph(`Open <strong>Account Approvals</strong>, choose the role (student, teacher or manager) and approve - or reject the request.`)}
+${button("Review the request", `${appUrl()}/admin?tab=approvals`)}`;
+  return dispatch(admins.map((a) => ({ to: a.email, subject: `🆕 New ${ROLE_LABEL[user.requestedRole] || "student"} account to approve: ${user.name}`, html: renderEmail({ preheader: `${user.name} (${user.email})`, title: "New account to approve", greetingName: a.name, bodyHtml: body, accent: "#4f46e5" }) })));
+});
+
+// approved or rejected
+export const notifyAccountDecision = safe(async function notifyAccountDecision(user, { approved, reason = "" }) {
+  if (approved) {
+    const role = user.userType;
+    const abilities = (ROLE_ABILITIES[role] || []).map((t) => `<li style="margin:0 0 6px;color:#111827;font-size:14px;">${esc(t)}</li>`).join("");
+    const body = `
+${paragraph(`Good news - your account has been <strong>approved</strong>. You are now a <strong>${esc(ROLE_LABEL[role])}</strong> on ClassWave.`)}
+${callout(`<strong>You can log in now.</strong> Use the e-mail and password you registered with.`, "green")}
+<p style="margin:16px 0 6px;color:#111827;font-size:14px;font-weight:700;">What you can do</p>
+<ul style="margin:0 0 14px;padding-left:20px;">${abilities}</ul>
+${button(`Open my ${role === "student" ? "dashboard" : role === "teacher" ? "teacher dashboard" : "admin panel"}`, `${appUrl()}${dashboardPath(role)}`, "#059669")}`;
+    return dispatch([{ to: user.email, subject: `✅ Your ClassWave account is approved - welcome, ${ROLE_LABEL[role]}!`, html: renderEmail({ preheader: `You are now a ${ROLE_LABEL[role]}`, title: "Your account is approved", greetingName: user.name, bodyHtml: body, accent: "#059669" }) }]);
+  }
+  const body = `
+${paragraph(`We are sorry - your request to join ClassWave was <strong>not approved</strong>.`)}
+${reason ? callout(`<strong>Reason:</strong><br/>${multiline(reason)}`, "red") : ""}
+${paragraph(`If you think this is a mistake, please contact your institute directly.`)}`;
+  return dispatch([{ to: user.email, subject: "Your ClassWave account request", html: renderEmail({ preheader: "Your request was not approved", title: "Account request update", greetingName: user.name, bodyHtml: body, accent: "#dc2626" }) }]);
+});
+
+// ---------------------------------------------------------------------------
+// 11. Payment receipts
+// ---------------------------------------------------------------------------
+const METHOD_LABEL = { cash: "Cash", upi: "UPI", bank: "Bank transfer", card: "Card", other: "Other" };
+const rupees = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+
+function receiptCard(payment) {
+  const rows = (payment.items || [])
+    .slice(0, 30)
+    .map(
+      (i) => `<tr>
+<td style="padding:9px 12px;border-bottom:1px solid #eef0f4;font-size:13px;color:#111827;">${esc(i.className)}</td>
+<td style="padding:9px 12px;border-bottom:1px solid #eef0f4;font-size:13px;color:#6b7280;">${esc(formatDate({ classDate: i.classDate }))}</td>
+<td align="right" style="padding:9px 12px;border-bottom:1px solid #eef0f4;font-size:13px;color:#111827;">${rupees(i.amount)}</td>
+</tr>`
+    )
+    .join("");
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 16px;border:1px solid #d1fae5;border-radius:12px;background:#f0fdf4;">
+<tr><td style="padding:18px 20px;">
+  <div style="font-size:12px;color:#047857;font-weight:700;letter-spacing:.6px;">PAYMENT RECEIVED</div>
+  <div style="font-size:34px;font-weight:800;color:#065f46;margin-top:2px;">${rupees(payment.amount)}</div>
+  <div style="font-size:13px;color:#047857;margin-top:4px;">Receipt <strong>${esc(payment.receiptNo)}</strong> &middot; ${esc(formatPlainDate(payment.createdAt))}</div>
+</td></tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eef0f4;border-radius:8px;border-collapse:separate;overflow:hidden;margin:12px 0;">
+<tr style="background:#f9fafb;"><th align="left" style="padding:8px 12px;font-size:12px;color:#6b7280;">Class</th><th align="left" style="padding:8px 12px;font-size:12px;color:#6b7280;">Date</th><th align="right" style="padding:8px 12px;font-size:12px;color:#6b7280;">Amount</th></tr>
+${rows}
+<tr style="background:#f9fafb;"><td colspan="2" style="padding:10px 12px;font-size:14px;font-weight:700;color:#111827;">Total</td><td align="right" style="padding:10px 12px;font-size:14px;font-weight:700;color:#047857;">${rupees(payment.amount)}</td></tr>
+</table>`;
+}
+
+// One receipt, three versions: the student, every admin, and the teacher/manager who recorded it.
+export const notifyPaymentReceipt = safe(async function notifyPaymentReceipt(payment, { student, recorder }) {
+  const admins = await loadAdmins();
+  const details = (forStudent) =>
+    detailTable([
+      { label: "Student", value: esc(student?.name || "") },
+      { label: "Paid by", value: esc(METHOD_LABEL[payment.method] || payment.method) },
+      { label: "Reference", value: payment.reference ? esc(payment.reference) : "" },
+      { label: forStudent ? "Received by" : "Recorded by", value: esc(`${recorder?.name || ""}${recorder?.userType ? ` (${ROLE_LABEL[recorder.userType]})` : ""}`) },
+      { label: "Note", value: payment.note ? multiline(payment.note) : "" },
+    ]);
+
+  const messages = [];
+  const seen = new Set();
+  const add = (u, html, subject, preheader) => {
+    if (!u?.email || seen.has(u.email.toLowerCase())) return;
+    seen.add(u.email.toLowerCase());
+    messages.push({ to: u.email, subject, html: renderEmail({ preheader, title: "Payment receipt", greetingName: u.name, bodyHtml: html, accent: "#059669" }) });
+  };
+
+  if (student) {
+    add(student, `
+${paragraph(`Thank you! We have received your payment. Keep this receipt for your records.`)}
+${receiptCard(payment)}
+${details(true)}
+${button("See my payments", dashboardUrl("payment"), "#059669")}`, `🧾 Receipt ${payment.receiptNo} - ${rupees(payment.amount)} received`, `${rupees(payment.amount)} received - ${payment.receiptNo}`);
+  }
+  for (const a of admins) {
+    add(a, `
+${paragraph(`<strong>${esc(recorder?.name || "A teacher")}</strong> recorded a payment from <strong>${esc(student?.name || "a student")}</strong>.`)}
+${receiptCard(payment)}
+${details(false)}
+${button("Open payments", `${appUrl()}/admin?tab=paymentUpdate`, "#059669")}`, `💰 Payment recorded: ${student?.name || "student"} - ${rupees(payment.amount)} (${payment.receiptNo})`, `${recorder?.name || "Someone"} recorded ${rupees(payment.amount)}`);
+  }
+  // the teacher / manager who recorded it keeps a copy (an admin recorder already got the admin version)
+  if (recorder && recorder.userType !== "admin") {
+    add(recorder, `
+${paragraph(`You recorded this payment. A receipt was e-mailed to the student and to the admins.`)}
+${receiptCard(payment)}
+${details(false)}`, `✅ You recorded ${rupees(payment.amount)} from ${student?.name || "a student"} (${payment.receiptNo})`, `Receipt ${payment.receiptNo}`);
+  }
+  return dispatch(messages);
+});
+
+export const notifyPaymentVoided = safe(async function notifyPaymentVoided(payment, { student, voidedBy }) {
+  const admins = await loadAdmins();
+  const body = (who) => `
+${paragraph(`Receipt <strong>${esc(payment.receiptNo)}</strong> (${rupees(payment.amount)}) has been <strong>cancelled</strong>${voidedBy ? ` by ${esc(voidedBy.name)}` : ""}. The classes on it are shown as unpaid again.`)}
+${payment.voidReason ? callout(`<strong>Reason:</strong><br/>${multiline(payment.voidReason)}`, "amber") : ""}
+${paragraph(`If you think this is a mistake, please contact your teacher.`)}`;
+  const seen = new Set();
+  const out = [];
+  for (const u of [student, ...admins]) {
+    if (!u?.email || seen.has(u.email.toLowerCase())) continue;
+    seen.add(u.email.toLowerCase());
+    out.push({ to: u.email, subject: `⚠️ Receipt ${payment.receiptNo} was cancelled`, html: renderEmail({ preheader: `${rupees(payment.amount)} receipt cancelled`, title: "Receipt cancelled", greetingName: u.name, bodyHtml: body(u), accent: "#d97706" }) });
+  }
+  return dispatch(out);
 });

@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { toast } from "react-toastify";
+import { isStaff, isApproved } from "../utils/roles";
 
 const backend_url = import.meta.env.VITE_BACKEND_URI;
 
@@ -94,12 +95,14 @@ export const AppContextProvider = (props) => {
   // Loads everything the signed-in user needs. Safe to call any time.
   const loadAppData = useCallback(
     async (user) => {
+      // a pending / rejected account has no access to any data yet
+      if (user && !isApproved(user)) return;
       setIsRefreshing(true);
       try {
         await Promise.all([
           getAllSchedule(),
-          // Only admins may list every user (the endpoint is admin-only).
-          user?.userType === "admin" ? getAllUserData() : Promise.resolve(),
+          // Staff may list users (a teacher only gets their own students from the server).
+          isStaff(user?.userType) ? getAllUserData() : Promise.resolve(),
         ]);
       } finally {
         setIsRefreshing(false);
@@ -143,7 +146,7 @@ export const AppContextProvider = (props) => {
       sessionExpiredShown.current = false;
       loadAppData(userData);
     }
-  }, [isLoggedIn, userData?.userId, userData?.userType, loadAppData]);
+  }, [isLoggedIn, userData?.userId, userData?.userType, userData?.accountStatus, loadAppData]);
 
   // Never show the previous user's data to the next person on this browser.
   useEffect(() => {

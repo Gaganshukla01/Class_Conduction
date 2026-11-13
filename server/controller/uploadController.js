@@ -5,6 +5,7 @@ import {
   ROOT_FOLDER,
 } from "../services/cloudinaryService.js";
 import { ResourceFolder } from "../model/resourceModel.js";
+import { isStaffRole } from "../config/roles.js";
 
 // Returns a short-lived signature so the browser can upload a PDF straight to
 // Cloudinary. The folder is decided HERE (never by the client), so a student
@@ -20,7 +21,7 @@ export const signUpload = async (req, res) => {
     }
 
     const { purpose, folderId } = req.body;
-    const admin = req.user?.userType === "admin";
+    const admin = isStaffRole(req.user?.userType); // teachers, managers and admins
     let folder;
     let kind = "pdf";
 
