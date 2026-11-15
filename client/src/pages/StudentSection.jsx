@@ -59,6 +59,7 @@ import ProgressDashboard from "../components/student/ProgressDashboard";
 import PdfUploadField from "../components/PdfUploadField";
 import { computeStudentStats } from "../utils/studentStats";
 import { uploadPdf } from "../utils/uploadPdf";
+import { buildBatches } from "../utils/classSessions";
 
 const STATUS_TONE = {
   completed: "bg-green-500/20 text-green-300",
@@ -66,10 +67,35 @@ const STATUS_TONE = {
   pending: "bg-yellow-500/20 text-yellow-300",
   overdue: "bg-red-500/20 text-red-300",
 };
-const statusTone = (status) => STATUS_TONE[status] || "bg-gray-500/20 text-gray-300";
-const statusText = (status) => ({ completed: "text-green-300", submitted: "text-cyan-300", pending: "text-yellow-300", overdue: "text-red-300" })[status] || "text-gray-300";
-const EMPTY_SUBMISSION = { notes: "", link: "", file: null, progress: null, busy: false };
-const VALID_TABS = ["notes","resources","questions","chat","classes","attendance","homework","progress","payment","upload","timezone"];
+const statusTone = (status) =>
+  STATUS_TONE[status] || "bg-gray-500/20 text-gray-300";
+const statusText = (status) =>
+  ({
+    completed: "text-green-300",
+    submitted: "text-cyan-300",
+    pending: "text-yellow-300",
+    overdue: "text-red-300",
+  })[status] || "text-gray-300";
+const EMPTY_SUBMISSION = {
+  notes: "",
+  link: "",
+  file: null,
+  progress: null,
+  busy: false,
+};
+const VALID_TABS = [
+  "notes",
+  "resources",
+  "questions",
+  "chat",
+  "classes",
+  "attendance",
+  "homework",
+  "progress",
+  "payment",
+  "upload",
+  "timezone",
+];
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -79,6 +105,26 @@ export default function StudentDashboard() {
   const [showClassInfo, setShowClassInfo] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [classesData, setClassesData] = useState([]);
+  // Class No. per session (1..N within same class name + same students), same rule the server uses for notes
+  const classNumbers = useMemo(() => {
+    const m = {};
+    buildBatches(classesData).forEach((b) =>
+      b.sessions.forEach((x) => {
+        m[x._id] = x.classNumber;
+      }),
+    );
+    return m;
+  }, [classesData]);
+  const [notesFocus, setNotesFocus] = useState(null); // { classScheduleId, classNumber, className }
+  const openClassPdfs = (classInfo) => {
+    setNotesFocus({
+      classScheduleId: String(classInfo._id),
+      classNumber: classNumbers[classInfo._id],
+      className: classInfo.className,
+    });
+    setActiveTab("resources"); // Resource Library tab (folders)
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const [homeWorkData, setHomeworkData] = useState([]);
   const navigate = useNavigate();
 
@@ -112,24 +158,49 @@ export default function StudentDashboard() {
   const { userData, allSchedule, backend_url } = useContext(AppContent);
 
   // Coding-question assignments: shared by the Code Questions tab and the Progress tab
-  const [qState, setQState] = useState({ items: [], folders: [], loading: true });
+  const [qState, setQState] = useState({
+    items: [],
+    folders: [],
+    loading: true,
+  });
   useEffect(() => {
     let alive = true;
-    axios.get(`${backend_url}/api/questions/assignments/mine`)
-      .then(({ data }) => alive && setQState({ items: data.data, folders: data.folders || [], loading: false }))
-      .catch(() => alive && setQState({ items: [], folders: [], loading: false }));
-    return () => { alive = false; };
+    axios
+      .get(`${backend_url}/api/questions/assignments/mine`)
+      .then(
+        ({ data }) =>
+          alive &&
+          setQState({
+            items: data.data,
+            folders: data.folders || [],
+            loading: false,
+          }),
+      )
+      .catch(
+        () => alive && setQState({ items: [], folders: [], loading: false }),
+      );
+    return () => {
+      alive = false;
+    };
   }, [backend_url]);
   const onQuestionUpdated = (updated) =>
-    setQState((cur) => ({ ...cur, items: cur.items.map((a) => (a._id === updated._id ? { ...a, ...updated } : a)) }));
-  const questionStats = useMemo(() => computeQuestionStats(qState.items), [qState.items]);
+    setQState((cur) => ({
+      ...cur,
+      items: cur.items.map((a) =>
+        a._id === updated._id ? { ...a, ...updated } : a,
+      ),
+    }));
+  const questionStats = useMemo(
+    () => computeQuestionStats(qState.items),
+    [qState.items],
+  );
   const chatUnread = useChatUnread(activeTab === "chat");
   const [profileOpen, setProfileOpen] = useState(false);
 
   // One source of truth for attendance numbers (header, attendance, progress)
   const stats = useMemo(
     () => computeStudentStats(allSchedule, userData.userId, homeWorkData),
-    [allSchedule, userData.userId, homeWorkData]
+    [allSchedule, userData.userId, homeWorkData],
   );
 
   // for loading the data from the server
@@ -140,7 +211,7 @@ export default function StudentDashboard() {
 
         if (allclassSchedulesResponse && allclassSchedulesResponse.length > 0) {
           const processedClasses = processClassSchedules(
-            allclassSchedulesResponse
+            allclassSchedulesResponse,
           );
           setClassesData(processedClasses);
         }
@@ -150,7 +221,7 @@ export default function StudentDashboard() {
           setNotes(response.data);
         }
         const HomeWorkData = await axios.get(
-          `${backend_url}/api/homework/student/${userData.userId}`
+          `${backend_url}/api/homework/student/${userData.userId}`,
         );
         setHomeworkData(HomeWorkData.data);
       } catch (error) {
@@ -169,7 +240,7 @@ export default function StudentDashboard() {
 
     // Filter classes for today
     const todayClasses = schedules.filter(
-      (cls) => new Date(cls.classDate).toDateString() === today
+      (cls) => new Date(cls.classDate).toDateString() === today,
     );
 
     // Filter upcoming classes (future dates)
@@ -326,7 +397,7 @@ export default function StudentDashboard() {
 
         classDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         classDateTime.setHours(
-          classDateTime.getHours() + parseInt(cls.classDuration || 1)
+          classDateTime.getHours() + parseInt(cls.classDuration || 1),
         );
         return classDateTime.toISOString();
       })(),
@@ -338,7 +409,7 @@ export default function StudentDashboard() {
 
       // Add remaining today classes
       result.push(
-        ...remainingTodayClasses.map((cls) => formatClassData(cls, "upcoming"))
+        ...remainingTodayClasses.map((cls) => formatClassData(cls, "upcoming")),
       );
 
       // Fill remaining slots with future classes
@@ -347,13 +418,13 @@ export default function StudentDashboard() {
         result.push(
           ...upcomingClasses
             .slice(0, remainingSlots)
-            .map((cls) => formatClassData(cls, "upcoming"))
+            .map((cls) => formatClassData(cls, "upcoming")),
         );
       }
     } else {
       // No live class - show today's remaining classes first
       result.push(
-        ...remainingTodayClasses.map((cls) => formatClassData(cls, "upcoming"))
+        ...remainingTodayClasses.map((cls) => formatClassData(cls, "upcoming")),
       );
 
       // Fill remaining slots with future classes
@@ -362,7 +433,7 @@ export default function StudentDashboard() {
         result.push(
           ...upcomingClasses
             .slice(0, remainingSlots)
-            .map((cls) => formatClassData(cls, "upcoming"))
+            .map((cls) => formatClassData(cls, "upcoming")),
         );
       }
     }
@@ -392,26 +463,35 @@ export default function StudentDashboard() {
       toast.error("Add a note, a link or a PDF before submitting");
       return;
     }
-    setSubmissionForm((p) => ({ ...p, busy: true, progress: f.file ? 0 : null }));
+    setSubmissionForm((p) => ({
+      ...p,
+      busy: true,
+      progress: f.file ? 0 : null,
+    }));
     try {
       let file;
       if (f.file) {
         file = await uploadPdf({
           file: f.file,
           purpose: "homework",
-          onProgress: (progress) => setSubmissionForm((p) => ({ ...p, progress })),
+          onProgress: (progress) =>
+            setSubmissionForm((p) => ({ ...p, progress })),
         });
       }
       const { data } = await axios.put(
         `${backend_url}/api/homework/${homeworkId}/submit`,
-        { note: f.notes, link: f.link, file }
+        { note: f.notes, link: f.link, file },
       );
-      setHomeworkData((prev) => prev.map((hw) => (hw._id === homeworkId ? data.data : hw)));
+      setHomeworkData((prev) =>
+        prev.map((hw) => (hw._id === homeworkId ? data.data : hw)),
+      );
       toast.success("Homework submitted! Your instructor has been notified.");
       setShowHomeworkModal(false);
       setSubmissionForm(EMPTY_SUBMISSION);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Could not submit");
+      toast.error(
+        error.response?.data?.message || error.message || "Could not submit",
+      );
       setSubmissionForm((p) => ({ ...p, busy: false, progress: null }));
     }
   };
@@ -446,8 +526,8 @@ export default function StudentDashboard() {
         if (response.success) {
           setNotes(
             notes.map((note) =>
-              note._id === editingNote._id ? response.data : note
-            )
+              note._id === editingNote._id ? response.data : note,
+            ),
           );
         }
       } else {
@@ -485,12 +565,12 @@ export default function StudentDashboard() {
         if (response.success) {
           // Filter out the deleted note using both _id and id for compatibility
           setNotes(
-            notes.filter((note) => note._id !== noteId && note.id !== noteId)
+            notes.filter((note) => note._id !== noteId && note.id !== noteId),
           );
         } else {
           console.error("Delete failed:", response.message);
           alert(
-            "Failed to delete note: " + (response.message || "Unknown error")
+            "Failed to delete note: " + (response.message || "Unknown error"),
           );
         }
       } catch (error) {
@@ -504,14 +584,24 @@ export default function StudentDashboard() {
     (note) =>
       note.title.toLowerCase().includes(searchNotesQuery.toLowerCase()) ||
       note.content.toLowerCase().includes(searchNotesQuery.toLowerCase()) ||
-      note.subject.toLowerCase().includes(searchNotesQuery.toLowerCase())
+      note.subject.toLowerCase().includes(searchNotesQuery.toLowerCase()),
   );
 
   const navItems = [
     { id: "notes", label: "My Notes", icon: FileText },
     { id: "resources", label: "Study Materials", icon: Library },
-    { id: "questions", label: "Code Questions", icon: Code2, badge: questionStats.todo + questionStats.needsWork },
-    { id: "chat", label: "Chat", icon: MessageSquare, badge: chatUnread },
+    {
+      id: "questions",
+      label: "Code Questions",
+      icon: Code2,
+      badge: questionStats.todo + questionStats.needsWork,
+    },
+    {
+      id: "chat",
+      label: "Community Chat",
+      icon: MessageSquare,
+      badge: chatUnread,
+    },
     { id: "classes", label: "Live Classes", icon: BookOpen },
     { id: "attendance", label: "Attendance", icon: Calendar },
     { id: "homework", label: "Homework", icon: Target },
@@ -527,134 +617,97 @@ export default function StudentDashboard() {
       active={activeTab}
       onSelect={setActiveTab}
       footer={({ rail }) => (
-        <ProfileFooter rail={rail} name={userData.name} userId={userData.userId} avatarUrl={userData.avatarUrl} subtitle={stats.hasData ? `${stats.rate}% attendance` : "Student"} onEdit={() => setProfileOpen(true)} />
+        <ProfileFooter
+          rail={rail}
+          name={userData.name}
+          userId={userData.userId}
+          avatarUrl={userData.avatarUrl}
+          subtitle={stats.hasData ? `${stats.rate}% attendance` : "Student"}
+          onEdit={() => setProfileOpen(true)}
+        />
       )}
     >
       {activeTab === "chat" ? (
-        <div className="h-full p-2 sm:p-4"><ChatPage /></div>
+        <div className="h-full p-2 sm:p-4">
+          <ChatPage />
+        </div>
       ) : (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
-        {/* Header */}
-        <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20 shadow-2xl mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <button onClick={() => setProfileOpen(true)} className="relative shrink-0 rounded-full group" title="Change profile photo" aria-label="Change profile photo">
-                <Avatar name={userData.name} src={userData.avatarUrl} size={64} id={userData.userId} />
-                <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] font-semibold">Change</span>
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-white">
-                  {userData.name}
-                </h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
+          {/* Header */}
+          <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20 shadow-2xl mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setProfileOpen(true)}
+                  className="relative shrink-0 rounded-full group"
+                  title="Change profile photo"
+                  aria-label="Change profile photo"
+                >
+                  <Avatar
+                    name={userData.name}
+                    src={userData.avatarUrl}
+                    size={64}
+                    id={userData.userId}
+                  />
+                  <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] font-semibold">
+                    Change
+                  </span>
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-white">
+                    {userData.name}
+                  </h1>
+                </div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-emerald-300">
-                <p className="text-2xl font-bold text-cyan-400">
-                  {stats.hasData ? `${stats.rate}%` : "—"}
-                </p>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-emerald-300">
+                  <p className="text-2xl font-bold text-cyan-400">
+                    {stats.hasData ? `${stats.rate}%` : "—"}
+                  </p>
+                </div>
+                <div className="text-sm text-gray-300">Attendance Rate</div>
               </div>
-              <div className="text-sm text-gray-300">Attendance Rate</div>
             </div>
           </div>
-        </div>
 
-        {/* Notes Tab */}
-        {activeTab === "notes" && (
-          <div className="space-y-6">
-            {/* Notes Header */}
-            <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">My Notes</h2>
-                <button
-                  onClick={() => setShowNoteForm(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 cursor-pointer transition"
-                >
-                  <Plus size={18} />
-                  <span>Add Note</span>
-                </button>
+          {/* Notes Tab */}
+          {activeTab === "notes" && (
+            <div className="space-y-6">
+              {/* Notes Header */}
+              <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">My Notes</h2>
+                  <button
+                    onClick={() => setShowNoteForm(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 cursor-pointer transition"
+                  >
+                    <Plus size={18} />
+                    <span>Add Note</span>
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10">
+                  <Search size={18} className="text-gray-300 mr-3" />
+                  <input
+                    type="text"
+                    placeholder="Search notes..."
+                    value={searchNotesQuery}
+                    onChange={(e) => setSearchNotesQuery(e.target.value)}
+                    className="bg-transparent text-white w-full outline-none placeholder:text-gray-400"
+                  />
+                </div>
               </div>
 
-              {/* Search */}
-              <div className="flex items-center bg-white/5 rounded-xl px-4 py-3 border border-white/10">
-                <Search size={18} className="text-gray-300 mr-3" />
-                <input
-                  type="text"
-                  placeholder="Search notes..."
-                  value={searchNotesQuery}
-                  onChange={(e) => setSearchNotesQuery(e.target.value)}
-                  className="bg-transparent text-white w-full outline-none placeholder:text-gray-400"
-                />
-              </div>
-            </div>
-
-            {/* Note Form Modal */}
-            {showNoteForm && (
-              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-semibold text-white">
-                      {editingNote ? "Edit Note" : "Add New Note"}
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setShowNoteForm(false);
-                        setEditingNote(null);
-                        setNoteForm({
-                          title: "",
-                          content: "",
-                          subject: "",
-                          tags: "",
-                        });
-                      }}
-                      className="text-white/70 hover:text-white transition"
-                    >
-                      <X size={24} />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleNoteSubmit} className="space-y-4">
-                    <Input
-                      label="Title"
-                      name="title"
-                      value={noteForm.title}
-                      onChange={(e) =>
-                        setNoteForm({ ...noteForm, title: e.target.value })
-                      }
-                      required
-                    />
-                    <Input
-                      label="Subject"
-                      name="subject"
-                      value={noteForm.subject}
-                      onChange={(e) =>
-                        setNoteForm({ ...noteForm, subject: e.target.value })
-                      }
-                      required
-                    />
-                    <TextArea
-                      label="Content"
-                      name="content"
-                      value={noteForm.content}
-                      onChange={(e) =>
-                        setNoteForm({ ...noteForm, content: e.target.value })
-                      }
-                      rows={6}
-                      required
-                    />
-                    <Input
-                      label="Tags (comma separated)"
-                      name="tags"
-                      value={noteForm.tags}
-                      onChange={(e) =>
-                        setNoteForm({ ...noteForm, tags: e.target.value })
-                      }
-                      placeholder="JavaScript, React, Web Development"
-                    />
-
-                    <div className="flex space-x-3 pt-4">
+              {/* Note Form Modal */}
+              {showNoteForm && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-semibold text-white">
+                        {editingNote ? "Edit Note" : "Add New Note"}
+                      </h3>
                       <button
-                        type="button"
                         onClick={() => {
                           setShowNoteForm(false);
                           setEditingNote(null);
@@ -665,330 +718,655 @@ export default function StudentDashboard() {
                             tags: "",
                           });
                         }}
-                        className="flex-1 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
+                        className="text-white/70 hover:text-white transition"
                       >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 transition font-semibold flex items-center justify-center space-x-2"
-                      >
-                        <Save size={18} />
-                        <span>{editingNote ? "Update" : "Save"} Note</span>
+                        <X size={24} />
                       </button>
                     </div>
-                  </form>
-                </div>
-              </div>
-            )}
 
-            <div className="grid gap-4">
-              {filteredNotes.map((note) => (
-                <div
-                  key={note._id || note.id}
-                  className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        {note.title}
-                      </h3>
-                      <div className="flex items-center space-x-4 text-sm text-gray-300">
-                        <span>{note.subject}</span>
-                        <span>•</span>
-                        <span>
-                          {new Date(
-                            note.date || note.createdAt
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditNote(note)}
-                        className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition"
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteNote(note._id || note.id)} // Use _id first, fallback to id
-                        className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
+                    <form onSubmit={handleNoteSubmit} className="space-y-4">
+                      <Input
+                        label="Title"
+                        name="title"
+                        value={noteForm.title}
+                        onChange={(e) =>
+                          setNoteForm({ ...noteForm, title: e.target.value })
+                        }
+                        required
+                      />
+                      <Input
+                        label="Subject"
+                        name="subject"
+                        value={noteForm.subject}
+                        onChange={(e) =>
+                          setNoteForm({ ...noteForm, subject: e.target.value })
+                        }
+                        required
+                      />
+                      <TextArea
+                        label="Content"
+                        name="content"
+                        value={noteForm.content}
+                        onChange={(e) =>
+                          setNoteForm({ ...noteForm, content: e.target.value })
+                        }
+                        rows={6}
+                        required
+                      />
+                      <Input
+                        label="Tags (comma separated)"
+                        name="tags"
+                        value={noteForm.tags}
+                        onChange={(e) =>
+                          setNoteForm({ ...noteForm, tags: e.target.value })
+                        }
+                        placeholder="JavaScript, React, Web Development"
+                      />
 
-                  <p className="text-gray-300 mb-3 line-clamp-3">
-                    {note.content}
-                  </p>
-
-                  <div className="flex flex-wrap gap-2">
-                    {note.tags &&
-                      note.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs"
+                      <div className="flex space-x-3 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowNoteForm(false);
+                            setEditingNote(null);
+                            setNoteForm({
+                              title: "",
+                              content: "",
+                              subject: "",
+                              tags: "",
+                            });
+                          }}
+                          className="flex-1 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
                         >
-                          {tag}
-                        </span>
-                      ))}
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-xl hover:from-emerald-600 hover:to-cyan-700 transition font-semibold flex items-center justify-center space-x-2"
+                        >
+                          <Save size={18} />
+                          <span>{editingNote ? "Update" : "Save"} Note</span>
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              )}
 
-        {/* Attendance Tab */}
-        {activeTab === "attendance" && <AttendanceDashboard stats={stats} />}
-
-        {/* Study materials (class notes + resource library) */}
-        {activeTab === "resources" && <StudyMaterials />}
-        {activeTab === "questions" && <StudentQuestions items={qState.items} folders={qState.folders} loading={qState.loading} onUpdated={onQuestionUpdated} />}
-
-        {/* class join tab  */}
-
-        {activeTab === "classes" && <ExtraClassesStudent />}
-        {activeTab === "classes" && (
-          <div className="space-y-6">
-            {/* Classes Header */}
-            <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
-              <h2 className="text-xl font-bold text-white mb-2">
-                Live Classes
-              </h2>
-              <p className="text-gray-300">
-                Join your scheduled classes or view detailed class information
-              </p>
-            </div>
-
-            {/* Classes List */}
-            {(() => {
-              if (!classesData || !userData?.userId) return [];
-              return classesData.filter(
-                (classItem) =>
-                  classItem.studentsEnrolled &&
-                  classItem.studentsEnrolled.includes(userData.userId)
-              );
-            })().length === 0 ? (
-              <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl border border-white/20 text-center">
-                <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  No Classes Scheduled
-                </h3>
-                <p className="text-gray-300">
-                  No upcoming classes found for today or in the near future.
-                </p>
-              </div>
-            ) : (
               <div className="grid gap-4">
-                {(() => {
-                  if (!classesData || !userData?.userId) return [];
-                  return classesData.filter(
-                    (classItem) =>
-                      classItem.studentsEnrolled &&
-                      classItem.studentsEnrolled.includes(userData.userId)
-                  );
-                })().map((classInfo) => (
+                {filteredNotes.map((note) => (
                   <div
-                    key={classInfo._id}
+                    key={note._id || note.id}
                     className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
                   >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">
-                            {classInfo.className}
-                          </h3>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${(() => {
-                              const now = new Date();
-                              const classDate = new Date(classInfo.classDate);
-                              const [hours, minutes] =
-                                classInfo.classTime.split(":");
-                              const classStartTime = new Date(classDate);
-                              classStartTime.setHours(
-                                parseInt(hours),
-                                parseInt(minutes),
-                                0,
-                                0
-                              );
-
-                              const classEndTime = new Date(classStartTime);
-                              classEndTime.setHours(
-                                classStartTime.getHours() +
-                                  parseInt(classInfo.classDuration)
-                              );
-
-                              if (
-                                now >= classStartTime &&
-                                now <= classEndTime
-                              ) {
-                                return "bg-green-500/20 text-green-300 animate-pulse";
-                              } else if (now < classStartTime) {
-                                return "bg-blue-500/20 text-blue-300";
-                              } else {
-                                return "bg-gray-500/20 text-gray-300";
-                              }
-                            })()}`}
-                          >
-                            {(() => {
-                              const now = new Date();
-                              const classDate = new Date(classInfo.classDate);
-                              const [hours, minutes] =
-                                classInfo.classTime.split(":");
-                              const classStartTime = new Date(classDate);
-                              classStartTime.setHours(
-                                parseInt(hours),
-                                parseInt(minutes),
-                                0,
-                                0
-                              );
-
-                              const classEndTime = new Date(classStartTime);
-                              classEndTime.setHours(
-                                classStartTime.getHours() +
-                                  parseInt(classInfo.classDuration)
-                              );
-
-                              if (
-                                now >= classStartTime &&
-                                now <= classEndTime
-                              ) {
-                                return "🔴 LIVE";
-                              } else if (now < classStartTime) {
-                                return "⏰ Upcoming";
-                              } else {
-                                return "✅ Ended";
-                              }
-                            })()}
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-1">
+                          {note.title}
+                        </h3>
+                        <div className="flex items-center space-x-4 text-sm text-gray-300">
+                          <span>{note.subject}</span>
+                          <span>•</span>
+                          <span>
+                            {new Date(
+                              note.date || note.createdAt,
+                            ).toLocaleDateString()}
                           </span>
                         </div>
-
-                        <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
-                          <div className="flex items-center space-x-2">
-                            <User size={16} className="text-gray-400" />
-                            <span>{classInfo.instructorId}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Clock size={16} className="text-gray-400" />
-                            <span>{classInfo.classTime}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Calendar size={16} className="text-gray-400" />
-                            <span>
-                              {new Date(
-                                classInfo.classDate
-                              ).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <BookOpen size={16} className="text-gray-400" />
-                            <span>{classInfo.classDuration}h</span>
-                          </div>
-                        </div>
-
-                        <p className="text-gray-300 text-sm mb-4">
-                          {classInfo.topicCovered || "Topic will be announced"}
-                        </p>
                       </div>
-
-                      {/* Action Buttons */}
-                      <div className="ml-4 flex flex-col gap-3">
-                        {/* Join Class Button */}
-                        {(() => {
-                          const now = new Date();
-                          const classDate = new Date(classInfo.classDate);
-                          const [hours, minutes] =
-                            classInfo.classTime.split(":");
-                          const classStartTime = new Date(classDate);
-                          classStartTime.setHours(
-                            parseInt(hours),
-                            parseInt(minutes),
-                            0,
-                            0
-                          );
-
-                          const classEndTime = new Date(classStartTime);
-                          classEndTime.setHours(
-                            classStartTime.getHours() +
-                              parseInt(classInfo.classDuration)
-                          );
-
-                          if (now >= classStartTime && now <= classEndTime) {
-                            return (
-                              <button
-                                onClick={() =>
-                                  window.open(classInfo.classLink, "_blank")
-                                }
-                                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition font-semibold animate-pulse min-w-[140px]"
-                              >
-                                <div className="w-2 h-2 bg-white rounded-full animate-ping" />
-                                <span>Join Now</span>
-                              </button>
-                            );
-                          } else if (now < classStartTime) {
-                            return (
-                              <button
-                                onClick={() =>
-                                  window.open(classInfo.classLink, "_blank")
-                                }
-                                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition font-semibold min-w-[140px]"
-                              >
-                                <Calendar size={18} />
-                                <span>Join Class</span>
-                              </button>
-                            );
-                          } else {
-                            return (
-                              <button
-                                disabled
-                                className="flex items-center space-x-2 px-6 py-3 bg-gray-500/20 text-gray-400 rounded-xl cursor-not-allowed min-w-[140px]"
-                              >
-                                <X size={18} />
-                                <span>Class Ended</span>
-                              </button>
-                            );
-                          }
-                        })()}
-
-                        {/* Class Info Button */}
+                      <div className="flex space-x-2">
                         <button
-                          onClick={() => handleShowClassInfo(classInfo)}
-                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 transition font-semibold min-w-[140px]"
+                          onClick={() => handleEditNote(note)}
+                          className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition"
                         >
-                          <Eye size={18} />
-                          <span>Class Info</span>
+                          <Edit3 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNote(note._id || note.id)} // Use _id first, fallback to id
+                          className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
 
-                    {/* Quick Info Bar */}
-                    <div className="border-t border-white/10 pt-4">
-                      <div className="flex items-center justify-between text-xs text-gray-400">
-                        <span>Class ID: {classInfo._id.slice(-8)}</span>
+                    <p className="text-gray-300 mb-3 line-clamp-3">
+                      {note.content}
+                    </p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {note.tags &&
+                        note.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Attendance Tab */}
+          {activeTab === "attendance" && <AttendanceDashboard stats={stats} />}
+
+          {/* Study materials (class notes + resource library) */}
+          {activeTab === "resources" && (
+            <StudyMaterials
+              focus={notesFocus}
+              onClearFocus={() => setNotesFocus(null)}
+            />
+          )}
+          {activeTab === "questions" && (
+            <StudentQuestions
+              items={qState.items}
+              folders={qState.folders}
+              loading={qState.loading}
+              onUpdated={onQuestionUpdated}
+            />
+          )}
+
+          {/* class join tab  */}
+
+          {activeTab === "classes" && <ExtraClassesStudent />}
+          {activeTab === "classes" && (
+            <div className="space-y-6">
+              {/* Classes Header */}
+              <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
+                <h2 className="text-xl font-bold text-white mb-2">
+                  Live Classes
+                </h2>
+                <p className="text-gray-300">
+                  Join your scheduled classes or view detailed class information
+                </p>
+              </div>
+
+              {/* Classes List */}
+              {(() => {
+                if (!classesData || !userData?.userId) return [];
+                return classesData.filter(
+                  (classItem) =>
+                    classItem.studentsEnrolled &&
+                    classItem.studentsEnrolled.includes(userData.userId),
+                );
+              })().length === 0 ? (
+                <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl border border-white/20 text-center">
+                  <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    No Classes Scheduled
+                  </h3>
+                  <p className="text-gray-300">
+                    No upcoming classes found for today or in the near future.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {(() => {
+                    if (!classesData || !userData?.userId) return [];
+                    return classesData.filter(
+                      (classItem) =>
+                        classItem.studentsEnrolled &&
+                        classItem.studentsEnrolled.includes(userData.userId),
+                    );
+                  })().map((classInfo) => (
+                    <div
+                      key={classInfo._id}
+                      className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-semibold text-white">
+                              {classInfo.className}
+                            </h3>
+                            {classNumbers[classInfo._id] && (
+                              <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-200 border border-cyan-400/30">
+                                Class {classNumbers[classInfo._id]}
+                              </span>
+                            )}
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${(() => {
+                                const now = new Date();
+                                const classDate = new Date(classInfo.classDate);
+                                const [hours, minutes] =
+                                  classInfo.classTime.split(":");
+                                const classStartTime = new Date(classDate);
+                                classStartTime.setHours(
+                                  parseInt(hours),
+                                  parseInt(minutes),
+                                  0,
+                                  0,
+                                );
+
+                                const classEndTime = new Date(classStartTime);
+                                classEndTime.setHours(
+                                  classStartTime.getHours() +
+                                    parseInt(classInfo.classDuration),
+                                );
+
+                                if (
+                                  now >= classStartTime &&
+                                  now <= classEndTime
+                                ) {
+                                  return "bg-green-500/20 text-green-300 animate-pulse";
+                                } else if (now < classStartTime) {
+                                  return "bg-blue-500/20 text-blue-300";
+                                } else {
+                                  return "bg-gray-500/20 text-gray-300";
+                                }
+                              })()}`}
+                            >
+                              {(() => {
+                                const now = new Date();
+                                const classDate = new Date(classInfo.classDate);
+                                const [hours, minutes] =
+                                  classInfo.classTime.split(":");
+                                const classStartTime = new Date(classDate);
+                                classStartTime.setHours(
+                                  parseInt(hours),
+                                  parseInt(minutes),
+                                  0,
+                                  0,
+                                );
+
+                                const classEndTime = new Date(classStartTime);
+                                classEndTime.setHours(
+                                  classStartTime.getHours() +
+                                    parseInt(classInfo.classDuration),
+                                );
+
+                                if (
+                                  now >= classStartTime &&
+                                  now <= classEndTime
+                                ) {
+                                  return "🔴 LIVE";
+                                } else if (now < classStartTime) {
+                                  return "⏰ Upcoming";
+                                } else {
+                                  return "✅ Ended";
+                                }
+                              })()}
+                            </span>
+                          </div>
+
+                          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
+                            <div className="flex items-center space-x-2">
+                              <User size={16} className="text-gray-400" />
+                              <span>{classInfo.instructorId}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Clock size={16} className="text-gray-400" />
+                              <span>{classInfo.classTime}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Calendar size={16} className="text-gray-400" />
+                              <span>
+                                {new Date(
+                                  classInfo.classDate,
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <BookOpen size={16} className="text-gray-400" />
+                              <span>{classInfo.classDuration}h</span>
+                            </div>
+                          </div>
+
+                          <p className="text-gray-300 text-sm mb-4">
+                            {classInfo.topicCovered ||
+                              "Topic will be announced"}
+                          </p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="ml-4 flex flex-col gap-3">
+                          {/* Join Class Button */}
+                          {(() => {
+                            const now = new Date();
+                            const classDate = new Date(classInfo.classDate);
+                            const [hours, minutes] =
+                              classInfo.classTime.split(":");
+                            const classStartTime = new Date(classDate);
+                            classStartTime.setHours(
+                              parseInt(hours),
+                              parseInt(minutes),
+                              0,
+                              0,
+                            );
+
+                            const classEndTime = new Date(classStartTime);
+                            classEndTime.setHours(
+                              classStartTime.getHours() +
+                                parseInt(classInfo.classDuration),
+                            );
+
+                            if (now >= classStartTime && now <= classEndTime) {
+                              return (
+                                <button
+                                  onClick={() =>
+                                    window.open(classInfo.classLink, "_blank")
+                                  }
+                                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition font-semibold animate-pulse min-w-[140px]"
+                                >
+                                  <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+                                  <span>Join Now</span>
+                                </button>
+                              );
+                            } else if (now < classStartTime) {
+                              return (
+                                <button
+                                  onClick={() =>
+                                    window.open(classInfo.classLink, "_blank")
+                                  }
+                                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition font-semibold min-w-[140px]"
+                                >
+                                  <Calendar size={18} />
+                                  <span>Join Class</span>
+                                </button>
+                              );
+                            } else {
+                              return (
+                                <button
+                                  disabled
+                                  className="flex items-center space-x-2 px-6 py-3 bg-gray-500/20 text-gray-400 rounded-xl cursor-not-allowed min-w-[140px]"
+                                >
+                                  <X size={18} />
+                                  <span>Class Ended</span>
+                                </button>
+                              );
+                            }
+                          })()}
+
+                          {/* Open the Resource Library (folder of this class) */}
+                          <button
+                            onClick={() => openClassPdfs(classInfo)}
+                            className="flex items-center justify-center space-x-2 px-6 py-3 bg-white/10 border border-white/25 rounded-xl hover:bg-white/20 transition font-semibold min-w-[140px]"
+                          >
+                            <FileText size={18} />
+                            <span>Resources</span>
+                          </button>
+
+                          {/* Class Info Button */}
+                          <button
+                            onClick={() => handleShowClassInfo(classInfo)}
+                            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 transition font-semibold min-w-[140px]"
+                          >
+                            <Eye size={18} />
+                            <span>Class Info</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quick Info Bar */}
+                      <div className="border-t border-white/10 pt-4">
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span>Class ID: {classInfo._id.slice(-8)}</span>
+                          {(() => {
+                            const now = new Date();
+                            const classDate = new Date(classInfo.classDate);
+                            const [hours, minutes] =
+                              classInfo.classTime.split(":");
+                            const classStartTime = new Date(classDate);
+                            classStartTime.setHours(
+                              parseInt(hours),
+                              parseInt(minutes),
+                              0,
+                              0,
+                            );
+
+                            const classEndTime = new Date(classStartTime);
+                            classEndTime.setHours(
+                              classStartTime.getHours() +
+                                parseInt(classInfo.classDuration),
+                            );
+
+                            if (now >= classStartTime && now <= classEndTime) {
+                              return (
+                                <span className="text-green-300">
+                                  ● Live now
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Class Info Modal */}
+              {showClassInfo && selectedClass && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-2xl font-bold text-white">
+                        {selectedClass.className} - Class Information
+                      </h3>
+                      <button
+                        onClick={() => setShowClassInfo(false)}
+                        className="text-white/70 hover:text-white transition"
+                      >
+                        <X size={28} />
+                      </button>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8">
+                      {/* Left Column - Basic Info */}
+                      <div className="space-y-6">
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Class Details
+                          </h4>
+                          <div className="space-y-3 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">
+                                Instructor ID:
+                              </span>
+                              <span className="text-white font-medium">
+                                {selectedClass.instructorId}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Date:</span>
+                              <span className="text-white">
+                                {new Date(
+                                  selectedClass.classDate,
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Time:</span>
+                              <span className="text-white">
+                                {selectedClass.classTime}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Duration:</span>
+                              <span className="text-white">
+                                {selectedClass.classDuration}h
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Class ID:</span>
+                              <span className="text-white font-mono">
+                                {selectedClass._id}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Meeting Info
+                          </h4>
+                          <div className="space-y-3 text-sm">
+                            <div className="pt-2">
+                              <span className="text-gray-400">
+                                Meeting Link:
+                              </span>
+                              <div className="mt-1 p-2 bg-white/5 rounded text-white text-xs break-all">
+                                {selectedClass.classLink}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column - Course Content */}
+                      <div className="space-y-6">
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Class Topic
+                          </h4>
+                          <p className="text-gray-300 text-sm leading-relaxed">
+                            {selectedClass.topicCovered ||
+                              "Topic will be announced during the class"}
+                          </p>
+                        </div>
+
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Instructor Notes
+                          </h4>
+                          <p className="text-gray-300 text-sm leading-relaxed">
+                            {selectedClass.notes || "No additional notes"}
+                          </p>
+                        </div>
+
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Attendance Status
+                          </h4>
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              selectedClass.attendance === "Present"
+                                ? "bg-green-500/20 text-green-300"
+                                : selectedClass.attendance === "Absent"
+                                  ? "bg-red-500/20 text-red-300"
+                                  : "bg-gray-500/20 text-gray-300"
+                            }`}
+                          >
+                            {selectedClass.attendance || "Not marked"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/10">
+                      <div className="flex items-center space-x-4">
+                        <span
+                          className={`px-4 py-2 rounded-full text-sm font-medium ${(() => {
+                            const now = new Date();
+                            const classDate = new Date(selectedClass.classDate);
+                            const [hours, minutes] =
+                              selectedClass.classTime.split(":");
+                            const classStartTime = new Date(classDate);
+                            classStartTime.setHours(
+                              parseInt(hours),
+                              parseInt(minutes),
+                              0,
+                              0,
+                            );
+
+                            const classEndTime = new Date(classStartTime);
+                            classEndTime.setHours(
+                              classStartTime.getHours() +
+                                parseInt(selectedClass.classDuration),
+                            );
+
+                            if (now >= classStartTime && now <= classEndTime) {
+                              return "bg-green-500/20 text-green-300";
+                            } else if (now < classStartTime) {
+                              return "bg-blue-500/20 text-blue-300";
+                            } else {
+                              return "bg-gray-500/20 text-gray-300";
+                            }
+                          })()}`}
+                        >
+                          Status:{" "}
+                          {(() => {
+                            const now = new Date();
+                            const classDate = new Date(selectedClass.classDate);
+                            const [hours, minutes] =
+                              selectedClass.classTime.split(":");
+                            const classStartTime = new Date(classDate);
+                            classStartTime.setHours(
+                              parseInt(hours),
+                              parseInt(minutes),
+                              0,
+                              0,
+                            );
+
+                            const classEndTime = new Date(classStartTime);
+                            classEndTime.setHours(
+                              classStartTime.getHours() +
+                                parseInt(selectedClass.classDuration),
+                            );
+
+                            if (now >= classStartTime && now <= classEndTime) {
+                              return "Live";
+                            } else if (now < classStartTime) {
+                              return "Upcoming";
+                            } else {
+                              return "Ended";
+                            }
+                          })()}
+                        </span>
+                      </div>
+
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => setShowClassInfo(false)}
+                          className="px-6 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
+                        >
+                          Close
+                        </button>
                         {(() => {
                           const now = new Date();
-                          const classDate = new Date(classInfo.classDate);
+                          const classDate = new Date(selectedClass.classDate);
                           const [hours, minutes] =
-                            classInfo.classTime.split(":");
+                            selectedClass.classTime.split(":");
                           const classStartTime = new Date(classDate);
                           classStartTime.setHours(
                             parseInt(hours),
                             parseInt(minutes),
                             0,
-                            0
+                            0,
                           );
 
                           const classEndTime = new Date(classStartTime);
                           classEndTime.setHours(
                             classStartTime.getHours() +
-                              parseInt(classInfo.classDuration)
+                              parseInt(selectedClass.classDuration),
                           );
 
-                          if (now >= classStartTime && now <= classEndTime) {
+                          if (now <= classEndTime) {
                             return (
-                              <span className="text-green-300">● Live now</span>
+                              <button
+                                onClick={() => {
+                                  window.open(
+                                    selectedClass.classLink,
+                                    "_blank",
+                                  );
+                                  setShowClassInfo(false);
+                                }}
+                                className={`px-6 py-3 rounded-xl font-semibold transition ${
+                                  now >= classStartTime && now <= classEndTime
+                                    ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                                    : "bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
+                                }`}
+                              >
+                                {now >= classStartTime && now <= classEndTime
+                                  ? "Join Live Class"
+                                  : "Join Class"}
+                              </button>
                             );
                           }
                           return null;
@@ -996,656 +1374,515 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Class Info Modal */}
-            {showClassInfo && selectedClass && (
-              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-2xl font-bold text-white">
-                      {selectedClass.className} - Class Information
-                    </h3>
-                    <button
-                      onClick={() => setShowClassInfo(false)}
-                      className="text-white/70 hover:text-white transition"
-                    >
-                      <X size={28} />
-                    </button>
+          {/* HomeWork Tab */}
+
+          {activeTab === "homework" && (
+            <div className="space-y-6">
+              {/* Homework Header */}
+              <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
+                <h2 className="text-xl font-bold text-white mb-2">
+                  Homework & Assignments
+                </h2>
+                <p className="text-gray-300">
+                  View and submit your assignments
+                </p>
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-gray-400">
+                    Total: {homeWorkData.length} assignments
                   </div>
+                  <div className="text-sm text-gray-400">
+                    Pending:{" "}
+                    {
+                      homeWorkData.filter((hw) => hw.status === "pending")
+                        .length
+                    }
+                  </div>
+                </div>
+              </div>
 
-                  <div className="grid md:grid-cols-2 gap-8">
-                    {/* Left Column - Basic Info */}
-                    <div className="space-y-6">
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Class Details
-                        </h4>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">
-                              Instructor ID:
+              {/* Homework List */}
+              <div className="grid gap-4">
+                {[...homeWorkData]
+                  .sort(
+                    (a, b) =>
+                      new Date(b.assignedDate) - new Date(a.assignedDate),
+                  )
+                  .map((homework) => (
+                    <div
+                      key={homework._id}
+                      className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 hover:bg-white/15 transition-all duration-300"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-semibold text-white">
+                              {homework.homeworkTitle}
+                            </h3>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${statusTone(
+                                homework.status,
+                              )}`}
+                            >
+                              {homework.status.charAt(0).toUpperCase() +
+                                homework.status.slice(1)}
                             </span>
-                            <span className="text-white font-medium">
-                              {selectedClass.instructorId}
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                homework.priority === "high"
+                                  ? "bg-red-500/20 text-red-300"
+                                  : homework.priority === "medium"
+                                    ? "bg-orange-500/20 text-orange-300"
+                                    : "bg-blue-500/20 text-blue-300"
+                              }`}
+                            >
+                              {homework.priority.toUpperCase()}
                             </span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Date:</span>
-                            <span className="text-white">
-                              {new Date(
-                                selectedClass.classDate
-                              ).toLocaleDateString()}
-                            </span>
+
+                          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
+                            <div className="flex items-center space-x-2">
+                              <BookOpen size={16} className="text-gray-400" />
+                              <span>{homework.homeworkType}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <User size={16} className="text-gray-400" />
+                              <span>{homework.studentName}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Calendar size={16} className="text-gray-400" />
+                              <span>
+                                Assigned:{" "}
+                                {new Date(
+                                  homework.assignedDate,
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Target size={16} className="text-gray-400" />
+                              <span>Priority: {homework.priority}</span>
+                            </div>
+                            {homework.dueDate && (
+                              <div className="flex items-center space-x-2">
+                                <Clock size={16} className="text-gray-400" />
+                                <span
+                                  className={
+                                    homework.status === "overdue"
+                                      ? "text-red-300"
+                                      : ""
+                                  }
+                                >
+                                  Due:{" "}
+                                  {new Date(
+                                    homework.dueDate,
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Time:</span>
-                            <span className="text-white">
-                              {selectedClass.classTime}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Duration:</span>
-                            <span className="text-white">
-                              {selectedClass.classDuration}h
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Class ID:</span>
-                            <span className="text-white font-mono">
-                              {selectedClass._id}
-                            </span>
+
+                          <p className="text-gray-300 text-sm mb-4">
+                            {homework.homeworkDescription}
+                          </p>
+
+                          {homework.additionalNotes && (
+                            <div className="bg-white/5 p-3 rounded-lg border border-white/10 mb-4">
+                              <p className="text-xs text-gray-400 mb-1">
+                                Additional Notes:
+                              </p>
+                              <p className="text-gray-300 text-sm">
+                                {homework.additionalNotes}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="text-xs text-gray-400">
+                            Last updated:{" "}
+                            {new Date(homework.updatedAt).toLocaleDateString()}{" "}
+                            at{" "}
+                            {new Date(homework.updatedAt).toLocaleTimeString()}
                           </div>
                         </div>
+
+                        <div className="ml-4 flex flex-col gap-3">
+                          <button
+                            onClick={() => handleViewHomework(homework)}
+                            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition font-semibold min-w-[140px]"
+                          >
+                            <Eye size={18} />
+                            <span>View Details</span>
+                          </button>
+
+                          {["pending", "overdue"].includes(homework.status) && (
+                            <button
+                              onClick={() => handleViewHomework(homework)}
+                              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl hover:from-emerald-600 hover:to-green-700 transition font-semibold min-w-[140px]"
+                            >
+                              <Upload size={18} />
+                              <span>Submit</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Empty State */}
+              {homeWorkData.length === 0 && (
+                <div className="bg-white/10 backdrop-blur-lg p-12 rounded-3xl border border-white/20 text-center">
+                  <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    No Homework Assigned
+                  </h3>
+                  <p className="text-gray-300">
+                    You don't have any homework assignments at the moment.
+                  </p>
+                </div>
+              )}
+
+              {/* Homework Modal */}
+              {showHomeworkModal && selectedHomework && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-2xl font-bold text-white">
+                        {selectedHomework.homeworkTitle}
+                      </h3>
+                      <button
+                        onClick={() => setShowHomeworkModal(false)}
+                        className="text-white/70 hover:text-white transition"
+                      >
+                        <X size={28} />
+                      </button>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8">
+                      {/* Assignment Details */}
+                      <div className="space-y-4">
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Assignment Details
+                          </h4>
+                          <div className="space-y-3 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Type:</span>
+                              <span className="text-white">
+                                {selectedHomework.homeworkType}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Student:</span>
+                              <span className="text-white">
+                                {selectedHomework.studentName}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Assigned:</span>
+                              <span className="text-white">
+                                {new Date(
+                                  selectedHomework.assignedDate,
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Priority:</span>
+                              <span
+                                className={`text-white font-medium ${
+                                  selectedHomework.priority === "high"
+                                    ? "text-red-300"
+                                    : selectedHomework.priority === "medium"
+                                      ? "text-orange-300"
+                                      : "text-blue-300"
+                                }`}
+                              >
+                                {selectedHomework.priority.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Status:</span>
+                              <span
+                                className={`font-medium ${statusText(
+                                  selectedHomework.status,
+                                )}`}
+                              >
+                                {selectedHomework.status.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">
+                                Class Schedule ID:
+                              </span>
+                              <span className="text-white text-xs">
+                                {selectedHomework.classScheduleId}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Description
+                          </h4>
+                          <p className="text-gray-300 text-sm leading-relaxed">
+                            {selectedHomework.homeworkDescription}
+                          </p>
+                        </div>
+
+                        {selectedHomework.additionalNotes && (
+                          <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                            <h4 className="text-lg font-semibold text-white mb-4">
+                              Additional Notes
+                            </h4>
+                            <p className="text-gray-300 text-sm leading-relaxed">
+                              {selectedHomework.additionalNotes}
+                            </p>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Meeting Info
-                        </h4>
-                        <div className="space-y-3 text-sm">
-                          <div className="pt-2">
-                            <span className="text-gray-400">Meeting Link:</span>
-                            <div className="mt-1 p-2 bg-white/5 rounded text-white text-xs break-all">
-                              {selectedClass.classLink}
+                      {/* Submission Form */}
+                      <div className="space-y-4">
+                        {["pending", "overdue"].includes(
+                          selectedHomework.status,
+                        ) ? (
+                          <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                            <h4 className="text-lg font-semibold text-white mb-1">
+                              Submit Assignment
+                            </h4>
+                            {selectedHomework.dueDate && (
+                              <p
+                                className={`text-xs mb-4 ${selectedHomework.status === "overdue" ? "text-red-300" : "text-gray-400"}`}
+                              >
+                                Due{" "}
+                                {new Date(
+                                  selectedHomework.dueDate,
+                                ).toLocaleDateString()}
+                                {selectedHomework.status === "overdue"
+                                  ? " · overdue, but you can still submit"
+                                  : ""}
+                              </p>
+                            )}
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-200 mb-2">
+                                  Notes
+                                </label>
+                                <textarea
+                                  value={submissionForm.notes}
+                                  onChange={(e) =>
+                                    setSubmissionForm({
+                                      ...submissionForm,
+                                      notes: e.target.value,
+                                    })
+                                  }
+                                  disabled={submissionForm.busy}
+                                  className="w-full bg-white/5 rounded-xl px-4 py-3 border border-white/10 text-white outline-none focus:ring-2 ring-emerald-400 transition placeholder:text-gray-400 resize-none"
+                                  rows={3}
+                                  maxLength={2000}
+                                  placeholder="Add any notes about your submission..."
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-200 mb-2">
+                                  Link (GitHub, Drive, CodePen…)
+                                </label>
+                                <input
+                                  type="url"
+                                  value={submissionForm.link}
+                                  onChange={(e) =>
+                                    setSubmissionForm({
+                                      ...submissionForm,
+                                      link: e.target.value,
+                                    })
+                                  }
+                                  disabled={submissionForm.busy}
+                                  className="w-full bg-white/5 rounded-xl px-4 py-3 border border-white/10 text-white outline-none focus:ring-2 ring-emerald-400 transition placeholder:text-gray-400"
+                                  placeholder="https://"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-200 mb-2">
+                                  PDF (optional)
+                                </label>
+                                <PdfUploadField
+                                  file={submissionForm.file}
+                                  onChange={(file) =>
+                                    setSubmissionForm((p) => ({ ...p, file }))
+                                  }
+                                  progress={submissionForm.progress}
+                                  disabled={submissionForm.busy}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                            <h4 className="text-lg font-semibold text-white mb-4">
+                              Submission Status
+                            </h4>
+                            <div
+                              className={`flex items-center space-x-2 ${selectedHomework.status === "completed" ? "text-green-300" : "text-cyan-300"}`}
+                            >
+                              <CheckCircle2 size={20} />
+                              <span>
+                                {selectedHomework.status === "completed"
+                                  ? "Reviewed and marked completed"
+                                  : "Submitted — waiting for your instructor's review"}
+                              </span>
+                            </div>
+                            <div className="mt-4 text-sm text-gray-300 space-y-1.5">
+                              {selectedHomework.submittedAt && (
+                                <p>
+                                  <strong>Submitted on:</strong>{" "}
+                                  {new Date(
+                                    selectedHomework.submittedAt,
+                                  ).toLocaleString()}
+                                </p>
+                              )}
+                              {selectedHomework.submissionNote && (
+                                <p>
+                                  <strong>Notes:</strong>{" "}
+                                  {selectedHomework.submissionNote}
+                                </p>
+                              )}
+                              {selectedHomework.submissionLink && (
+                                <p>
+                                  <strong>Link:</strong>{" "}
+                                  <a
+                                    className="text-cyan-300 underline break-all"
+                                    href={selectedHomework.submissionLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {selectedHomework.submissionLink}
+                                  </a>
+                                </p>
+                              )}
+                              {selectedHomework.submissionFile?.url && (
+                                <p>
+                                  <strong>PDF:</strong>{" "}
+                                  <a
+                                    className="text-cyan-300 underline"
+                                    href={selectedHomework.submissionFile.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {selectedHomework.submissionFile
+                                      .originalName || "Open file"}
+                                  </a>
+                                </p>
+                              )}
+                            </div>
+                            {selectedHomework.feedback && (
+                              <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-400/30">
+                                <p className="text-xs text-emerald-200 mb-1">
+                                  Instructor feedback
+                                </p>
+                                <p className="text-sm text-white whitespace-pre-line">
+                                  {selectedHomework.feedback}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Assignment Timeline */}
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Timeline
+                          </h4>
+                          <div className="space-y-3 text-sm">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                              <div>
+                                <span className="text-gray-400">Created:</span>
+                                <span className="text-white ml-2">
+                                  {new Date(
+                                    selectedHomework.createdAt,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                              <div>
+                                <span className="text-gray-400">Assigned:</span>
+                                <span className="text-white ml-2">
+                                  {new Date(
+                                    selectedHomework.assignedDate,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                              <div>
+                                <span className="text-gray-400">
+                                  Last Updated:
+                                </span>
+                                <span className="text-white ml-2">
+                                  {new Date(
+                                    selectedHomework.updatedAt,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Right Column - Course Content */}
-                    <div className="space-y-6">
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Class Topic
-                        </h4>
-                        <p className="text-gray-300 text-sm leading-relaxed">
-                          {selectedClass.topicCovered ||
-                            "Topic will be announced during the class"}
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Instructor Notes
-                        </h4>
-                        <p className="text-gray-300 text-sm leading-relaxed">
-                          {selectedClass.notes || "No additional notes"}
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Attendance Status
-                        </h4>
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            selectedClass.attendance === "Present"
-                              ? "bg-green-500/20 text-green-300"
-                              : selectedClass.attendance === "Absent"
-                                ? "bg-red-500/20 text-red-300"
-                                : "bg-gray-500/20 text-gray-300"
-                          }`}
-                        >
-                          {selectedClass.attendance || "Not marked"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Modal Footer */}
-                  <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/10">
-                    <div className="flex items-center space-x-4">
-                      <span
-                        className={`px-4 py-2 rounded-full text-sm font-medium ${(() => {
-                          const now = new Date();
-                          const classDate = new Date(selectedClass.classDate);
-                          const [hours, minutes] =
-                            selectedClass.classTime.split(":");
-                          const classStartTime = new Date(classDate);
-                          classStartTime.setHours(
-                            parseInt(hours),
-                            parseInt(minutes),
-                            0,
-                            0
-                          );
-
-                          const classEndTime = new Date(classStartTime);
-                          classEndTime.setHours(
-                            classStartTime.getHours() +
-                              parseInt(selectedClass.classDuration)
-                          );
-
-                          if (now >= classStartTime && now <= classEndTime) {
-                            return "bg-green-500/20 text-green-300";
-                          } else if (now < classStartTime) {
-                            return "bg-blue-500/20 text-blue-300";
-                          } else {
-                            return "bg-gray-500/20 text-gray-300";
-                          }
-                        })()}`}
-                      >
-                        Status:{" "}
-                        {(() => {
-                          const now = new Date();
-                          const classDate = new Date(selectedClass.classDate);
-                          const [hours, minutes] =
-                            selectedClass.classTime.split(":");
-                          const classStartTime = new Date(classDate);
-                          classStartTime.setHours(
-                            parseInt(hours),
-                            parseInt(minutes),
-                            0,
-                            0
-                          );
-
-                          const classEndTime = new Date(classStartTime);
-                          classEndTime.setHours(
-                            classStartTime.getHours() +
-                              parseInt(selectedClass.classDuration)
-                          );
-
-                          if (now >= classStartTime && now <= classEndTime) {
-                            return "Live";
-                          } else if (now < classStartTime) {
-                            return "Upcoming";
-                          } else {
-                            return "Ended";
-                          }
-                        })()}
-                      </span>
-                    </div>
-
-                    <div className="flex space-x-3">
+                    {/* Modal Footer */}
+                    <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-white/10">
                       <button
-                        onClick={() => setShowClassInfo(false)}
+                        onClick={() => setShowHomeworkModal(false)}
                         className="px-6 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
                       >
                         Close
                       </button>
-                      {(() => {
-                        const now = new Date();
-                        const classDate = new Date(selectedClass.classDate);
-                        const [hours, minutes] =
-                          selectedClass.classTime.split(":");
-                        const classStartTime = new Date(classDate);
-                        classStartTime.setHours(
-                          parseInt(hours),
-                          parseInt(minutes),
-                          0,
-                          0
-                        );
-
-                        const classEndTime = new Date(classStartTime);
-                        classEndTime.setHours(
-                          classStartTime.getHours() +
-                            parseInt(selectedClass.classDuration)
-                        );
-
-                        if (now <= classEndTime) {
-                          return (
-                            <button
-                              onClick={() => {
-                                window.open(selectedClass.classLink, "_blank");
-                                setShowClassInfo(false);
-                              }}
-                              className={`px-6 py-3 rounded-xl font-semibold transition ${
-                                now >= classStartTime && now <= classEndTime
-                                  ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-                                  : "bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
-                              }`}
-                            >
-                              {now >= classStartTime && now <= classEndTime
-                                ? "Join Live Class"
-                                : "Join Class"}
-                            </button>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* HomeWork Tab */}
-
-        {activeTab === "homework" && (
-          <div className="space-y-6">
-            {/* Homework Header */}
-            <div className="bg-white/10 backdrop-blur-lg p-6 rounded-3xl border border-white/20">
-              <h2 className="text-xl font-bold text-white mb-2">
-                Homework & Assignments
-              </h2>
-              <p className="text-gray-300">View and submit your assignments</p>
-              <div className="flex items-center justify-between mt-4">
-                <div className="text-sm text-gray-400">
-                  Total: {homeWorkData.length} assignments
-                </div>
-                <div className="text-sm text-gray-400">
-                  Pending:{" "}
-                  {homeWorkData.filter((hw) => hw.status === "pending").length}
-                </div>
-              </div>
-            </div>
-
-            {/* Homework List */}
-            <div className="grid gap-4">
-              {[...homeWorkData]
-                .sort(
-                  (a, b) => new Date(b.assignedDate) - new Date(a.assignedDate)
-                )
-                .map((homework) => (
-                  <div
-                    key={homework._id}
-                    className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 hover:bg-white/15 transition-all duration-300"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">
-                            {homework.homeworkTitle}
-                          </h3>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              statusTone(homework.status)
-                            }`}
-                          >
-                            {homework.status.charAt(0).toUpperCase() +
-                              homework.status.slice(1)}
-                          </span>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              homework.priority === "high"
-                                ? "bg-red-500/20 text-red-300"
-                                : homework.priority === "medium"
-                                  ? "bg-orange-500/20 text-orange-300"
-                                  : "bg-blue-500/20 text-blue-300"
-                            }`}
-                          >
-                            {homework.priority.toUpperCase()}
-                          </span>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
-                          <div className="flex items-center space-x-2">
-                            <BookOpen size={16} className="text-gray-400" />
-                            <span>{homework.homeworkType}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <User size={16} className="text-gray-400" />
-                            <span>{homework.studentName}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Calendar size={16} className="text-gray-400" />
-                            <span>
-                              Assigned:{" "}
-                              {new Date(
-                                homework.assignedDate
-                              ).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Target size={16} className="text-gray-400" />
-                            <span>Priority: {homework.priority}</span>
-                          </div>
-                          {homework.dueDate && (
-                            <div className="flex items-center space-x-2">
-                              <Clock size={16} className="text-gray-400" />
-                              <span className={homework.status === "overdue" ? "text-red-300" : ""}>
-                                Due: {new Date(homework.dueDate).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <p className="text-gray-300 text-sm mb-4">
-                          {homework.homeworkDescription}
-                        </p>
-
-                        {homework.additionalNotes && (
-                          <div className="bg-white/5 p-3 rounded-lg border border-white/10 mb-4">
-                            <p className="text-xs text-gray-400 mb-1">
-                              Additional Notes:
-                            </p>
-                            <p className="text-gray-300 text-sm">
-                              {homework.additionalNotes}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="text-xs text-gray-400">
-                          Last updated:{" "}
-                          {new Date(homework.updatedAt).toLocaleDateString()} at{" "}
-                          {new Date(homework.updatedAt).toLocaleTimeString()}
-                        </div>
-                      </div>
-
-                      <div className="ml-4 flex flex-col gap-3">
+                      {["pending", "overdue"].includes(
+                        selectedHomework.status,
+                      ) && (
                         <button
-                          onClick={() => handleViewHomework(homework)}
-                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition font-semibold min-w-[140px]"
+                          onClick={() =>
+                            handleHomeworkSubmit(selectedHomework._id)
+                          }
+                          disabled={submissionForm.busy}
+                          className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl hover:from-emerald-600 hover:to-green-700 transition font-semibold disabled:opacity-60"
                         >
-                          <Eye size={18} />
-                          <span>View Details</span>
+                          {submissionForm.busy
+                            ? "Submitting…"
+                            : "Submit Assignment"}
                         </button>
-
-                        {["pending", "overdue"].includes(homework.status) && (
-                          <button
-                            onClick={() => handleViewHomework(homework)}
-                            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl hover:from-emerald-600 hover:to-green-700 transition font-semibold min-w-[140px]"
-                          >
-                            <Upload size={18} />
-                            <span>Submit</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-
-            {/* Empty State */}
-            {homeWorkData.length === 0 && (
-              <div className="bg-white/10 backdrop-blur-lg p-12 rounded-3xl border border-white/20 text-center">
-                <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  No Homework Assigned
-                </h3>
-                <p className="text-gray-300">
-                  You don't have any homework assignments at the moment.
-                </p>
-              </div>
-            )}
-
-            {/* Homework Modal */}
-            {showHomeworkModal && selectedHomework && (
-              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-2xl font-bold text-white">
-                      {selectedHomework.homeworkTitle}
-                    </h3>
-                    <button
-                      onClick={() => setShowHomeworkModal(false)}
-                      className="text-white/70 hover:text-white transition"
-                    >
-                      <X size={28} />
-                    </button>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-8">
-                    {/* Assignment Details */}
-                    <div className="space-y-4">
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Assignment Details
-                        </h4>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Type:</span>
-                            <span className="text-white">
-                              {selectedHomework.homeworkType}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Student:</span>
-                            <span className="text-white">
-                              {selectedHomework.studentName}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Assigned:</span>
-                            <span className="text-white">
-                              {new Date(
-                                selectedHomework.assignedDate
-                              ).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Priority:</span>
-                            <span
-                              className={`text-white font-medium ${
-                                selectedHomework.priority === "high"
-                                  ? "text-red-300"
-                                  : selectedHomework.priority === "medium"
-                                    ? "text-orange-300"
-                                    : "text-blue-300"
-                              }`}
-                            >
-                              {selectedHomework.priority.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Status:</span>
-                            <span
-                              className={`font-medium ${
-                                statusText(selectedHomework.status)
-                              }`}
-                            >
-                              {selectedHomework.status.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">
-                              Class Schedule ID:
-                            </span>
-                            <span className="text-white text-xs">
-                              {selectedHomework.classScheduleId}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Description
-                        </h4>
-                        <p className="text-gray-300 text-sm leading-relaxed">
-                          {selectedHomework.homeworkDescription}
-                        </p>
-                      </div>
-
-                      {selectedHomework.additionalNotes && (
-                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                          <h4 className="text-lg font-semibold text-white mb-4">
-                            Additional Notes
-                          </h4>
-                          <p className="text-gray-300 text-sm leading-relaxed">
-                            {selectedHomework.additionalNotes}
-                          </p>
-                        </div>
                       )}
                     </div>
-
-                    {/* Submission Form */}
-                    <div className="space-y-4">
-                      {["pending", "overdue"].includes(selectedHomework.status) ? (
-                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                          <h4 className="text-lg font-semibold text-white mb-1">
-                            Submit Assignment
-                          </h4>
-                          {selectedHomework.dueDate && (
-                            <p className={`text-xs mb-4 ${selectedHomework.status === "overdue" ? "text-red-300" : "text-gray-400"}`}>
-                              Due {new Date(selectedHomework.dueDate).toLocaleDateString()}
-                              {selectedHomework.status === "overdue" ? " · overdue, but you can still submit" : ""}
-                            </p>
-                          )}
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-200 mb-2">Notes</label>
-                              <textarea
-                                value={submissionForm.notes}
-                                onChange={(e) => setSubmissionForm({ ...submissionForm, notes: e.target.value })}
-                                disabled={submissionForm.busy}
-                                className="w-full bg-white/5 rounded-xl px-4 py-3 border border-white/10 text-white outline-none focus:ring-2 ring-emerald-400 transition placeholder:text-gray-400 resize-none"
-                                rows={3}
-                                maxLength={2000}
-                                placeholder="Add any notes about your submission..."
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-200 mb-2">Link (GitHub, Drive, CodePen…)</label>
-                              <input
-                                type="url"
-                                value={submissionForm.link}
-                                onChange={(e) => setSubmissionForm({ ...submissionForm, link: e.target.value })}
-                                disabled={submissionForm.busy}
-                                className="w-full bg-white/5 rounded-xl px-4 py-3 border border-white/10 text-white outline-none focus:ring-2 ring-emerald-400 transition placeholder:text-gray-400"
-                                placeholder="https://"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-200 mb-2">PDF (optional)</label>
-                              <PdfUploadField
-                                file={submissionForm.file}
-                                onChange={(file) => setSubmissionForm((p) => ({ ...p, file }))}
-                                progress={submissionForm.progress}
-                                disabled={submissionForm.busy}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                          <h4 className="text-lg font-semibold text-white mb-4">Submission Status</h4>
-                          <div className={`flex items-center space-x-2 ${selectedHomework.status === "completed" ? "text-green-300" : "text-cyan-300"}`}>
-                            <CheckCircle2 size={20} />
-                            <span>
-                              {selectedHomework.status === "completed"
-                                ? "Reviewed and marked completed"
-                                : "Submitted — waiting for your instructor's review"}
-                            </span>
-                          </div>
-                          <div className="mt-4 text-sm text-gray-300 space-y-1.5">
-                            {selectedHomework.submittedAt && (
-                              <p><strong>Submitted on:</strong> {new Date(selectedHomework.submittedAt).toLocaleString()}</p>
-                            )}
-                            {selectedHomework.submissionNote && (
-                              <p><strong>Notes:</strong> {selectedHomework.submissionNote}</p>
-                            )}
-                            {selectedHomework.submissionLink && (
-                              <p><strong>Link:</strong> <a className="text-cyan-300 underline break-all" href={selectedHomework.submissionLink} target="_blank" rel="noreferrer">{selectedHomework.submissionLink}</a></p>
-                            )}
-                            {selectedHomework.submissionFile?.url && (
-                              <p><strong>PDF:</strong> <a className="text-cyan-300 underline" href={selectedHomework.submissionFile.url} target="_blank" rel="noreferrer">{selectedHomework.submissionFile.originalName || "Open file"}</a></p>
-                            )}
-                          </div>
-                          {selectedHomework.feedback && (
-                            <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-400/30">
-                              <p className="text-xs text-emerald-200 mb-1">Instructor feedback</p>
-                              <p className="text-sm text-white whitespace-pre-line">{selectedHomework.feedback}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Assignment Timeline */}
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                        <h4 className="text-lg font-semibold text-white mb-4">
-                          Timeline
-                        </h4>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                            <div>
-                              <span className="text-gray-400">Created:</span>
-                              <span className="text-white ml-2">
-                                {new Date(
-                                  selectedHomework.createdAt
-                                ).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                            <div>
-                              <span className="text-gray-400">Assigned:</span>
-                              <span className="text-white ml-2">
-                                {new Date(
-                                  selectedHomework.assignedDate
-                                ).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                            <div>
-                              <span className="text-gray-400">
-                                Last Updated:
-                              </span>
-                              <span className="text-white ml-2">
-                                {new Date(
-                                  selectedHomework.updatedAt
-                                ).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Modal Footer */}
-                  <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-white/10">
-                    <button
-                      onClick={() => setShowHomeworkModal(false)}
-                      className="px-6 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/20"
-                    >
-                      Close
-                    </button>
-                    {["pending", "overdue"].includes(selectedHomework.status) && (
-                      <button
-                        onClick={() => handleHomeworkSubmit(selectedHomework._id)}
-                        disabled={submissionForm.busy}
-                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl hover:from-emerald-600 hover:to-green-700 transition font-semibold disabled:opacity-60"
-                      >
-                        {submissionForm.busy ? "Submitting…" : "Submit Assignment"}
-                      </button>
-                    )}
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {/* Progress Tab */}
-        {activeTab === "progress" && (
-          <ProgressDashboard stats={stats} questionStats={questionStats} assignments={qState.items} />
-        )}
-        {activeTab === "payment" && <PaymentsStudent />}
-        {activeTab === "timezone" && <TimezoneConverter />}
-        {activeTab === "upload" && goToUpload()}
-      </div>
+          {/* Progress Tab */}
+          {activeTab === "progress" && (
+            <ProgressDashboard
+              stats={stats}
+              questionStats={questionStats}
+              assignments={qState.items}
+            />
+          )}
+          {activeTab === "payment" && <PaymentsStudent />}
+          {activeTab === "timezone" && <TimezoneConverter />}
+          {activeTab === "upload" && goToUpload()}
+        </div>
       )}
-      {profileOpen && <ProfilePhotoModal onClose={() => setProfileOpen(false)} />}
+      {profileOpen && (
+        <ProfilePhotoModal onClose={() => setProfileOpen(false)} />
+      )}
     </SidebarShell>
   );
 }
