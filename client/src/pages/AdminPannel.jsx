@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useMemo } from "react";
 import {
   BookOpen,
   Users,
@@ -53,6 +53,7 @@ import { toast } from "react-toastify";
 import ContactInquiriesAdmin from "../components/ContactResultForm";
 import AdminProjectApproval from "./ProjectApproveSection";
 import ClassNotesAdmin from "../components/ClassNotesAdmin";
+import { buildBatches } from "../utils/classSessions";
 import ResourceLibraryAdmin from "../components/ResourceLibraryAdmin";
 import QuestionBankAdmin from "../components/questions/QuestionBankAdmin";
 import ReviewQueueAdmin from "../components/questions/ReviewQueueAdmin";
@@ -85,29 +86,62 @@ export default function AdminDashboard() {
     let alive = true;
     const load = () => {
       if (document.visibilityState !== "visible") return;
-      axios.get(`${backend_url}/api/questions/review-queue`, { params: { status: "submitted" } })
-        .then(({ data }) => alive && setToReview(data.counts?.submitted || 0)).catch(() => {});
+      axios
+        .get(`${backend_url}/api/questions/review-queue`, {
+          params: { status: "submitted" },
+        })
+        .then(({ data }) => alive && setToReview(data.counts?.submitted || 0))
+        .catch(() => {});
       if (canApproveAccounts(role)) {
-        axios.get(`${backend_url}/api/user/accounts`, { params: { status: "pending" } })
-          .then(({ data }) => alive && setPending(data.counts?.pending || 0)).catch(() => {});
+        axios
+          .get(`${backend_url}/api/user/accounts`, {
+            params: { status: "pending" },
+          })
+          .then(({ data }) => alive && setPending(data.counts?.pending || 0))
+          .catch(() => {});
       }
     };
     load();
     const id = setInterval(load, 60000);
-    return () => { alive = false; clearInterval(id); };
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, [backend_url, tab, role]);
+
+  // from a class card: jump to the Resource Library (opens the folder named like the class)
+  const [notesFocus, setNotesFocus] = useState(null);
+  const openClassNotes = (classItem, classNumber) => {
+    setNotesFocus({
+      classScheduleId: String(classItem._id),
+      classNumber,
+      className: classItem.className,
+    });
+    setActiveTab("resourceLibrary");
+  };
 
   // from a student's card: open the private chat with them
   const goChat = (student) => {
     const room = `dm:${student._id}:${userData.userId}`;
-    window.history.replaceState(null, "", `${window.location.pathname}?tab=chat&room=${encodeURIComponent(room)}`);
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?tab=chat&room=${encodeURIComponent(room)}`,
+    );
     setActiveTab("chat");
   };
 
   const renderContent = () => {
     switch (tab) {
       case "students":
-        return <StudentsDirectory title={role === "teacher" ? "My students" : "Students"} onMessage={goChat} onExtraClass={() => setActiveTab("extraClasses")} onPayments={() => setActiveTab("paymentUpdate")} />;
+        return (
+          <StudentsDirectory
+            title={role === "teacher" ? "My students" : "Students"}
+            onMessage={goChat}
+            onExtraClass={() => setActiveTab("extraClasses")}
+            onPayments={() => setActiveTab("paymentUpdate")}
+          />
+        );
       case "approvals":
         return <AccountApprovals onChanged={setPending} />;
       case "addCourse":
@@ -121,7 +155,7 @@ export default function AdminDashboard() {
       case "settings":
         return <SettingsPanel />;
       case "manageClasses":
-        return <ManageClasses />;
+        return <ManageClasses onOpenNotes={openClassNotes} />;
       case "homeWorkAssign":
         return <StudentHomeworkAssignment />;
       case "paymentUpdate":
@@ -137,7 +171,12 @@ export default function AdminDashboard() {
       case "classNotes":
         return <ClassNotesAdmin />;
       case "resourceLibrary":
-        return <ResourceLibraryAdmin />;
+        return (
+          <ResourceLibraryAdmin
+            focus={notesFocus}
+            onClearFocus={() => setNotesFocus(null)}
+          />
+        );
       case "projectApprove":
         return <AdminProjectApproval />;
       default:
@@ -156,15 +195,26 @@ export default function AdminDashboard() {
       brand={panel.brand}
       gradient={panel.gradient}
       footer={({ rail }) => (
-        <ProfileFooter rail={rail} name={userData?.name || "Staff"} userId={userData?.userId} avatarUrl={userData?.avatarUrl} subtitle={ROLE_LABEL[role] || "Staff"} onEdit={() => setProfileOpen(true)} />
+        <ProfileFooter
+          rail={rail}
+          name={userData?.name || "Staff"}
+          userId={userData?.userId}
+          avatarUrl={userData?.avatarUrl}
+          subtitle={ROLE_LABEL[role] || "Staff"}
+          onEdit={() => setProfileOpen(true)}
+        />
       )}
     >
       {tab === "chat" ? (
-        <div className="h-full p-2 sm:p-4"><ChatPage /></div>
+        <div className="h-full p-2 sm:p-4">
+          <ChatPage />
+        </div>
       ) : (
         <div className="p-4 sm:p-6 lg:p-8">{renderContent()}</div>
       )}
-      {profileOpen && <ProfilePhotoModal onClose={() => setProfileOpen(false)} />}
+      {profileOpen && (
+        <ProfilePhotoModal onClose={() => setProfileOpen(false)} />
+      )}
     </SidebarShell>
   );
 }
@@ -234,9 +284,19 @@ function Input({ label, name, value, onChange, type = "text", Icon }) {
 }
 
 // Manage Classes Component
-function ManageClasses() {
+function ManageClasses({ onOpenNotes }) {
   const { allSchedule, allUserData } = useContext(AppContent);
   const classes = allSchedule || [];
+  // Class No. per session (same class name + same students, ordered by start time) - matches the notes numbering
+  const classNumbers = useMemo(() => {
+    const m = {};
+    buildBatches(allSchedule).forEach((b) =>
+      b.sessions.forEach((x) => {
+        m[x._id] = x.classNumber;
+      }),
+    );
+    return m;
+  }, [allSchedule]);
   const users = allUserData?.data || [];
 
   const handleJoinClass = (classLink) => {
@@ -266,7 +326,7 @@ function ManageClasses() {
 
     return studentsEnrolled.map((studentId) => {
       const student = users.find(
-        (user) => user._id === studentId || user.name === studentId
+        (user) => user._id === studentId || user.name === studentId,
       );
       return student
         ? {
@@ -293,7 +353,7 @@ function ManageClasses() {
       .filter(
         (classItem) =>
           classItem.studentsEnrolled &&
-          classItem.studentsEnrolled.includes(studentId)
+          classItem.studentsEnrolled.includes(studentId),
       )
       .sort((a, b) => new Date(a.classDate) - new Date(b.classDate));
 
@@ -338,7 +398,7 @@ function ManageClasses() {
 
   const getStudentDetails = (studentId) => {
     const student = users.find(
-      (user) => user._id === studentId || user.name === studentId
+      (user) => user._id === studentId || user.name === studentId,
     );
     return student
       ? {
@@ -423,6 +483,11 @@ function ManageClasses() {
                               <h4 className="text-xl font-bold">
                                 {classItem.className}
                               </h4>
+                              {classNumbers[classItem._id] && (
+                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-200 border border-cyan-400/30">
+                                  Class {classNumbers[classItem._id]}
+                                </span>
+                              )}
                               <span
                                 className={`px-3 py-1 rounded-full text-xs font-medium ${
                                   classItem.label === "Today"
@@ -452,7 +517,18 @@ function ManageClasses() {
                               </span>
                             </div>
                           </div>
-                          <div className="ml-4">
+                          <div className="ml-4 flex flex-col gap-2">
+                            <button
+                              onClick={() =>
+                                onOpenNotes?.(
+                                  classItem,
+                                  classNumbers[classItem._id],
+                                )
+                              }
+                              className="px-4 py-2 bg-white/10 border border-white/25 rounded-lg text-sm font-medium hover:bg-white/20 transition"
+                            >
+                              Resources
+                            </button>
                             <button
                               onClick={() =>
                                 handleJoinClass(classItem.classLink)
