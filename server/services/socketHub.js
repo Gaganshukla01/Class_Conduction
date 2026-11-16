@@ -36,7 +36,7 @@ export async function initSocket(httpServer, origins = []) {
 
   io = new Server(httpServer, {
     serveClient: false,
-    cors: { origin: origins.filter(Boolean), credentials: true },
+    cors: { origin: typeof origins === "function" ? origins : origins.filter(Boolean), credentials: true },
   });
 
   // Auth: same JWT cookie the REST API uses
