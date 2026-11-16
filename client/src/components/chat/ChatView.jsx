@@ -132,7 +132,7 @@ export default function ChatView({ room = "community", peer, settings, socket, l
     try {
       const { data } = await axios.put(`${backend_url}/api/chat/settings`, { studentsCanPost: !settings?.studentsCanPost });
       onSettingsChange?.(data.data);
-      toast.success(data.data.studentsCanPost ? "Students can now post in Community" : "Community is now read-only for students");
+      toast.success(data.data.studentsCanPost ? "Students can now post in the Chat section" : "The Chat section is now read-only for students");
     } catch (e) { toast.error(e.response?.data?.message || "Could not change the setting"); }
   };
 
@@ -159,7 +159,7 @@ export default function ChatView({ room = "community", peer, settings, socket, l
           ? <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center shrink-0"><Users size={20} /></div>
           : <Avatar name={peer?.name} src={peer?.avatar} size={40} online={peer?.online} id={peer?._id} />}
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-white truncate">{isCommunity ? "Community" : peer?.name || "Chat"}</h2>
+          <h2 className="font-semibold text-white truncate">{isCommunity ? "Chat section" : peer?.name || "Chat"}</h2>
           <p className="text-xs text-gray-300 truncate">
             {typingNames.length ? `${typingNames.slice(0, 2).join(", ")} ${typingNames.length > 1 ? "are" : "is"} typing…`
               : isCommunity ? (settings?.studentsCanPost ? "Announcements & discussion" : "Announcements from your teachers")
@@ -168,7 +168,7 @@ export default function ChatView({ room = "community", peer, settings, socket, l
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-300 shrink-0">
           {isCommunity && canSettings && (
-            <button onClick={toggleStudentsPost} className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${settings?.studentsCanPost ? "bg-emerald-500/25 text-emerald-200" : "bg-white/10 hover:bg-white/20"}`} title="Allow students to post in Community">
+            <button onClick={toggleStudentsPost} className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${settings?.studentsCanPost ? "bg-emerald-500/25 text-emerald-200" : "bg-white/10 hover:bg-white/20"}`} title="Allow students to post in the Chat section">
               <span className={`w-7 h-4 rounded-full relative transition ${settings?.studentsCanPost ? "bg-emerald-400" : "bg-gray-500"}`}><span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${settings?.studentsCanPost ? "left-3.5" : "left-0.5"}`} /></span>
               Students can post
             </button>
@@ -239,7 +239,7 @@ export default function ChatView({ room = "community", peer, settings, socket, l
           ) : (
             <div className="shrink-0 border-t border-white/10 bg-white/5 px-4 py-3 flex flex-wrap items-center gap-3 text-sm text-gray-200 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <Lock size={16} className="text-amber-300 shrink-0" />
-              <span className="flex-1 min-w-[180px]">Only teachers can post in Community. To ask a question, message your teacher privately.</span>
+              <span className="flex-1 min-w-[180px]">Only teachers can post in the Chat section. To ask a question, message your teacher privately.</span>
               {onOpenList && <button onClick={onOpenList} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 font-semibold">Message a teacher</button>}
             </div>
           )}

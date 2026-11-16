@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { CalendarPlus, CheckCheck, Clock, ExternalLink, Loader2, RefreshCw, Trash2, Users, XCircle } from "lucide-react";
+import { CalendarPlus, CheckCheck, Clock, ExternalLink, Loader2, RefreshCw, Trash2, Users, Video, XCircle } from "lucide-react";
 import { AppContent } from "../context/Context";
 import { buildBatches } from "../utils/classSessions";
 import { classStartDate } from "../utils/classTime";
@@ -116,7 +116,40 @@ export default function ExtraClassesAdmin() {
       {creating && <CreateForm backend_url={backend_url} students={students} admins={admins} batches={batches} classNames={classNames} meId={userData?.userId} isTeacher={userData?.userType === "teacher"} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); reload(); }} />}
       {attending && <AttendanceModal backend_url={backend_url} extra={attending} onClose={() => setAttending(null)} onSaved={() => { setAttending(null); load(); }} />}
       {classAttendance && <ClassAttendanceModal backend_url={backend_url} extra={classAttendance} onClose={() => setClassAttendance(null)} onSaved={() => { setClassAttendance(null); reload(); }} />}
-      {rescheduling && <RescheduleModal backend_url={backend_url} extra={rescheduling} onClose={() => setRescheduling(null)} onSaved={() => { setRescheduling(null); reload(); }} />}
+      {rescheduling && <RescheduleModal backend_url={backend_url} extra={rescheduling} students={students} batches={batches} onClose={() => setRescheduling(null)} onSaved={() => { setRescheduling(null); reload(); }} />}
+    </div>
+  );
+}
+
+// Is the Google Meet integration set up on the server? (decides whether the toggle is usable)
+function useMeetStatus(backend_url) {
+  const [configured, setConfigured] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${backend_url}/api/extra-classes/meet-status`).then((r) => alive && setConfigured(Boolean(r.data.configured))).catch(() => alive && setConfigured(false));
+    return () => { alive = false; };
+  }, [backend_url]);
+  return configured;
+}
+
+function MeetToggle({ configured, on, setOn, guests, setGuests, note }) {
+  return (
+    <div className="md:col-span-2 sm:col-span-2 rounded-xl bg-white/5 border border-white/15 p-4 space-y-3">
+      <label className={`flex items-start gap-3 ${configured ? "cursor-pointer" : "opacity-60"}`}>
+        <input type="checkbox" className="mt-1 w-4 h-4 accent-emerald-400" checked={on && configured !== false} disabled={configured === false} onChange={(e) => setOn(e.target.checked)} />
+        <span>
+          <span className="font-semibold text-white flex items-center gap-2"><Video size={16} className="text-emerald-300" /> Auto-generate Google Meet link</span>
+          <span className="block text-xs text-gray-300 mt-0.5">
+            {configured === false ? "Not set up on the server yet - paste a link below instead." : note || "A Meet link is created for you and the students are added as guests (they also get a Google Calendar invite)."}
+          </span>
+        </span>
+      </label>
+      {on && configured !== false && (
+        <div>
+          <label className={label}>Extra guests (optional)</label>
+          <input className={field} value={guests} onChange={(e) => setGuests(e.target.value)} placeholder="parent@example.com, friend@example.com" />
+        </div>
+      )}
     </div>
   );
 }
@@ -127,6 +160,9 @@ function CreateForm({ backend_url, students, admins, batches, classNames, meId, 
   const [busy, setBusy] = useState(false);
   const [sessions, setSessions] = useState(null); // scheduled classes the picked students share
   const [sessionId, setSessionId] = useState("");
+  const meetConfigured = useMeetStatus(backend_url);
+  const [meetOn, setMeetOn] = useState(false);
+  const [guests, setGuests] = useState("");
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
   const sub = f.type === "substitute";
   const session = sessions?.find((c) => c._id === sessionId);
@@ -155,11 +191,12 @@ function CreateForm({ backend_url, students, admins, batches, classNames, meId, 
   const save = async () => {
     if (sub && !sessionId) return toast.error("Choose which scheduled class this substitute replaces");
     if (!sub && !f.title.trim()) return toast.error("Enter the class name");
-    if (!/^https?:\/\//i.test(f.classLink.trim())) return toast.error("Enter the meeting link (starting with https://)");
+    const useMeet = meetOn && meetConfigured;
+    if (!useMeet && !/^https?:\/\//i.test(f.classLink.trim())) return toast.error("Enter the meeting link (starting with https://) or switch on Auto-generate Meet link");
     if (picked.size === 0) return toast.error("Select at least one student or class");
     setBusy(true);
     try {
-      const { data } = await axios.post(`${backend_url}/api/extra-classes`, { ...f, studentIds: [...picked], ...(sub ? { replacesClassId: sessionId } : {}) });
+      const { data } = await axios.post(`${backend_url}/api/extra-classes`, { ...f, classLink: useMeet ? "" : f.classLink, autoMeet: useMeet, guestEmails: useMeet ? guests : "", studentIds: [...picked], ...(sub ? { replacesClassId: sessionId } : {}) });
       toast.success([data.message, data.emailMessage].filter(Boolean).join(" · "));
       onSaved();
     } catch (e) { toast.error(e.response?.data?.message || "Could not schedule the class"); } finally { setBusy(false); }
@@ -216,7 +253,9 @@ function CreateForm({ backend_url, students, admins, batches, classNames, meId, 
           <div><label className={label}>{sub ? "New time" : "Time"}</label><input type="time" className={field} value={f.time} onChange={set("time")} /></div>
           <div><label className={label}>Hours</label><input type="number" min="0.5" max="12" step="0.5" className={field} value={f.duration} onChange={set("duration")} /></div>
         </div>
-        <div className="md:col-span-2"><label className={label}>{sub ? "New join link (Meet / Zoom / Teams)" : "Join link (Meet / Zoom / Teams)"}</label><input className={field} value={f.classLink} onChange={set("classLink")} placeholder="https://meet.google.com/…" /></div>
+        <MeetToggle configured={meetConfigured} on={meetOn} setOn={setMeetOn} guests={guests} setGuests={setGuests}
+          note={sub ? "Creates a NEW Meet link for the replaced class; the selected students (and everyone in that class) are added as guests." : undefined} />
+        {!(meetOn && meetConfigured) && <div className="md:col-span-2"><label className={label}>{sub ? "New join link (Meet / Zoom / Teams)" : "Join link (Meet / Zoom / Teams)"}</label><input className={field} value={f.classLink} onChange={set("classLink")} placeholder="https://meet.google.com/…" /></div>}
         <div>
           <label className={label}>{sub ? "Teacher taking the substitute class" : "Instructor"}</label>
           {isTeacher
@@ -312,22 +351,53 @@ function AttendanceModal({ backend_url, extra, onClose, onSaved }) {
   );
 }
 
-function RescheduleModal({ backend_url, extra, onClose, onSaved }) {
+function RescheduleModal({ backend_url, extra, students = [], batches = [], onClose, onSaved }) {
+  const isSub = extra.type === "substitute";
   const [f, setF] = useState({ date: new Date(extra.classDate).toISOString().slice(0, 10), time: extra.classTime, classLink: extra.classLink });
+  const [picked, setPicked] = useState(() => new Set((extra.studentsEnrolled || extra.students?.map((x) => x._id) || []).map(String)));
+  const meetConfigured = useMeetStatus(backend_url);
+  const hasMeet = Boolean(extra.meetEventId);
+  const [meetOn, setMeetOn] = useState(false);
+  const [guests, setGuests] = useState((extra.guestEmails || []).join(", "));
   const [busy, setBusy] = useState(false);
   const save = async () => {
+    if (!isSub && picked.size === 0) return toast.error("Select at least one student");
     setBusy(true);
-    try { const { data } = await axios.put(`${backend_url}/api/extra-classes/${extra._id}`, f); toast.success([data.message, data.emailMessage].filter(Boolean).join(" · ")); onSaved(); }
+    try {
+      const body = { ...f, ...(isSub ? {} : { studentIds: [...picked] }) };
+      if (meetOn && meetConfigured) { body.autoMeet = true; body.classLink = ""; body.guestEmails = guests; }
+      else if (hasMeet) { if (f.classLink === extra.classLink) delete body.classLink; if (guests !== (extra.guestEmails || []).join(", ")) body.guestEmails = guests; }
+      const { data } = await axios.put(`${backend_url}/api/extra-classes/${extra._id}`, body);
+      toast.success([data.message, data.emailMessage].filter(Boolean).join(" · ")); onSaved();
+    }
     catch (e) { toast.error(e.response?.data?.message || "Could not update"); } finally { setBusy(false); }
   };
   return (
-    <Modal title={`Reschedule · ${extra.title}`} onClose={busy ? () => {} : onClose}>
+    <Modal wide title={`Reschedule · ${extra.title}`} onClose={busy ? () => {} : onClose}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div><label className={label}>Date</label><input type="date" className={field} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
         <div><label className={label}>Time</label><input type="time" className={field} value={f.time} onChange={(e) => setF({ ...f, time: e.target.value })} /></div>
-        <div className="sm:col-span-2"><label className={label}>Join link</label><input className={field} value={f.classLink} onChange={(e) => setF({ ...f, classLink: e.target.value })} /></div>
+        {!isSub && (
+          <div className="sm:col-span-2">
+            <p className="text-sm text-gray-200 font-medium mb-2">Students for this class (they are the Meet guests)</p>
+            <TargetPicker students={students} batches={batches} picked={picked} setPicked={setPicked} maxHeight="max-h-48" />
+          </div>
+        )}
+        {hasMeet ? (
+          <div className="sm:col-span-2 rounded-xl bg-emerald-500/10 border border-emerald-400/30 p-4 text-sm text-emerald-50 space-y-3">
+            <p className="flex items-center gap-2"><Video size={16} /> This class uses an auto-generated Google Meet. The <strong>same link</strong> stays - the new time and the selected students' invites update automatically.</p>
+            <div><label className={label}>Extra guests (optional)</label><input className={field} value={guests} onChange={(e) => setGuests(e.target.value)} placeholder="parent@example.com" /></div>
+            <p className="text-xs text-emerald-100/70">Want a different link instead? Paste it below - the generated Meet is then removed.</p>
+            <input className={field} value={f.classLink} onChange={(e) => setF({ ...f, classLink: e.target.value })} />
+          </div>
+        ) : (
+          <>
+            <MeetToggle configured={meetConfigured} on={meetOn} setOn={setMeetOn} guests={guests} setGuests={setGuests} note="Generate a Meet link now for the new time and invite the selected students." />
+            {!(meetOn && meetConfigured) && <div className="sm:col-span-2"><label className={label}>Join link</label><input className={field} value={f.classLink} onChange={(e) => setF({ ...f, classLink: e.target.value })} /></div>}
+          </>
+        )}
       </div>
-      <p className="text-xs text-gray-400 mt-3">If the date, time or link changes, students get an updated card in the chat and an email.</p>
+      <p className="text-xs text-gray-400 mt-3">If the date, time, link or students change, they get an updated card in the chat and an email.</p>
       <div className="flex justify-end gap-3 mt-5">
         <button onClick={onClose} disabled={busy} className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20">Close</button>
         <button onClick={save} disabled={busy} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 font-semibold disabled:opacity-60">{busy && <Loader2 className="animate-spin" size={16} />} Save</button>

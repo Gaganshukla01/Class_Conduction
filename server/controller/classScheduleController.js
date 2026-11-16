@@ -10,6 +10,7 @@ import {
   notifyPaymentReceived,
   summaryText,
 } from "../services/notificationService.js";
+import { isMeetConfigured, createMeetEvent, deleteMeetEvent, meetTitle } from "../services/googleMeet.js";
 
 const WEEKS_PER_SERIES = 30;
 
@@ -23,28 +24,29 @@ export const classCreate = async (req, res) => {
       classDuration,
       classRate,
       weeklySchedule,
+      autoMeet,
+      guestEmails,
     } = req.body;
+    const weeks = Math.min(Math.max(parseInt(req.body.weeks, 10) || WEEKS_PER_SERIES, 1), 52);
+    const wantMeet = autoMeet === true || autoMeet === "true";
 
-    if (
-      !className ||
-      !instructorId ||
-      !classLink ||
-      !classDuration ||
-      classRate === undefined ||
-      classRate === "" ||
-      !Array.isArray(weeklySchedule) ||
-      weeklySchedule.length === 0
-    ) {
+    const missing = [];
+    if (!className) missing.push("Course / class name");
+    if (!instructorId) missing.push("Instructor");
+    if (!classLink && !wantMeet) missing.push("Class link (or switch on Auto-generate Meet link)");
+    if (!classDuration) missing.push("Class duration");
+    if (classRate === undefined || classRate === "" || classRate === null) missing.push("Class rate");
+    if (!Array.isArray(weeklySchedule) || weeklySchedule.length === 0) missing.push("At least one weekly day/time");
+    if (missing.length) {
       return res.status(400).json({
         success: false,
-        message:
-          "Missing required fields: className, instructorId, classLink, classDuration, classRate, and weeklySchedule are required",
+        message: `Please fill in: ${missing.join(", ")}.`,
       });
     }
 
     // the instructor must be somebody who can teach (a teacher or an admin)
     const instructor = mongoose.Types.ObjectId.isValid(instructorId)
-      ? await userModel.findById(instructorId).select("userType").lean()
+      ? await userModel.findById(instructorId).select("userType email").lean()
       : null;
     if (!instructor || !isTeachingRole(instructor.userType)) {
       return res.status(400).json({ success: false, message: "Choose a teacher (or an admin) as the instructor." });
@@ -61,6 +63,32 @@ export const classCreate = async (req, res) => {
     const batchId = Date.now();
     const docs = [];
 
+    // Auto Meet: one weekly recurring Google Calendar event per weekday slot (= one Meet link per slot).
+    // Guests = the enrolled students + the instructor (+ any extra e-mails typed in).
+    const meetBySlot = new Map();
+    if (wantMeet) {
+      if (!isMeetConfigured()) {
+        return res.status(400).json({ success: false, message: "Auto Meet links are not set up on the server yet (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN). Paste a link instead." });
+      }
+      const people = await userModel.find({ _id: { $in: (studentsEnrolled || []).filter((i) => mongoose.Types.ObjectId.isValid(i)) } }).select("email name").lean();
+      const title = meetTitle(people.map((u) => u.name), className);
+      const emails = [...people.map((u) => u.email), instructor.email, ...(Array.isArray(guestEmails) ? guestEmails : String(guestEmails || "").split(/[,\s;]+/))];
+      const made = [];
+      try {
+        for (const { date, time } of validSlots) {
+          const d = new Date(date);
+          if (Number.isNaN(d.getTime())) return res.status(400).json({ success: false, message: `Invalid date: ${date}` });
+          const ev = await createMeetEvent({ title, description: `ClassWave class: ${className}`, classDate: d, classTime: time, durationHours: parseFloat(classDuration) || 1, emails, weeks });
+          made.push(ev.eventId);
+          meetBySlot.set(`${date}|${time}`, ev);
+        }
+      } catch (e) {
+        await Promise.all(made.map((id) => deleteMeetEvent(id).catch(() => {})));
+        console.error("auto meet (schedule):", e.message);
+        return res.status(502).json({ success: false, message: `Could not create the Meet link: ${e.message} Nothing was saved - fix it or paste a link manually.` });
+      }
+    }
+
     for (const { date, time } of validSlots) {
       const initialDate = new Date(date);
       if (Number.isNaN(initialDate.getTime())) {
@@ -68,7 +96,8 @@ export const classCreate = async (req, res) => {
           .status(400)
           .json({ success: false, message: `Invalid date: ${date}` });
       }
-      for (let i = 0; i < WEEKS_PER_SERIES; i++) {
+      const meet = meetBySlot.get(`${date}|${time}`);
+      for (let i = 0; i < weeks; i++) {
         const weeklyDate = new Date(initialDate);
         weeklyDate.setUTCDate(initialDate.getUTCDate() + i * 7);
         docs.push({
@@ -77,7 +106,8 @@ export const classCreate = async (req, res) => {
           classTime: time,
           instructorId,
           studentsEnrolled: studentsEnrolled || [],
-          classLink,
+          classLink: meet ? meet.meetLink : classLink,
+          ...(meet ? { meetEventId: meet.eventId } : {}),
           classDuration,
           classRate,
           attendance: "Absent",
@@ -98,21 +128,22 @@ export const classCreate = async (req, res) => {
       className,
       instructorId,
       studentsEnrolled: studentsEnrolled || [],
-      classLink,
+      classLink: meetBySlot.size ? [...meetBySlot.values()][0].meetLink : classLink,
       classDuration,
       weeklySchedule: validSlots,
-      weeks: WEEKS_PER_SERIES,
+      weeks,
     });
 
     res.status(201).json({
       success: true,
-      message: `${saved.length} class schedules created successfully (${WEEKS_PER_SERIES} weeks × ${validSlots.length} scheduled dates)`,
+      message: `${saved.length} class schedules created successfully (${weeks} weeks × ${validSlots.length} scheduled dates)${meetBySlot.size ? " with Google Meet links" : ""}`,
       email,
       emailMessage: summaryText(email),
       data: {
         totalClasses: saved.length,
         scheduledDates: validSlots.length,
-        weeksPerDate: WEEKS_PER_SERIES,
+        weeksPerDate: weeks,
+        meetLinks: [...meetBySlot.values()].map((m) => m.meetLink),
       },
     });
   } catch (error) {

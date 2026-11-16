@@ -29,7 +29,7 @@ export default function ConversationList({ items, active, onSelect, isAdmin, me 
               : <span className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center"><Megaphone size={20} /></span>}
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline justify-between gap-2">
-              <span className="font-semibold text-white truncate">{dm ? i.peer.name : "Community"}</span>
+              <span className="font-semibold text-white truncate">{dm ? i.peer.name : "Chat section"}</span>
               <span className={`text-[11px] shrink-0 ${i.unread ? "text-emerald-300" : "text-gray-400"}`}>{short(i.lastMessageAt)}</span>
             </span>
             <span className="flex items-center justify-between gap-2">

@@ -1,3 +1,4 @@
+import { resolveDbName } from "../config/database.js";
 // Usage (from the server folder):
 //   node scripts/migrate-chat.js            run the migration
 //   node scripts/migrate-chat.js --dry-run  only show what would happen
@@ -7,7 +8,7 @@ import { migrateChat } from "../services/chatMigration.js";
 
 const dryRun = process.argv.includes("--dry-run");
 try {
-  await mongoose.connect(process.env.MONGODB_URI, { dbName: "ClassWave" });
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: resolveDbName() });
   const result = await migrateChat({ dryRun });
   console.log(dryRun ? "DRY RUN - nothing was written" : "Migration finished");
   console.table(result);
