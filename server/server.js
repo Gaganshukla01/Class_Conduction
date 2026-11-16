@@ -27,6 +27,7 @@ import { extraClassRouter } from "./router/extraClassRouter.js";
 import { paymentRouter } from "./router/paymentRouter.js";
 import http from "http";
 import { initSocket } from "./services/socketHub.js";
+import { buildOrigins, isOriginAllowed } from "./config/cors.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -34,44 +35,20 @@ const port = process.env.PORT || 4000;
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
-// Define allowed origins and patterns
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.FRONTED_URL, // the current .env uses this (misspelled) name
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "https://class-conduction.vercel.app",
-  "https://class-conduction-hdq6.vercel.app",
-];
-
-const allowedOriginPatterns = [
-  /^https:\/\/class-conduction-.*\.vercel\.app$/,
-  /^https:\/\/.*-gaganshukla01s-projects\.vercel\.app$/,
-];
-
-const validOrigins = allowedOrigins.filter(Boolean);
+// Allowed origins come from the environment (FRONTEND_URL, FRONTEND_URL_WWW, CORS_ORIGINS) - see config/cors.js
+const allowed = buildOrigins();
+const validOrigins = allowed.exact;
+if (validOrigins.length === 0 && allowed.patterns.length === 0) {
+  console.warn("CORS: no allowed origins. Set FRONTEND_URL in the server environment.");
+}
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) {
+    if (isOriginAllowed(origin, allowed)) {
       return callback(null, true);
     }
 
-    // Check exact matches
-    if (validOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // Check pattern matches
-    const matchesPattern = allowedOriginPatterns.some((pattern) =>
-      pattern.test(origin)
-    );
-    if (matchesPattern) {
-      return callback(null, true);
-    }
-
-    callback(new Error(`CORS blocked: Origin ${origin} not allowed`));
+    callback(new Error(`CORS blocked: ${origin} is not in FRONTEND_URL / FRONTEND_URL_WWW / CORS_ORIGINS`));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -141,7 +118,7 @@ app.use((err, req, res, next) => {
 // An http.Server (instead of app.listen) so Socket.io can share the port.
 // On Vercel serverless the exported `app` is used and sockets stay inactive.
 const server = http.createServer(app);
-initSocket(server, validOrigins).finally(() => {
+initSocket(server, (origin, cb) => cb(null, isOriginAllowed(origin, allowed))).finally(() => {
   server.listen(port, () => console.log(`Server is running on port ${port}`));
 });
 

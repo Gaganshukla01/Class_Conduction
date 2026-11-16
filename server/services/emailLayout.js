@@ -14,7 +14,7 @@ export const appUrl = () =>
   (
     process.env.FRONTEND_URL ||
     process.env.FRONTED_URL || // legacy spelling that exists in the current .env
-    "https://class-conduction.vercel.app"
+    (process.env.NODE_ENV === "production" ? "" : "http://localhost:5173") // no built-in site address: set FRONTEND_URL
   ).replace(/\/+$/, "");
 
 const TONES = {
