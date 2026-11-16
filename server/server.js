@@ -34,7 +34,6 @@ const port = process.env.PORT || 4000;
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
-// Define allowed origins and patterns
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.FRONTED_URL, // the current .env uses this (misspelled) name
@@ -70,14 +69,6 @@ const corsOptions = {
     if (matchesPattern) {
       return callback(null, true);
     }
-
-    callback(new Error(`CORS blocked: Origin ${origin} not allowed`));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Origin",
-    "X-Requested-With",
     "Content-Type",
     "Accept",
     "Authorization",
