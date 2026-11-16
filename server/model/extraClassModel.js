@@ -28,6 +28,9 @@ const extraClassSchema = new mongoose.Schema(
     attendanceMarkedAt: { type: Date },
     createdBy: { type: String, required: true },
     chatMessageId: { type: String },
+    meetEventId: { type: String }, // Google Calendar event behind an auto-generated Meet link
+    guestEmails: [{ type: String }], // extra guests (besides the students) invited to the Meet
+
     // Substitute classes REPLACE one scheduled session (a classSchedule document)
     replacesClassId: { type: String, index: true },
     original: {

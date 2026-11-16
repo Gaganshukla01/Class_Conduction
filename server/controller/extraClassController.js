@@ -7,6 +7,7 @@ import { dmRoom } from "../services/chatRooms.js";
 import { notifyExtraClass, summaryText } from "../services/notificationService.js";
 import { classStart } from "../utils/time.js";
 import { isTeachingRole, isUnscopedRole } from "../config/roles.js";
+import { isMeetConfigured, createMeetEvent, updateMeetEvent, deleteMeetEvent, meetTitle } from "../services/googleMeet.js";
 import { studentScope, inScope, classFilterFor, teachesClass } from "../services/scope.js";
 
 // A teacher manages only the extra classes they teach or created. Admin / manager: all of them.
@@ -33,13 +34,13 @@ async function resolveStudents(studentIds, classScheduleIds) {
   return users.map((u) => String(u._id));
 }
 
-const readFields = (body) => {
+const readFields = (body, allowNoLink = false) => {
   const title = String(body.title || "").trim();
   if (!title) throw new Error("Enter the class name.");
   if (!DATE_RE.test(String(body.date || ""))) throw new Error("Pick a valid date.");
   if (!TIME_RE.test(String(body.time || ""))) throw new Error("Pick a valid time.");
   const link = String(body.classLink || "").trim();
-  if (!/^https?:\/\//i.test(link)) throw new Error("The class link must start with http:// or https://");
+  if (!(allowNoLink && !link) && !/^https?:\/\//i.test(link)) throw new Error("The class link must start with http:// or https:// (or switch on Auto-generate Meet link).");
   const duration = Number(body.duration ?? 1);
   if (!Number.isFinite(duration) || duration <= 0 || duration > 12) throw new Error("Duration must be between 0 and 12 hours.");
   return {
@@ -54,6 +55,27 @@ const readFields = (body) => {
     note: String(body.note || "").trim().slice(0, 1000),
   };
 };
+
+const wantsMeet = (b) => b.autoMeet === true || b.autoMeet === "true";
+const splitEmails = (v) => (Array.isArray(v) ? v : String(v || "").split(/[,\s;]+/)).map((e) => String(e).trim()).filter(Boolean);
+
+// Guests of the Meet = the selected students + the teacher + any extra e-mails typed in
+async function guestEmailsFor(studentIds, instructorId, extraEmails) {
+  const ids = validIds([...(studentIds || []), instructorId]);
+  const users = ids.length ? await userModel.find({ _id: { $in: ids } }).select("email").lean() : [];
+  return [...users.map((u) => u.email), ...splitEmails(extraEmails)];
+}
+
+// "Arjun - Python classes" for the calendar event
+async function eventTitleFor(studentIds, className) {
+  const ids = validIds(studentIds);
+  const users = ids.length ? await userModel.find({ _id: { $in: ids } }).select("name").lean() : [];
+  return meetTitle(users.map((u) => u.name), className);
+}
+
+const meetNotReady = () => (isMeetConfigured() ? null : "Auto Meet links are not set up on the server yet (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN). Paste a link instead.");
+
+export const meetStatus = (req, res) => res.status(200).json({ success: true, configured: isMeetConfigured() });
 
 // The rich message that lands in the students' chat (with a "Join Now" button).
 // For a substitute it also says WHICH class it replaces.
@@ -186,6 +208,8 @@ export const replaceableClasses = async (req, res) => {
 };
 
 export const createExtraClass = async (req, res) => {
+  let meetEvent = null;
+  let saved = false;
   try {
     const isSub = req.body.type === "substitute";
     let cls = null;
@@ -218,14 +242,31 @@ export const createExtraClass = async (req, res) => {
       students = mine;
     }
 
+    const meetWanted = wantsMeet(req.body);
     const fields = readFields(
-      isSub ? { ...req.body, title: req.body.title || cls.className, duration: req.body.duration ?? cls.classDuration, classLink: req.body.classLink || cls.classLink } : req.body
+      isSub ? { ...req.body, title: req.body.title || cls.className, duration: req.body.duration ?? cls.classDuration, classLink: meetWanted ? req.body.classLink : req.body.classLink || cls.classLink } : req.body,
+      meetWanted
     );
     // a teacher always teaches their own class; admin / manager choose the teacher
     const instructorId = req.user.userType === "teacher" ? String(req.userId) : await teacherIdFor(validIds([req.body.instructorId])[0], req.userId);
 
+    if (meetWanted) {
+      const notReady = meetNotReady();
+      if (notReady) return res.status(400).json({ success: false, message: notReady });
+      try {
+        const emails = await guestEmailsFor(students, instructorId, req.body.guestEmails);
+        const ev = await createMeetEvent({ title: await eventTitleFor(students, fields.title), description: fields.topic || "", classDate: fields.classDate, classTime: fields.classTime, durationHours: parseFloat(fields.classDuration) || 1, emails });
+        meetEvent = ev;
+        fields.classLink = ev.meetLink;
+      } catch (e) {
+        console.error("auto meet (extra):", e.message);
+        return res.status(502).json({ success: false, message: `Could not create the Meet link: ${e.message} Nothing was saved - fix it or paste a link manually.` });
+      }
+    }
+
     const extra = await ExtraClass.create({
       ...fields,
+      ...(meetEvent ? { meetEventId: meetEvent.eventId, guestEmails: splitEmails(req.body.guestEmails) } : {}),
       instructorId,
       studentsEnrolled: students,
       createdBy: String(req.userId),
@@ -237,6 +278,7 @@ export const createExtraClass = async (req, res) => {
         : {}),
     });
 
+    saved = true;
     // 1) the scheduled class takes the new details (so attendance can be marked for it)
     if (isSub) await applySubstitution(cls, extra, instructorId);
 
@@ -264,6 +306,8 @@ export const createExtraClass = async (req, res) => {
       data: extra,
     });
   } catch (error) {
+    // do not leave an orphan Calendar event behind when saving failed
+    if (meetEvent && !saved) await deleteMeetEvent(meetEvent.eventId).catch(() => {});
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -361,6 +405,10 @@ export const updateExtraClass = async (req, res) => {
       }
       const restored = isSub ? await revertSubstitution(extra) : false;
       extra.status = "cancelled";
+      if (extra.meetEventId) {
+        await deleteMeetEvent(extra.meetEventId).catch((e) => console.error("meet delete:", e.message));
+        extra.meetEventId = undefined;
+      }
       await extra.save();
       const label = isSub ? "Substitute class" : "Extra class";
       await postToPrivateChats(extra, await teacherIdFor(extra.instructorId, req.userId), {
@@ -385,9 +433,52 @@ export const updateExtraClass = async (req, res) => {
     if (isSub && (await attendanceLocked(extra))) {
       return res.status(400).json({ success: false, message: "Attendance is already marked for this class, so it can no longer be changed." });
     }
-    const fields = readFields({ ...extra.toObject(), date: req.body.date ?? extra.classDate.toISOString().slice(0, 10), time: req.body.time ?? extra.classTime, duration: req.body.duration ?? extra.classDuration, ...req.body });
-    const changedSchedule = fields.classDate.getTime() !== extra.classDate.getTime() || fields.classTime !== extra.classTime || fields.classLink !== extra.classLink;
+    const meetWanted = wantsMeet(req.body);
+    const fields = readFields({ ...extra.toObject(), date: req.body.date ?? extra.classDate.toISOString().slice(0, 10), time: req.body.time ?? extra.classTime, duration: req.body.duration ?? extra.classDuration, ...req.body }, meetWanted);
+
+    // Rescheduling an EXTRA class may also change who is invited (selected students become the Meet guests)
+    let students = extra.studentsEnrolled;
+    if (!isSub && Array.isArray(req.body.studentIds) && req.body.studentIds.length) {
+      const picked = await resolveStudents(req.body.studentIds, []);
+      const scope = await studentScope(req.user);
+      const mine = picked.filter((id) => inScope(scope, id));
+      if (!mine.length) return res.status(400).json({ success: false, message: "Select at least one of your students." });
+      students = mine;
+    }
+    const studentsChanged = students.length !== extra.studentsEnrolled.length || students.some((id) => !extra.studentsEnrolled.includes(id));
+    const timeChanged = fields.classDate.getTime() !== extra.classDate.getTime() || fields.classTime !== extra.classTime || fields.classDuration !== extra.classDuration;
+
+    // ---- Google Meet bookkeeping
+    const manualLink = Boolean(req.body.classLink) && !meetWanted && String(req.body.classLink).trim() !== extra.classLink;
+    if (extra.meetEventId && manualLink) {
+      // a link was pasted by hand: the generated Meet is no longer used
+      await deleteMeetEvent(extra.meetEventId).catch((e) => console.error("meet delete:", e.message));
+      extra.meetEventId = undefined;
+    }
+    try {
+      if (meetWanted || (extra.meetEventId && (timeChanged || studentsChanged))) {
+        const notReady = meetNotReady();
+        if (notReady) return res.status(400).json({ success: false, message: notReady });
+        const emails = await guestEmailsFor(students, extra.instructorId, req.body.guestEmails ?? extra.guestEmails);
+        const opts = { title: await eventTitleFor(students, fields.title), description: fields.topic || "", classDate: fields.classDate, classTime: fields.classTime, durationHours: parseFloat(fields.classDuration) || 1, emails };
+        if (extra.meetEventId) {
+          await updateMeetEvent(extra.meetEventId, opts);
+          fields.classLink = extra.classLink;
+        } else {
+          const ev = await createMeetEvent(opts);
+          extra.meetEventId = ev.eventId;
+          fields.classLink = ev.meetLink;
+        }
+        if (req.body.guestEmails !== undefined) extra.guestEmails = splitEmails(req.body.guestEmails);
+      }
+    } catch (e) {
+      console.error("auto meet (update):", e.message);
+      return res.status(502).json({ success: false, message: `Could not update the Meet: ${e.message}` });
+    }
+    if (!fields.classLink) fields.classLink = extra.classLink;
+    const changedSchedule = timeChanged || fields.classLink !== extra.classLink || studentsChanged;
     Object.assign(extra, fields);
+    if (studentsChanged) extra.studentsEnrolled = students;
     if (wasCancelled && req.body.status === "scheduled") extra.status = "scheduled";
     await extra.save();
     if (isSub && changedSchedule && extra.status !== "cancelled") await syncSubstitution(extra);
@@ -415,6 +506,7 @@ export const deleteExtraClass = async (req, res) => {
     if (!owns(req.user, extra)) return notYours(res);
     // Deleting a substitute that has not happened yet must not leave the scheduled class on the new time
     if (extra.type === "substitute" && extra.status === "scheduled" && !(await attendanceLocked(extra))) await revertSubstitution(extra);
+    if (extra.meetEventId) await deleteMeetEvent(extra.meetEventId).catch((e) => console.error("meet delete:", e.message));
     await extra.deleteOne();
     res.status(200).json({ success: true, message: "Deleted." });
   } catch (error) {

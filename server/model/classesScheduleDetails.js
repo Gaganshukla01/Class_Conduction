@@ -24,6 +24,7 @@ const classScheduleSchema = new mongoose.Schema(
     paymentId: { type: String, index: true }, // the receipt (Payment) that paid this class
     attendanceMarkedAt: { type: Date },
     reminderSentAt: { type: Date },
+    meetEventId: { type: String, index: true }, // Google Calendar event that holds the auto-generated Meet link
 
     // Set while this session has been REPLACED by a substitute class. classDate / classTime /
     // classLink above then hold the NEW details (so attendance is marked as for any other

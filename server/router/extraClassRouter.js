@@ -1,11 +1,12 @@
 import express from "express";
 import { staffOnly, anyUser } from "../middlewares/userAuthMiddleware.js";
 import {
-  replaceableClasses, createExtraClass, listExtraClasses, myExtraClasses, markExtraAttendance, updateExtraClass, deleteExtraClass,
+  replaceableClasses, createExtraClass, listExtraClasses, myExtraClasses, markExtraAttendance, updateExtraClass, deleteExtraClass, meetStatus,
 } from "../controller/extraClassController.js";
 
 export const extraClassRouter = express.Router();
 extraClassRouter.get("/mine", anyUser, myExtraClasses);
+extraClassRouter.get("/meet-status", staffOnly, meetStatus);
 extraClassRouter.get("/replaceable", staffOnly, replaceableClasses);
 extraClassRouter.get("/", staffOnly, listExtraClasses);
 extraClassRouter.post("/", staffOnly, createExtraClass);

@@ -34,18 +34,23 @@ const port = process.env.PORT || 4000;
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
+// Define allowed origins and patterns
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  process.env.FRONTEND_URL_WWW,
-  process.env.PRODUCTION_FRONTEND_URL,
-].filter(Boolean);
+  process.env.FRONTED_URL, // the current .env uses this (misspelled) name
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://class-conduction.vercel.app",
+  "https://class-conduction-hdq6.vercel.app",
+];
 
 const allowedOriginPatterns = [
   /^https:\/\/class-conduction-.*\.vercel\.app$/,
   /^https:\/\/.*-gaganshukla01s-projects\.vercel\.app$/,
 ];
 
-const validOrigins = allowedOrigins;
+const validOrigins = allowedOrigins.filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -53,14 +58,15 @@ const corsOptions = {
       return callback(null, true);
     }
 
+    // Check exact matches
     if (validOrigins.includes(origin)) {
       return callback(null, true);
     }
 
+    // Check pattern matches
     const matchesPattern = allowedOriginPatterns.some((pattern) =>
-      pattern.test(origin),
+      pattern.test(origin)
     );
-
     if (matchesPattern) {
       return callback(null, true);
     }
@@ -75,13 +81,15 @@ const corsOptions = {
     "Content-Type",
     "Accept",
     "Authorization",
+    "Cookie",
+    "Set-Cookie",
   ],
+  exposedHeaders: ["Set-Cookie"],
   optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
-
 app.use(cookieParser());
 
 connectDb();

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   IndianRupee,
   Trash2,
+  Video,
 } from "lucide-react";
 import { AppContent } from "../context/Context";
 import axios from "axios";
@@ -70,7 +71,40 @@ export default function AddClassSchedule() {
     classRate: "",
     classDuration: "",
     weeklySchedule: [],
+    weeks: 30,
+    autoMeet: false,
+    guestEmails: "",
   });
+
+  // Is Google Meet auto-generation set up on the server?
+  const [meetConfigured, setMeetConfigured] = useState(null);
+  useEffect(() => {
+    axios.get(`${backend_url}/api/extra-classes/meet-status`).then((r) => setMeetConfigured(Boolean(r.data.configured))).catch(() => setMeetConfigured(false));
+  }, [backend_url]);
+
+  // "Pick the weekdays" planner: Mon/Wed/Fri at 5 PM starting from a date -> one slot per weekday
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const [plan, setPlan] = useState({ days: [], time: "17:00", start: "" });
+  const togglePlanDay = (d) => setPlan((p) => ({ ...p, days: p.days.includes(d) ? p.days.filter((x) => x !== d) : [...p.days, d] }));
+  const addPlannedDays = () => {
+    if (!plan.days.length) return toast.error("Pick at least one weekday");
+    if (!plan.time) return toast.error("Pick the class time");
+    const startStr = plan.start || new Date().toISOString().slice(0, 10);
+    const [y, m, d0] = startStr.split("-").map(Number);
+    const added = [];
+    setFormData((prev) => {
+      const next = [...prev.weeklySchedule];
+      [...plan.days].sort((a, b) => a - b).forEach((wd) => {
+        const base = new Date(Date.UTC(y, m - 1, d0));
+        const diff = (wd - base.getUTCDay() + 7) % 7;
+        base.setUTCDate(base.getUTCDate() + diff);
+        const date = base.toISOString().slice(0, 10);
+        if (!next.some((s) => s.date === date)) { next.push({ date, time: plan.time }); added.push(date); }
+      });
+      return { ...prev, weeklySchedule: next.sort((a, b) => a.date.localeCompare(b.date)) };
+    });
+    toast.success("Weekdays added to the schedule");
+  };
 
   const [message, setMessage] = useState("");
   const [instructorDropdownOpen, setInstructorDropdownOpen] = useState(false);
@@ -213,22 +247,39 @@ export default function AddClassSchedule() {
       toast.error("Please add at least one schedule");
       return;
     }
+    const useMeet = formData.autoMeet && meetConfigured;
+    const missing = [];
+    if (!formData.className) missing.push("Course / class name");
+    if (!formData.instructorId) missing.push("Instructor");
+    if (!formData.classDuration) missing.push("Class duration");
+    if (formData.classRate === "" || formData.classRate === undefined) missing.push("Class rate");
+    if (missing.length) {
+      toast.error(`Please fill in: ${missing.join(", ")}`);
+      return;
+    }
+    if (!useMeet && !formData.classLink.trim()) {
+      toast.error("Paste the class link or switch on Auto-generate Meet link");
+      return;
+    }
 
     try {
       const classData = {
         className: formData.className,
         instructorId: formData.instructorId,
         studentsEnrolled: formData.studentsEnrolled,
-        classLink: formData.classLink,
+        classLink: useMeet ? "" : formData.classLink,
         classDuration: formData.classDuration,
         classRate: formData.classRate,
         weeklySchedule: formData.weeklySchedule,
+        weeks: Number(formData.weeks) || 30,
+        autoMeet: Boolean(useMeet),
+        guestEmails: useMeet ? formData.guestEmails : "",
       };
 
       const res = await axios.post(`${backend_url}/api/classschedule/add`, classData);
       toast.success(
         [
-          `${formData.weeklySchedule.length * 30} classes created successfully! (30 weeks for each selected date)`,
+          `${formData.weeklySchedule.length * (Number(formData.weeks) || 30)} classes created successfully! (${Number(formData.weeks) || 30} weeks for each selected day)`,
           res.data.emailMessage,
         ]
           .filter(Boolean)
@@ -244,6 +295,9 @@ export default function AddClassSchedule() {
         classDuration: "",
         classRate: "",
         weeklySchedule: [],
+        weeks: 30,
+        autoMeet: false,
+        guestEmails: "",
       });
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not create the schedule");
@@ -559,6 +613,33 @@ export default function AddClassSchedule() {
               Weekly Schedule ({formData.weeklySchedule.length} classes
               scheduled)
             </label>
+
+            {/* Pick weekdays (Mon / Wed / Fri ...) */}
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10 mb-4">
+              <h4 className="text-lg font-medium text-white mb-1">Quick plan: pick the weekdays</h4>
+              <p className="text-sm text-gray-400 mb-4">Choose the days the class happens each week, the time and the start date. Each day repeats for the number of weeks set below.</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                  <button key={d} type="button" onClick={() => togglePlanDay(d)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold border transition ${plan.days.includes(d) ? "bg-gradient-to-r from-blue-500 to-purple-600 border-transparent text-white" : "bg-white/5 border-white/20 text-gray-300 hover:bg-white/10"}`}>
+                    {DAY_NAMES[d]}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1.5">Time</label>
+                  <input type="time" value={plan.time} onChange={(e) => setPlan((p) => ({ ...p, time: e.target.value }))} className="w-full px-3 py-3 rounded-xl bg-white/10 border border-white/20 text-white [color-scheme:dark]" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1.5">Starting from</label>
+                  <input type="date" value={plan.start} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setPlan((p) => ({ ...p, start: e.target.value }))} className="w-full px-3 py-3 rounded-xl bg-white/10 border border-white/20 text-white [color-scheme:dark]" />
+                </div>
+                <button type="button" onClick={addPlannedDays} className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 font-semibold text-white flex items-center justify-center gap-2">
+                  <Plus size={18} /> Add these days
+                </button>
+              </div>
+            </div>
 
             {/* Add New Schedule */}
             <div className="bg-white/5 rounded-xl p-6 border border-white/10 mb-4">
@@ -955,12 +1036,42 @@ export default function AddClassSchedule() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2 rounded-xl bg-white/5 border border-white/15 p-4 space-y-3">
+              <label className={`flex items-start gap-3 ${meetConfigured ? "cursor-pointer" : "opacity-60"}`}>
+                <input type="checkbox" className="mt-1 w-4 h-4 accent-emerald-400" checked={formData.autoMeet && meetConfigured !== false} disabled={meetConfigured === false}
+                  onChange={(e) => setFormData((p) => ({ ...p, autoMeet: e.target.checked }))} />
+                <span>
+                  <span className="font-semibold text-white flex items-center gap-2"><Video size={16} className="text-emerald-300" /> Auto-generate Google Meet link</span>
+                  <span className="block text-xs text-gray-300 mt-0.5">
+                    {meetConfigured === false
+                      ? "Not set up on the server yet - paste a link below instead."
+                      : "One Meet link per weekday is created and reused every week. The students and the instructor are added as guests and get a Google Calendar invite. The Join Now button uses this link."}
+                  </span>
+                </span>
+              </label>
+              {formData.autoMeet && meetConfigured !== false && (
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1.5">Extra guests (optional, comma separated)</label>
+                  <input name="guestEmails" value={formData.guestEmails} onChange={handleChange} placeholder="parent@example.com" className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400" />
+                </div>
+              )}
+            </div>
+            {!(formData.autoMeet && meetConfigured) && (
+              <Input
+                label="Class Link"
+                name="classLink"
+                value={formData.classLink}
+                onChange={handleChange}
+                Icon={Link}
+              />
+            )}
             <Input
-              label="Class Link"
-              name="classLink"
-              value={formData.classLink}
+              label="Number of weeks (1-52)"
+              name="weeks"
+              value={formData.weeks}
               onChange={handleChange}
-              Icon={Link}
+              type="number"
+              Icon={Calendar}
             />
             <Input
               label="Class Duration (e.g. 2 hours)"

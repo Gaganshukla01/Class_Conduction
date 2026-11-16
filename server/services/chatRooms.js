@@ -31,7 +31,7 @@ export async function checkRoomAccess(user, room, { forSend = false } = {}) {
     if (forSend && !admin) {
       const settings = await ChatSettings.findOne({ key: "main" }).lean();
       if (!settings?.studentsCanPost) {
-        return fail(403, "Only teachers can post in the Community channel. Open a teacher from the list to send a private message.");
+        return fail(403, "Only teachers can post in the Chat section. Open a teacher from the list to send a private message.");
       }
     }
     return { ok: true, parsed };

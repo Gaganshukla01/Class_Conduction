@@ -7,6 +7,8 @@ import { classStartDate } from "../../utils/classTime";
 const fmt = (c) => { const d = classStartDate(c); return `${d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })} · ${d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })}`; };
 
 // Upcoming (and recent) extra / substitute classes for the logged-in student.
+import { googleCalendarUrl } from "../../utils/calendarLink";
+
 export default function ExtraClassesStudent() {
   const { backend_url } = useContext(AppContent);
   const [list, setList] = useState(null);
@@ -29,6 +31,7 @@ export default function ExtraClassesStudent() {
               <span className="block text-sm text-gray-300 flex items-center gap-1.5"><Clock size={13} /> {fmt(c)} · {c.classDuration}h{c.substituteFor ? ` · for ${c.substituteFor}` : ""}</span>
               {c.replaces && <span className="block text-xs text-amber-200 mt-0.5">Replaces your {c.replaces.className} class on {fmt(c.replaces)}</span>}
             </span>
+            <a href={googleCalendarUrl({ title: c.title, classDate: c.classDate, classTime: c.classTime, classDuration: c.classDuration, link: c.classLink, details: c.topic ? `Topic: ${c.topic}` : `${c.type === "substitute" ? "Substitute" : "Extra"} class` })} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm"><CalendarClock size={15} /> <span className="hidden sm:inline">Add to Calendar</span></a>
             <a href={c.classLink} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-600 text-sm font-semibold"><Video size={15} /> Join now</a>
           </li>
         ))}

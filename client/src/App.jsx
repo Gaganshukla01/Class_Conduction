@@ -15,6 +15,7 @@ import ContactInquiriesAdmin from "./components/ContactResultForm";
 import ProjectShowcase from "./pages/StudentProject";
 import FunZone from "./pages/FunZone";
 import PendingApproval from "./pages/PendingApproval";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { dashboardPath, isApproved } from "./utils/roles";
 
 const ALL_ROLES = ["admin", "manager", "teacher", "student"];
@@ -54,6 +55,7 @@ function App() {
       <Routes>
         {/* Public routes - accessible to everyone */}
         <Route path="/" element={<Home />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/seehowitworks" element={<SeeHowItWorks />} />
         <Route path="/projectview" element={<ProjectShowcase />} />
         <Route path="/funzone" element={<FunZone />} />

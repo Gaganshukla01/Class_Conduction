@@ -801,7 +801,7 @@ export const notifyChatMessage = safe(async function notifyChatMessage(message) 
     const open = `${appUrl()}${dashboardPath(u.userType || "student")}?tab=chat${isDm ? `&room=${encodeURIComponent(room)}` : ""}`;
     const lead = isDm
       ? `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge(roleLabel, "amber")}` : ""} sent you a private message:`
-      : `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge(roleLabel, "amber")}` : ""} posted in the Community Chat:`;
+      : `<strong>${esc(message.senderName)}</strong>${staff ? ` ${badge(roleLabel, "amber")}` : ""} posted in the Chat section:`;
     const body = `
 ${paragraph(lead)}
 <div style="margin:14px 0;padding:14px 16px;border-left:4px solid #4f46e5;background:#f5f6ff;border-radius:8px;color:#111827;font-size:15px;line-height:1.55;">
@@ -814,7 +814,7 @@ ${paragraph(`<span style="color:#9ca3af;font-size:12px;">To keep your inbox calm
       to: u.email,
       subject: isDm
         ? `💬 ${message.senderName}${staff ? ` (${roleLabel})` : ""} sent you a message${waiting > 1 ? ` (${waiting} new)` : ""}`
-        : `💬 ${message.senderName}${staff ? ` (${roleLabel})` : ""} in Community Chat${waiting > 1 ? ` (${waiting} new)` : ""}`,
+        : `💬 ${message.senderName}${staff ? ` (${roleLabel})` : ""} in the Chat section${waiting > 1 ? ` (${waiting} new)` : ""}`,
       html: renderEmail({
         preheader: (message.text || attachment || "New message").slice(0, 90),
         title: isDm ? "New private message" : "New chat message",

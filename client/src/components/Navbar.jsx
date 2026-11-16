@@ -22,6 +22,9 @@ import {
   HomeIcon,
 } from "lucide-react";
 
+// Change this text to whatever you want the logged-out button to say
+const LOGIN_BUTTON_TEXT = "Get Started";
+
 function Navbar() {
   const navigate = useNavigate();
   const { userData, setUserData, setIsLoggedin, backend_url } =
@@ -145,7 +148,7 @@ function Navbar() {
                 className="flex items-center  gap-2 bg-white/10 hover:bg-white/20 cursor-pointer backdrop-blur-sm rounded-xl px-4 py-2 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20"
               >
                 <Home size={18} />
-                <span>Chat Section</span>
+                <span>Common Area</span>
               </button>
 
               <button
@@ -252,7 +255,7 @@ function Navbar() {
                             </div>
                             <div>
                               <p className="font-medium text-gray-800 text-sm">
-                                Chat Section
+                                Common Area
                               </p>
                               <p className="text-xs text-gray-500">Open Chat</p>
                             </div>
@@ -369,8 +372,7 @@ function Navbar() {
                 className="flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 hover:from-blue-600 hover:via-blue-700 hover:to-purple-700 rounded-xl cursor-pointer sm:rounded-2xl px-3 py-2 sm:px-6 sm:py-3 text-white font-medium sm:font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-white/20 backdrop-blur-sm text-sm sm:text-base"
               >
                 <User size={16} className="text-white sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Sign In</span>
-                <span className="xs:hidden">Get Started</span>
+                <span>{LOGIN_BUTTON_TEXT}</span>
               </button>
             )}
           </div>

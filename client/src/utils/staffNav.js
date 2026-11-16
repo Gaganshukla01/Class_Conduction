@@ -25,7 +25,7 @@ export function navFor(role, extra) {
     homeWorkAssign: { id: "homeWorkAssign", label: "Home Work", icon: Book },
     codeQuestions: { id: "codeQuestions", label: "Code Questions", icon: Code2 },
     reviewQueue: { id: "reviewQueue", label: "Submissions to Review", icon: ClipboardCheck, badge: extra.toReview },
-    chat: { id: "chat", label: "Chat", icon: MessageSquare, badge: extra.chatUnread },
+    chat: { id: "chat", label: "Community Chat", icon: MessageSquare, badge: extra.chatUnread },
     classNotes: { id: "classNotes", label: "Class Notes", icon: FileText },
     resourceLibrary: { id: "resourceLibrary", label: "Resource Library", icon: Library },
     paymentUpdate: { id: "paymentUpdate", label: "Payments", icon: IndianRupeeIcon },
